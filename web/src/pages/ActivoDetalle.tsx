@@ -7,6 +7,7 @@ import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
 import LineaTiempo from '../components/LineaTiempo'
 import UsoPanel from '../components/UsoPanel'
+import Componentes from '../components/Componentes'
 import { tipoEquipo } from '../lib/mantenimiento'
 import { supabase, mensajeError, ESTATUS, BUCKET } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -179,6 +180,8 @@ export default function ActivoDetalle() {
           )}
 
           {tipoEquipo(a.categoria, a.es_vehiculo) !== 'otro' && <UsoPanel activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} qr={(a as unknown as { qr: string }).qr} tipo={tipoEquipo(a.categoria, a.es_vehiculo)} nombreUsuario={perfilRep?.nombre} />}
+
+          <Componentes activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} />
 
           <DocumentosPanel empresaId={(a as unknown as { empresa_id: string }).empresa_id} activoId={a.id} esVehiculo={a.es_vehiculo} />
 

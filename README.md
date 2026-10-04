@@ -82,6 +82,14 @@ Sistema propio de control de activos: registro con QR, ubicación y responsable,
 - **App instalable y sin señal**: `manifest.webmanifest`, íconos y `sw.js` (la app abre sin internet; las consultas muestran la última copia). Las altas de inventario físico, lecturas y almacén hechas sin señal se guardan en el equipo y se mandan solas al volver (`src/lib/sinSenal.ts`). Indicador en la barra superior. Al cerrar sesión se borra la copia de datos.
 - **Para activar la IA:** en Supabase → Edge Functions → Secrets agregar `ANTHROPIC_API_KEY` (y opcional `ANTHROPIC_MODEL`). Sin la llave todo lo demás funciona.
 
+## Ideas de SAP PM / EHS (Fase 7)
+
+- **Componentes** (`activos.montado_en`, `montajes`): aditamentos y accesorios montados en un equipo (martillo y cucharón de la retro, cargador de la laptop) con historial de montaje y desmontaje. Panel en la ficha del activo.
+- **Catálogo de fallas** (`codigos_falla`, columnas `dano_id`, `causa_id`, `accion_id`, `paro` en `ordenes_trabajo`): al terminar una orden se elige qué falló, por qué y qué se hizo. Se administra en Catálogos → Códigos de falla.
+- **Confiabilidad** (`/confiabilidad`): disponibilidad por equipo, tiempo entre fallas (MTBF), tiempo de reparación (MTTR), tiempo parado, uso (km/horas) y gráficas de qué falla más y por qué; periodo de 30/90/365 días.
+- **Requisitos para operar** (`requisitos_operacion`): por categoría o producto, qué documento vigente necesita el empleado (licencia o DC-3). Al hacer el resguardo avisa o bloquea; solo un administrador puede autorizar sin el documento (queda en las notas).
+- **Vales de salida** (`vales_salida`, VS-00001, funciones `vale_por_token` y `marcar_vale`): para mover equipo entre obras. Vigilancia escanea el QR del vale en la caseta (sin cuenta) y registra salida y llegada; al llegar, el equipo cambia de ubicación solo. Vigencia, cancelación e impresión.
+
 ## Correr en local
 
 ```bash
@@ -98,8 +106,8 @@ La URL y la clave publicable de Supabase vienen por defecto en `src/lib/supabase
 cd web && npm run build   # genera web/dist
 ```
 
-`dist/` se sube a GitHub Pages (o cualquier hosting estático). Después, en Supabase → Authentication → URL Configuration, poner la URL publicada como *Site URL* y en *Redirect URLs*.
+Publicado en GitHub Pages desde la carpeta `docs/` de la rama `main` (repo `Oscar51999/activos-gfm`): después de compilar, copiar `web/dist/*` a `docs/` y subir. Después, en Supabase → Authentication → URL Configuration, poner la URL publicada como *Site URL* y en *Redirect URLs*.
 
 ## Roadmap
 
-0. Preparación · 1. **Registro de activos** ✅ · 2. **Resguardos y movimientos** ✅ · 2.5 **Catálogo, alta rápida y empresas** ✅ · 3A **Préstamos, reportes por QR, inventario físico** ✅ · 3B **Documentos y vigencias** ✅ · 3C **Control de personal** ✅ · 4 **Mantenimiento y flotilla** ✅ · 5 **Almacén, solicitudes y mapa** ✅ · **Inmuebles** ✅ · 6 **Inteligencia** ✅ (alta por foto, preguntas en español, app sin señal)
+0. Preparación · 1. **Registro de activos** ✅ · 2. **Resguardos y movimientos** ✅ · 2.5 **Catálogo, alta rápida y empresas** ✅ · 3A **Préstamos, reportes por QR, inventario físico** ✅ · 3B **Documentos y vigencias** ✅ · 3C **Control de personal** ✅ · 4 **Mantenimiento y flotilla** ✅ · 5 **Almacén, solicitudes y mapa** ✅ · **Inmuebles** ✅ · 6 **Inteligencia** ✅ (alta por foto, preguntas en español, app sin señal) · 7 **SAP PM/EHS** ✅ (componentes, fallas, confiabilidad, requisitos, vales)

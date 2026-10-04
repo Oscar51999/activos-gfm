@@ -4,6 +4,7 @@ import { Wrench, CalendarClock, Gauge, Plus, ArrowLeft, Play, PauseCircle, Check
 import { supabase, mensajeError, type Estatus } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fotoProducto } from '../lib/logos'
+import { useLista } from '../lib/hooks'
 import { ESTATUS_OT, DISPARO, type EstatusOT, type Disparo } from '../lib/mantenimiento'
 import { Cargando, Vacio, Modal, Campo, Aviso, EstatusBadge } from '../components/ui'
 import FotoActivo from '../components/FotoActivo'
@@ -14,7 +15,7 @@ type Prog = { plan_id: string; plan: string; disparo: Disparo; intervalo: number
   fecha_ultimo: string | null; lectura_ultimo: number | null; lectura_actual: number | null; proxima_fecha: string | null; proxima_lectura: number | null; restante: number; estado: 'vencido' | 'proximo' | 'ok'; ot_abierta: string | null; ot_folio: string | null }
 type OT = { id: string; folio: string; activo_id: string; empresa_id: string; tipo: 'preventivo' | 'correctivo'; plan_id: string | null; reporte_id: string | null; titulo: string; descripcion: string | null
   prioridad: 'baja' | 'media' | 'alta'; estatus: EstatusOT; proveedor_id: string | null; responsable: string | null; fecha_programada: string | null; fecha_inicio: string | null; fecha_fin: string | null
-  lectura: number | null; checklist: { tarea: string; hecho: boolean }[]; fotos_antes: string[]; fotos_despues: string[]; refacciones: string | null; notas_cierre: string | null; created_at: string
+  lectura: number | null; checklist: { tarea: string; hecho: boolean }[]; fotos_antes: string[]; fotos_despues: string[]; refacciones: string | null; notas_cierre: string | null; created_at: string; dano_id?: string | null; causa_id?: string | null; accion_id?: string | null; paro?: boolean
   activos?: { codigo: string; descripcion: string; estatus: Estatus; responsable_id: string | null; foto_principal: string | null; modelos: { nombre: string; foto_path: string | null } | null; marcas: { nombre: string } | null; categorias: { nombre: string } | null } | null
   proveedores?: { nombre: string } | null }
 type Plan = { id: string; nombre: string; modelo_id: string | null; activo_id: string | null; disparo: Disparo; intervalo: number; avisar_antes: number; tareas: string[]; activo: boolean
@@ -275,7 +276,8 @@ export function OrdenTrabajo() {
   const { puedeResguardar, puedeEditar } = useAuth()
   const [o, setO] = useState<OT | null>(null)
   const [cerrar, setCerrar] = useState(false)
-  const [fc, setFc] = useState({ lectura: '', refacciones: '', notas: '' })
+  const [fc, setFc] = useState({ lectura: '', refacciones: '', notas: '', dano_id: '', causa_id: '', accion_id: '', paro: true })
+  const { items: codigos } = useLista('codigos_falla', 'id,nombre,grupo,codigo', 'codigo')
   const [error, setError] = useState('')
   const inAntes = useRef<HTMLInputElement>(null), inDesp = useRef<HTMLInputElement>(null)
   const cargar = () => { supabase.from('ordenes_trabajo').select(SEL_OT).eq('id', id!).single().then(({ data }) => setO(data as unknown as OT)) }
@@ -293,7 +295,7 @@ export function OrdenTrabajo() {
     if (puedeEditar && o!.activos && ['disponible', 'asignado'].includes(o!.activos.estatus)) { await supabase.from('activos').update({ estatus: 'mantenimiento' }).eq('id', o!.activo_id); cargar() }
   }
   async function terminar() {
-    const ok = await guardar({ estatus: 'terminada', fecha_fin: new Date().toISOString(), lectura: fc.lectura ? Number(fc.lectura) : null, refacciones: fc.refacciones.trim() || null, notas_cierre: fc.notas.trim() || null })
+    const ok = await guardar({ estatus: 'terminada', fecha_fin: new Date().toISOString(), lectura: fc.lectura ? Number(fc.lectura) : null, refacciones: fc.refacciones.trim() || null, notas_cierre: fc.notas.trim() || null, dano_id: fc.dano_id || null, causa_id: fc.causa_id || null, accion_id: fc.accion_id || null, paro: fc.paro })
     if (!ok) return
     if (fc.lectura) await supabase.from('lecturas').insert({ activo_id: o!.activo_id, empresa_id: o!.empresa_id, tipo: tipoLect, valor: Number(fc.lectura), origen: 'orden', nota: o!.folio })
     if (puedeEditar && o!.activos?.estatus === 'mantenimiento') {
@@ -368,8 +370,9 @@ export function OrdenTrabajo() {
               <input ref={campo === 'fotos_antes' ? inAntes : inDesp} type="file" accept="image/*" hidden onChange={e => agregarFoto(campo, e.target.files?.[0])} />
             </section>
           ))}
-          {o.estatus === 'terminada' && (o.refacciones || o.notas_cierre) && (
+          {o.estatus === 'terminada' && (o.refacciones || o.notas_cierre || o.dano_id) && (
             <section className="tarjeta p-5"><h2 className="mb-2 font-semibold">Cierre</h2>
+              {(o.dano_id || o.causa_id || o.accion_id) && <p className="mb-2 flex flex-wrap gap-1.5">{[o.dano_id, o.causa_id, o.accion_id].map((c, i) => { const x = codigos.find(k => k.id === c); return x ? <span key={i} className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-600"><span className="font-mono text-marca">{x.codigo as string}</span> {x.nombre}</span> : null })}</p>}
               {o.refacciones && <p className="text-sm"><b>Refacciones:</b> {o.refacciones}</p>}{o.notas_cierre && <p className="mt-1 text-sm text-stone-600">{o.notas_cierre}</p>}
               {o.lectura != null && <p className="mt-1 text-xs text-stone-500">{tipoLect === 'km' ? 'Kilometraje' : 'Horómetro'} al servicio: {n(o.lectura)}</p>}</section>
           )}
@@ -392,6 +395,12 @@ export function OrdenTrabajo() {
         <div className="space-y-4">
           {hechos < o.checklist.length && <Aviso tipo="info">Faltan {o.checklist.length - hechos} tarea(s) del checklist por marcar.</Aviso>}
           <Campo label={tipoLect === 'km' ? 'Kilometraje al terminar' : 'Horómetro al terminar'}><input type="number" min="0" step="0.1" className="campo" value={fc.lectura} onChange={e => setFc({ ...fc, lectura: e.target.value })} /></Campo>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {([['dano_id', 'dano', '¿Qué falló?'], ['causa_id', 'causa', '¿Por qué?'], ['accion_id', 'accion', '¿Qué se hizo?']] as const).map(([k, g, t]) => (
+              <Campo key={k} label={t}><select className="campo" value={fc[k]} onChange={e => setFc({ ...fc, [k]: e.target.value })}><option value="">—</option>{codigos.filter(c => c.grupo === g).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></Campo>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#F9B234]" checked={fc.paro} onChange={e => setFc({ ...fc, paro: e.target.checked })} />El equipo estuvo parado mientras duró la orden (cuenta para la disponibilidad)</label>
           <Campo label="Refacciones cambiadas"><input className="campo" value={fc.refacciones} onChange={e => setFc({ ...fc, refacciones: e.target.value })} placeholder="Ej. Aceite 15W40, filtro de aceite y aire" /></Campo>
           <Campo label="Notas"><textarea className="campo" rows={2} value={fc.notas} onChange={e => setFc({ ...fc, notas: e.target.value })} /></Campo>
           <p className="text-xs text-stone-500">Al terminar, el equipo regresa a {o.activos?.responsable_id ? '“Asignado”' : '“Disponible”'} (si no tiene otra orden en proceso) y el siguiente preventivo se calcula desde este servicio.</p>

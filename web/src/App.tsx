@@ -17,7 +17,7 @@ import Movimientos from './pages/Movimientos'
 import MovimientoNuevo from './pages/MovimientoNuevo'
 import MovimientoDetalle from './pages/MovimientoDetalle'
 import ResguardoEmpleado from './pages/ResguardoEmpleado'
-import { Sucursales, Departamentos, Ubicaciones, Categorias, Marcas, Modelos, Proveedores } from './pages/Catalogos'
+import { Sucursales, Departamentos, Ubicaciones, Categorias, Marcas, Modelos, Proveedores, CodigosFalla, RequisitosOperacion } from './pages/Catalogos'
 import Empresas, { EmpresaDetalle } from './pages/Empresas'
 import Personal, { EmpleadoDetalle } from './pages/Personal'
 import Productos, { ProductoDetalle } from './pages/Productos'
@@ -37,6 +37,8 @@ import Solicitudes from './pages/Solicitudes'
 import Mapa from './pages/Mapa'
 import Inmuebles, { InmuebleDetalle } from './pages/Inmuebles'
 import Preguntar from './pages/Preguntar'
+import Confiabilidad from './pages/Confiabilidad'
+import Vales, { ValePublico } from './pages/Vales'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -99,6 +101,7 @@ function Rutas() {
       <Route path="q/:qr" element={<QRPublico onEntrar={() => setForzarLogin(true)} />} />
       <Route path="firmar/:token" element={<FirmaRemota />} />
       <Route path="confirmar/:token" element={<ConfirmacionRemota />} />
+      <Route path="vale/:token" element={<ValePublico />} />
       <Route path="*" element={<Login />} />
     </Routes>
   )
@@ -108,6 +111,7 @@ function Rutas() {
     <Routes>
       <Route path="firmar/:token" element={<FirmaRemota />} />
       <Route path="confirmar/:token" element={<ConfirmacionRemota />} />
+      <Route path="vale/:token" element={<ValePublico />} />
       <Route element={<Layout />}>
         <Route index element={<Tablero />} />
         <Route path="activos" element={<Activos />} />
@@ -138,6 +142,10 @@ function Rutas() {
         <Route path="mapa" element={<Mapa />} />
         <Route path="inmuebles" element={<Inmuebles />} />
         <Route path="preguntar" element={<Preguntar />} />
+        <Route path="confiabilidad" element={<Confiabilidad />} />
+        <Route path="vales" element={<Vales />} />
+        <Route path="codigos-falla" element={<CodigosFalla />} />
+        <Route path="requisitos" element={<RequisitosOperacion />} />
         <Route path="inmuebles/:id" element={<InmuebleDetalle />} />
         <Route path="traspasos" element={<Traspasos />} />
         <Route path="reportes" element={<Reportes />} />

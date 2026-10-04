@@ -124,3 +124,40 @@ export function Proveedores() {
     ]}
     buscarEn={['nombre', 'rfc', 'contacto']} />
 }
+
+const GRUPOS_FALLA = { dano: 'Qué falló (daño)', causa: 'Por qué (causa)', accion: 'Qué se hizo (acción)' }
+export function CodigosFalla() {
+  return <Catalogo tabla="codigos_falla" titulo="Códigos de falla" sub="Catálogo para clasificar las órdenes de trabajo y saber qué falla más y por qué (como en SAP)."
+    orden="codigo"
+    campos={[
+      { key: 'grupo', label: 'Grupo', tipo: 'enum', opciones: GRUPOS_FALLA, requerido: true, defecto: 'dano' },
+      { key: 'codigo', label: 'Código', requerido: true },
+      { key: 'nombre', label: 'Descripción', requerido: true, completo: true },
+    ]}
+    columnas={[
+      { key: 'codigo', label: 'Código' },
+      { key: 'nombre', label: 'Descripción' },
+      { key: 'grupo', label: 'Grupo', render: f => GRUPOS_FALLA[f.grupo as keyof typeof GRUPOS_FALLA] },
+    ]}
+    buscarEn={['codigo', 'nombre']} />
+}
+
+const DOC_REQ = { licencia_manejo: 'Licencia de manejo', certificacion: 'Certificación / DC-3' }
+export function RequisitosOperacion() {
+  return <Catalogo tabla="requisitos_operacion" titulo="Requisitos para operar" sub="Qué documento vigente necesita una persona para que se le asigne cierto tipo de equipo. Se revisa al hacer el resguardo."
+    select="*,categorias(nombre),modelos(nombre)" orden="descripcion"
+    campos={[
+      { key: 'categoria_id', label: 'Categoría de equipo', tipo: 'ref', ref: { tabla: 'categorias' } },
+      { key: 'modelo_id', label: 'o un producto específico', tipo: 'ref', ref: { tabla: 'modelos' } },
+      { key: 'tipo_documento', label: 'Documento que pide', tipo: 'enum', opciones: DOC_REQ, requerido: true, defecto: 'licencia_manejo' },
+      { key: 'descripcion', label: 'Qué debe decir', requerido: true, completo: true },
+      { key: 'bloquear', label: 'No dejar asignar si no lo tiene (si no, solo avisa)', tipo: 'bool', defecto: true },
+    ]}
+    columnas={[
+      { key: 'descripcion', label: 'Requisito' },
+      { key: 'aplica', label: 'Aplica a', render: f => (f.modelos as { nombre?: string } | null)?.nombre ?? (f.categorias as { nombre?: string } | null)?.nombre ?? '—' },
+      { key: 'tipo_documento', label: 'Documento', render: f => DOC_REQ[f.tipo_documento as keyof typeof DOC_REQ] },
+      { key: 'bloquear', label: 'Si falta', render: f => f.bloquear ? 'Bloquea' : 'Avisa' },
+    ]}
+    buscarEn={['descripcion']} />
+}

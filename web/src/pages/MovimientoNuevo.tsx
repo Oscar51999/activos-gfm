@@ -7,6 +7,8 @@ import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
 import { Encabezado, Campo, Aviso, EstatusBadge } from '../components/ui'
 import FirmaPad, { type FirmaPadRef } from '../components/FirmaPad'
+import { revisarRequisitos, type Falta } from '../lib/requisitos'
+import { IdCard } from 'lucide-react'
 
 type Act = { id: string; codigo: string; descripcion: string; estatus: Estatus; serie: string | null; numero_economico: string | null
   responsable: string | null; ubicacion: string | null; empresa_id: string; marca: string | null; modelo: string | null }
@@ -26,7 +28,7 @@ const AYUDA: Record<TipoMov, string> = {
 export default function MovimientoNuevo() {
   const [sp] = useSearchParams()
   const nav = useNavigate()
-  const { perfil } = useAuth()
+  const { perfil, esAdmin } = useAuth()
   const empresas = useLista('empresas')
   const ubicaciones = useLista('ubicaciones', 'id,nombre,empresa_id,tipo')
   const empleados = useLista('empleados', 'id,nombres,apellidos,empresa_id,puesto', 'nombres')
@@ -45,6 +47,8 @@ export default function MovimientoNuevo() {
   const [fechaDev, setFechaDev] = useState('')
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [faltas, setFaltas] = useState<Falta[]>([])
+  const [autorizo, setAutorizo] = useState(false)
   const firmaRecibe = useRef<FirmaPadRef>(null)
   const firmaEntrega = useRef<FirmaPadRef>(null)
 
@@ -98,6 +102,14 @@ export default function MovimientoNuevo() {
     return () => clearTimeout(h)
   }, [busca, empresa, tipo])
 
+  // calificación del operador: ¿tiene la licencia o DC-3 que piden estos equipos?
+  useEffect(() => {
+    setAutorizo(false)
+    if (tipo === 'devolucion' || !aEmpleado || !sel.length) { setFaltas([]); return }
+    revisarRequisitos(sel.map(a => a.id), aEmpleado).then(setFaltas)
+  }, [tipo, aEmpleado, sel])
+  const bloqueado = faltas.some(f => f.bloquea) && !autorizo
+
   const ubicVis = useMemo(() => ubicaciones.items.filter(u => u.empresa_id === empresa), [ubicaciones.items, empresa])
   const empVis = useMemo(() => empleados.items.filter(u => u.empresa_id === empresa), [empleados.items, empresa])
   const yaSel = new Set(sel.map(a => a.id))
@@ -106,6 +118,7 @@ export default function MovimientoNuevo() {
     e.preventDefault()
     setError('')
     if (!sel.length) { setError('Agrega al menos un activo.'); return }
+    if (bloqueado) { setError('La persona no tiene el documento vigente que pide este equipo. Agrégalo en su expediente o pide a un administrador que autorice.'); return }
     if (tipo === 'asignacion' && firmaRecibe.current?.vacio()) {
       if (!confirm('No hay firma de quien recibe. ¿Guardar de todos modos? Podrás firmar después desde la carta.')) return
     }
@@ -114,7 +127,7 @@ export default function MovimientoNuevo() {
       const { data: id, error } = await supabase.rpc('registrar_movimiento', {
         p_tipo: tipo, p_empresa: empresa, p_activos: sel.map(a => a.id),
         p_a_empleado: aEmpleado || null, p_a_ubicacion: aUbicacion || null,
-        p_entrega_nombre: entrega, p_recibe_nombre: recibe, p_notas: notas, p_estados: estados,
+        p_entrega_nombre: entrega, p_recibe_nombre: recibe, p_notas: autorizo && faltas.length ? [notas, `Autorizado por ${perfil?.nombre} sin: ${[...new Set(faltas.map(f => f.requisito))].join(', ')}`].filter(Boolean).join(' · ') : notas, p_estados: estados,
       })
       if (error) throw error
       const cambios: Record<string, string> = {}
@@ -239,8 +252,16 @@ export default function MovimientoNuevo() {
               </Campo>
             </div>
           </section>
+          {faltas.length > 0 && (
+            <div className={`rounded-xl border p-4 text-sm ${faltas.some(f => f.bloquea) ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+              <p className="mb-2 flex items-center gap-2 font-medium"><IdCard size={16} />Requisitos para operar que no tiene vigentes</p>
+              <ul className="space-y-1 text-xs">{faltas.map((f, i) => <li key={i}><span className="font-mono">{f.codigo}</span> · {f.requisito}{f.bloquea ? '' : ' (solo aviso)'}</li>)}</ul>
+              {aEmpleado && <Link to={`/empleados/${aEmpleado}`} className="mt-2 inline-block text-xs underline">Agregar el documento en su expediente</Link>}
+              {faltas.some(f => f.bloquea) && esAdmin && <label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={autorizo} onChange={e => setAutorizo(e.target.checked)} />Autorizo la asignación bajo mi responsabilidad (queda en las notas)</label>}
+            </div>
+          )}
           {error && <Aviso>{error}</Aviso>}
-          <button className="btn-primario w-full" disabled={guardando || !sel.length}>
+          <button className="btn-primario w-full" disabled={guardando || !sel.length || bloqueado}>
             {guardando ? 'Guardando…' : `${TIPOS_MOV[tipo].verbo} ${sel.length || ''} activo${sel.length === 1 ? '' : 's'}`}
           </button>
           <p className="text-xs text-stone-500">Al guardar se genera la carta responsiva con folio para imprimir.</p>

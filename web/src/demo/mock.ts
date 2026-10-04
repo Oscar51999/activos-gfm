@@ -26,6 +26,8 @@ const DIBUJOS: Record<string, string> = {
   guante: '<path d="M140 230V130l-20-40a12 12 0 0 1 22-10l18 30V60a12 12 0 0 1 24 0v60V45a12 12 0 0 1 24 0v75V55a12 12 0 0 1 24 0v70V75a12 12 0 0 1 24 0v95c0 30-20 60-50 60z" fill="currentColor"/>',
   lentes: '<path d="M70 120h260" stroke="currentColor" stroke-width="10"/><rect x="85" y="110" width="105" height="65" rx="28" fill="currentColor" opacity=".55" stroke="currentColor" stroke-width="8"/><rect x="210" y="110" width="105" height="65" rx="28" fill="currentColor" opacity=".55" stroke="currentColor" stroke-width="8"/>',
   bota: '<path d="M130 60h80v100l90 30c20 6 25 20 25 35v10H120z" fill="currentColor"/><rect x="118" y="225" width="210" height="16" rx="4" fill="currentColor" opacity=".7"/>',
+  martillo: '<path d="M120 90h120l20 30v40l-20 30H120z" fill="currentColor"/><rect x="170" y="190" width="20" height="60" fill="currentColor" opacity=".8"/><path d="M175 250l5 25 5-25z" fill="currentColor"/><rect x="150" y="60" width="60" height="30" rx="6" fill="currentColor" opacity=".7"/>',
+  cucharon: '<path d="M90 110h200l-30 110H130z" fill="currentColor"/><path d="M130 220l-10 20M160 220l-5 22M190 220v22M220 220l5 22M250 220l10 20" stroke="currentColor" stroke-width="10" stroke-linecap="round"/><rect x="170" y="70" width="40" height="40" fill="currentColor" opacity=".7"/>',
   casco: '<path d="M110 180a90 90 0 0 1 180 0z" fill="currentColor"/><rect x="90" y="178" width="220" height="16" rx="8" fill="currentColor"/><path d="M200 95v-10" stroke="currentColor" stroke-width="12"/>',
 }
 function ilustracion(tipo: keyof typeof DIBUJOS, color: string, fondo = '#1a1d24') {
@@ -71,6 +73,8 @@ export function crearDatos() {
     P('mo11', 'HP', 'LaserJet M428', 'c4', 'Impresora multifuncional', 'impresora', '#e2e8f0'),
     P('mo12', '3M', 'H-700', 'c8', 'Casco de seguridad', 'casco', '#fde047'),
     P('mo13', 'DeWalt', 'DCD771', 'c3', 'Taladro atornillador inalámbrico', 'taladro', '#facc15'),
+    P('mo14', 'Caterpillar', 'H65E', 'c2', 'Martillo hidráulico para retro', 'martillo', '#F9B234'),
+    P('mo15', 'John Deere', 'Cucharón 24"', 'c2', 'Cucharón de excavación 24 pulgadas', 'cucharon', '#facc15'),
   ]
   const MOD = (id: string) => modelos.find(m => m.id === id)!
   const D = (id: string, e: string, nombre: string) => ({ id, empresa_id: e, nombre, activo: true })
@@ -141,6 +145,9 @@ export function crearDatos() {
     A({ mo: 'mo11', e: 'e7', s: 'PHBQ998877', u: 'u10', est: 'disponible', v: 11200 }),
     A({ mo: 'mo4', e: 'e6', s: 'PF4SC0001', u: 'u11', r: 'em14', est: 'asignado', v: 23900 }),
     A({ mo: 'mo8', e: 'e2', s: 'MK-GA4530-77', u: 'u5', est: 'siniestrado', v: 2400 }),
+    A({ mo: 'mo14', e: 'e2', s: 'H65-22018', u: 'u6', est: 'asignado', r: 'em5', v: 0 }),
+    A({ mo: 'mo15', e: 'e2', s: 'JD-B24-0091', u: 'u6', est: 'asignado', r: 'em5', v: 0 }),
+    A({ mo: 'mo14', e: 'e2', s: 'H65-23104', u: 'u5', est: 'disponible', v: 0 }),
   ]
   const activo_vehiculo = [
     { activo_id: 'a1', placa: 'CZ-1234-A', anio: 2022, color: 'Blanco', combustible: 'Gasolina', transmision: 'Manual', kilometraje: 48210, cilindros: 4, pasajeros: 5, capacidad_tanque: 80 },
@@ -315,13 +322,46 @@ export function crearDatos() {
     DI('di17', 'in4', 'e5', 'escritura', null, {}), DI('di18', 'in4', 'e5', 'predial', 88, {}), DI('di19', 'in4', 'e5', 'constancias', 40, { subtipo: 'Libertad de gravámenes' }),
   )
 
+  ;(activos.find(a => a.id === 'a31') as Row).montado_en = 'a4'; (activos.find(a => a.id === 'a32') as Row).montado_en = 'a4'
+  const montajes = [
+    { id: uid(), componente_id: 'a31', equipo_id: 'a4', empresa_id: 'e2', montado_at: hace(25), desmontado_at: null, lectura: 3300, notas: 'Para demolición en VG-069', created_by: 'u-demo' },
+    { id: uid(), componente_id: 'a32', equipo_id: 'a4', empresa_id: 'e2', montado_at: hace(120), desmontado_at: null, lectura: null, notas: null, created_by: 'u-demo' },
+    { id: uid(), componente_id: 'a33', equipo_id: 'a4', empresa_id: 'e2', montado_at: hace(90), desmontado_at: hace(26), lectura: null, notas: 'Se cambió por el H65E de menor desgaste', created_by: 'u-demo' },
+  ]
+  const CF = (grupo: string, codigo: string, nombre: string) => ({ id: 'cf-' + codigo, grupo, codigo, nombre, activo: true, created_at: hace(60) })
+  const codigos_falla = [
+    CF('dano', 'D01', 'Fuga de aceite o hidráulico'), CF('dano', 'D02', 'Falla eléctrica'), CF('dano', 'D03', 'No arranca'), CF('dano', 'D04', 'Sobrecalentamiento'), CF('dano', 'D05', 'Llanta o tren de rodaje'),
+    CF('dano', 'D06', 'Golpe o daño estructural'), CF('dano', 'D07', 'Desgaste de pieza'), CF('dano', 'D08', 'Pantalla o equipo de cómputo'), CF('dano', 'D09', 'Calibración fuera de rango'), CF('dano', 'D10', 'Ruido o vibración anormal'),
+    CF('causa', 'C01', 'Desgaste normal por uso'), CF('causa', 'C02', 'Falta de mantenimiento'), CF('causa', 'C03', 'Mala operación'), CF('causa', 'C04', 'Defecto de fábrica'), CF('causa', 'C05', 'Accidente o golpe'),
+    CF('causa', 'C06', 'Condiciones de obra (polvo, agua, calor)'), CF('causa', 'C07', 'Pieza de mala calidad'), CF('causa', 'C08', 'Causa desconocida'),
+    CF('accion', 'A01', 'Reemplazo de pieza'), CF('accion', 'A02', 'Reparación en sitio'), CF('accion', 'A03', 'Ajuste o calibración'), CF('accion', 'A04', 'Limpieza y lubricación'), CF('accion', 'A05', 'Envío a taller externo'), CF('accion', 'A06', 'Garantía con proveedor'), CF('accion', 'A07', 'Capacitación al operador'),
+  ]
+  // historial de correctivos para que Confiabilidad tenga qué mostrar
+  const corr = (id: string, a: string, dias: number, durH: number, dano: string, causa: string, accion: string, titulo: string) => ({ ...OTx(id, 'OT-H' + id.slice(-3), a, { tipo: 'correctivo', titulo, fecha_inicio: hace(dias), fecha_fin: new Date(Date.now() - dias * 864e5 + durH * 3.6e6).toISOString(), created_at: hace(dias + 0.2) }), dano_id: 'cf-' + dano, causa_id: 'cf-' + causa, accion_id: 'cf-' + accion, paro: true })
+  ;(ordenes_trabajo as Row[]).push(
+    corr('h01', 'a3', 70, 52, 'D01', 'C02', 'A01', 'Fuga en cilindro de pluma'), corr('h02', 'a3', 41, 30, 'D04', 'C06', 'A04', 'Se calienta en jornada larga'), corr('h03', 'a3', 18, 20, 'D01', 'C01', 'A01', 'Manguera hidráulica rota'),
+    corr('h04', 'a4', 55, 8, 'D05', 'C03', 'A02', 'Llanta ponchada'), corr('h05', 'a14', 33, 26, 'D02', 'C04', 'A06', 'Alternador sin carga'), corr('h06', 'a2', 62, 6, 'D06', 'C05', 'A02', 'Golpe en defensa'),
+    corr('h07', 'a1', 28, 4, 'D03', 'C01', 'A01', 'Batería descargada'), corr('h08', 'a13', 12, 10, 'D10', 'C02', 'A04', 'Ruido en suspensión'), corr('h09', 'a3', 8, 14, 'D07', 'C01', 'A01', 'Dientes de cucharón gastados'),
+  )
+  for (const o of ordenes_trabajo as Row[]) { o.paro ??= true; o.dano_id ??= null; o.causa_id ??= null; o.accion_id ??= null }
+  ;(ordenes_trabajo.find(o => o.id === 'ot2') as Row).dano_id = 'cf-D01'
+  const requisitos_operacion = [
+    { id: 'rq1', categoria_id: 'c2', modelo_id: null, tipo_documento: 'certificacion', descripcion: 'DC-3 operador de maquinaria pesada', bloquear: true, activo: true, created_at: hace(30) },
+    { id: 'rq2', categoria_id: 'c1', modelo_id: null, tipo_documento: 'licencia_manejo', descripcion: 'Licencia de manejo vigente', bloquear: false, activo: true, created_at: hace(30) },
+  ]
+  const vales_salida = [
+    { id: 'vs1', folio: 'VS-00001', token: uid(), empresa_id: 'e2', origen_id: 'u5', destino_id: 'u6', activos: ['a33'], material: [{ cantidad: 2, descripcion: 'rollos de cinta de precaución' }], transportista: 'José Manuel Higuera', vehiculo: 'CT-030', motivo: 'Demolición de caseta', vigencia: dia(1), estatus: 'en_transito', salida_at: hace(0.08), salida_por: 'Vigilante Ramírez', recibido_at: null, recibido_por: null, observaciones: null, created_by: 'u-demo', created_at: hace(0.1) },
+    { id: 'vs2', folio: 'VS-00002', token: uid(), empresa_id: 'e1', origen_id: 'u1', destino_id: 'u3', activos: ['a9'], material: [], transportista: 'Luis Adrián Avilés Cota', vehiculo: 'CT-021', motivo: 'Laptop para residencia', vigencia: dia(2), estatus: 'emitido', salida_at: null, salida_por: null, recibido_at: null, recibido_por: null, observaciones: null, created_by: 'u-demo', created_at: hace(0.02) },
+    { id: 'vs3', folio: 'VS-00003', token: uid(), empresa_id: 'e1', origen_id: 'u1', destino_id: 'u2', activos: ['a6'], material: [{ cantidad: 12, descripcion: 'cascos' }], transportista: 'Janani Aguilar', vehiculo: 'CT-014', motivo: null, vigencia: dia(-18), estatus: 'recibido', salida_at: hace(20), salida_por: 'Vigilante Soto', recibido_at: hace(19.9), recibido_por: 'Velador obra GF-214', observaciones: null, created_by: 'u-demo', created_at: hace(20.1) },
+  ]
+
   const perfiles = [
     { id: 'u-demo', nombre: 'Oscar Cota', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60) },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
-    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, movimientos_consumible, solicitudes, perfiles, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
+    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
   return { db, urls }
 }
 
@@ -414,7 +454,7 @@ function vista(db: DB, t: string): Row[] {
 // ───────── select con relaciones (subconjunto de PostgREST) ─────────
 const FK: Record<string, string> = { empresa_id: 'empresas', departamento_id: 'departamentos', marca_id: 'marcas', modelo_id: 'modelos', activo_id: 'activos',
   movimiento_id: 'movimientos', responsable_id: 'empleados', padre_id: 'categorias', a_empleado_id: 'empleados', a_ubicacion_id: 'ubicaciones',
-  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles' }
+  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla' }
 const TABLA_FK: Record<string, string> = { empresas: 'empresa_id', departamentos: 'departamento_id', marcas: 'marca_id', modelos: 'modelo_id', activos: 'activo_id',
   movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id' }
 
@@ -497,6 +537,9 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'traspasos_empresa') { base.folio ??= 'TRE-' + String(db.traspasos_empresa.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente' }
   if (t === 'confirmaciones') { base.token ??= uid(); base.estatus ??= 'pendiente' }
   if (t === 'kits' || t === 'consumibles') { base.activo ??= true }
+  if (t === 'vales_salida') { base.folio ??= 'VS-' + String(db.vales_salida.length + 1).padStart(5, '0'); base.token ??= uid(); base.estatus ??= 'emitido'; base.material ??= []; base.activos ??= [] }
+  if (t === 'codigos_falla' || t === 'requisitos_operacion') { base.activo ??= true }
+  if (t === 'montajes') { base.montado_at ??= base.created_at; base.desmontado_at ??= null }
   if (t === 'inmuebles') { base.codigo ??= 'INM-' + String(db.inmuebles.length + 1).padStart(4, '0'); base.activo ??= true; base.servicios ??= []; base.updated_at = base.created_at }
   if (t === 'consumibles') { base.minimo ??= 0; base.unidad ??= 'pieza' }
   if (t === 'solicitudes') { base.folio ??= 'SOL-' + String(db.solicitudes.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente'; base.created_by ??= 'u-demo' }
@@ -665,6 +708,32 @@ export function instalarDemo(base: string) {
     }
     if (path.startsWith('/rest/v1/rpc/registrar_movimiento')) {
       try { return json(registrarMovimiento(db, body)) } catch (e) { return json({ message: (e as Error).message, code: 'P0001' }, 400) }
+    }
+    if (path.startsWith('/rest/v1/rpc/vale_por_token')) {
+      const v = db.vales_salida.find(x => x.token === body?.p_token)
+      if (!v) return json(null)
+      const e = byId(db, 'empresas', v.empresa_id)
+      return json({ folio: v.folio, estatus: v.estatus, vigencia: v.vigencia, motivo: v.motivo, transportista: v.transportista, vehiculo: v.vehiculo, empresa: e?.nombre_corto ?? e?.nombre,
+        origen: byId(db, 'ubicaciones', v.origen_id)?.nombre ?? null, destino: byId(db, 'ubicaciones', v.destino_id)?.nombre ?? null, material: v.material, salida_at: v.salida_at, salida_por: v.salida_por,
+        recibido_at: v.recibido_at, recibido_por: v.recibido_por, emitido_at: v.created_at,
+        activos: db.activos.filter(a => (v.activos as string[]).includes(a.id as string)).map(a => { const mo = byId(db, 'modelos', a.modelo_id); return { codigo: a.codigo, descripcion: a.descripcion, marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: mo?.nombre ?? null, serie: a.serie, eco: a.numero_economico, foto: mo?.foto_path ?? null } }) })
+    }
+    if (path.startsWith('/rest/v1/rpc/marcar_vale')) {
+      const v = db.vales_salida.find(x => x.token === body?.p_token)
+      const err = (m: string) => json({ message: m, code: 'P0001' }, 400)
+      if (!String(body?.p_nombre ?? '').trim()) return err('Escribe tu nombre')
+      if (!v) return err('Vale no reconocido')
+      if (v.estatus === 'cancelado') return err('Este vale fue cancelado')
+      const ahora = new Date().toISOString()
+      if (body.p_accion === 'salida') {
+        if (v.estatus !== 'emitido') return err('La salida ya se registró')
+        if (String(v.vigencia) < hoy) return err(`El vale venció el ${v.vigencia}; pide uno nuevo`)
+        Object.assign(v, { estatus: 'en_transito', salida_at: ahora, salida_por: body.p_nombre, observaciones: body.p_observaciones || null }); return json('Salida registrada')
+      }
+      if (v.estatus === 'recibido') return err('La llegada ya se registró')
+      Object.assign(v, { estatus: 'recibido', recibido_at: ahora, recibido_por: body.p_nombre, salida_at: v.salida_at ?? ahora })
+      for (const a of db.activos) if ((v.activos as string[]).includes(a.id as string) && a.empresa_id === v.empresa_id && a.estatus !== 'baja') a.ubicacion_id = v.destino_id
+      return json('Llegada registrada')
     }
     if (path.startsWith('/functions/v1/leer-etiqueta')) {
       // En la vista previa no hay IA: simula dos lecturas típicas (una que está en el catálogo y otra que no).

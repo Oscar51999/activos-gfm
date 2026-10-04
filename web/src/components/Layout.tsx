@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download,
+  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ROLES, supabase } from '../lib/supabase'
@@ -27,6 +27,8 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
   ] },
   { titulo: 'Control', items: [
     { to: '/mantenimiento', icono: Wrench, texto: 'Mantenimiento', alerta: 'mantenimiento' },
+    { to: '/confiabilidad', icono: Activity, texto: 'Confiabilidad' },
+    { to: '/vales', icono: Camion, texto: 'Vales de salida' },
     { to: '/vigencias', icono: FileClock, texto: 'Vigencias', alerta: 'vigencias' },
     { to: '/prestamos', icono: CalendarClock, texto: 'Préstamos', alerta: 'prestamos' },
     { to: '/reportes', icono: Siren, texto: 'Reportes de falla', alerta: 'reportes' },
@@ -43,6 +45,8 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
   ] },
   { titulo: 'Catálogos', items: [
     { to: '/kits', icono: Package, texto: 'Kits por puesto' },
+    { to: '/requisitos', icono: IdCard, texto: 'Requisitos para operar' },
+    { to: '/codigos-falla', icono: ListTree, texto: 'Códigos de falla' },
     { to: '/categorias', icono: Tags, texto: 'Categorías' },
     { to: '/marcas', icono: Tags, texto: 'Marcas' },
     { to: '/proveedores', icono: Truck, texto: 'Proveedores' },

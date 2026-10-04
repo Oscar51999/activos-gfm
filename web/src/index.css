@@ -156,3 +156,11 @@ table thead tr { font-size: 11px; text-transform: uppercase; letter-spacing: .06
   body { background: white !important; color: #1E1719; }
   .tarjeta { box-shadow: none !important; backdrop-filter: none !important; background: white !important; }
 }
+
+/* Imprimir solo el vale de salida cuando está abierto */
+@media print {
+  body:has(#vale-imprimible) #root { display: none; }
+  body:has(#vale-imprimible) [role=dialog] * { visibility: hidden; }
+  body:has(#vale-imprimible) #vale-imprimible, body:has(#vale-imprimible) #vale-imprimible * { visibility: visible; }
+  body:has(#vale-imprimible) #vale-imprimible { position: fixed; inset: 0 0 auto 0; }
+}
