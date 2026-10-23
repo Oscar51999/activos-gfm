@@ -9,7 +9,7 @@ import { TIPOS_REPORTE, type TipoReporte } from '../components/ReportarFalla'
 
 type Estatus = 'abierto' | 'en_proceso' | 'resuelto' | 'descartado'
 export type Reporte = { id: string; folio: string; activo_id: string; empresa_id: string; tipo: TipoReporte; prioridad: 'baja' | 'media' | 'alta'; descripcion: string; foto: string | null
-  reporta_nombre: string | null; reporta_contacto: string | null; estatus: Estatus; resolucion: string | null; created_at: string; resuelto_at: string | null
+  reporta_nombre: string | null; reporta_contacto: string | null; estatus: Estatus; resolucion: string | null; created_at: string; resuelto_at: string | null; origen?: string | null; ticket_externo?: string | null
   activos: { codigo: string; descripcion: string; estatus: string; foto_principal: string | null; empresas: { nombre: string; nombre_corto: string | null } | null; modelos: { nombre: string; foto_path: string | null } | null; categorias: { nombre: string } | null } | null }
 
 export const ESTATUS_REP: Record<Estatus, { texto: string; clase: string }> = {
@@ -77,6 +77,7 @@ export default function Reportes() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-stone-500">{r.folio}</span>
+                      {r.origen === 'mesa_ayuda' && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200">Mesa de ayuda{r.ticket_externo ? ` · ${r.ticket_externo}` : ''}</span>}
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${ESTATUS_REP[r.estatus].clase}`}>{ESTATUS_REP[r.estatus].texto}</span>
                       <span className={`text-[11px] font-medium uppercase ${PRIO[r.prioridad]}`}>● {r.prioridad}</span>
                       <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-stone-400"><Clock size={11} />{hace(r.created_at)}</span>

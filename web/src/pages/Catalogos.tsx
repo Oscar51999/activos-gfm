@@ -83,11 +83,13 @@ export function Categorias() {
       { key: 'nombre', label: 'Nombre', requerido: true },
       { key: 'padre_id', label: 'Pertenece a (opcional)', tipo: 'ref', ref: { tabla: 'categorias' } },
       { key: 'es_vehiculo', label: 'Es vehículo o maquinaria con motor', tipo: 'bool' },
+      { key: 'clase_abc', label: 'Clase para conteo cíclico', tipo: 'enum', opciones: { A: 'A · contar cada 30 días', B: 'B · cada 90 días', C: 'C · cada 180 días' } },
     ]}
     columnas={[
       { key: 'nombre', label: 'Categoría' },
       { key: 'padre', label: 'Pertenece a', render: f => (f.padre as { nombre?: string } | null)?.nombre ?? '—' },
       { key: 'es_vehiculo', label: 'Vehículo', render: f => f.es_vehiculo ? 'Sí' : 'No' },
+      { key: 'clase_abc', label: 'Clase ABC', render: f => String(f.clase_abc ?? 'C') },
     ]} />
 }
 

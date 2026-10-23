@@ -90,6 +90,20 @@ Sistema propio de control de activos: registro con QR, ubicación y responsable,
 - **Requisitos para operar** (`requisitos_operacion`): por categoría o producto, qué documento vigente necesita el empleado (licencia o DC-3). Al hacer el resguardo avisa o bloquea; solo un administrador puede autorizar sin el documento (queda en las notas).
 - **Vales de salida** (`vales_salida`, VS-00001, funciones `vale_por_token` y `marcar_vale`): para mover equipo entre obras. Vigilancia escanea el QR del vale en la caseta (sin cuenta) y registra salida y llegada; al llegar, el equipo cambia de ubicación solo. Vigencia, cancelación e impresión.
 
+## Almacén de clase mundial (Fase 8)
+
+- **Etiquetas térmicas y RFID** (`/etiquetas`): tres modos, hoja carta, impresora de tickets (una etiqueta por página con el tamaño exacto) y RFID en lenguaje ZPL. Para RFID se graba el EPC (`activos.rfid_epc`, 24 hex = `47464D` + número del código) en el chip; se envía directo con Zebra Browser Print o se descarga el `.zpl`. Las impresoras TSC, Honeywell o SATO lo aceptan en modo de emulación ZPL.
+- **Lectura RFID**: los lectores de mano en modo teclado escriben el EPC; Escanear, Inventario físico y Conteo cíclico lo reconocen. Si el lector manda muchas etiquetas a la vez y se pegan juntas, se registran todas.
+- **Repuestos en mantenimiento** (`movimientos_consumible.ot_id`): en la orden de trabajo se sacan refacciones del almacén (eligiendo lote, primero lo que caduca antes). **Piezas críticas** (`piezas_criticas`) por modelo o por unidad, con aviso cuando hay menos del mínimo.
+- **Lotes y caducidad** (`movimientos_consumible.lote/caducidad`, vista `v_lotes`): se capturan al registrar entradas; las salidas y traspasos eligen lote. La pestaña “Por caducar” muestra lo que vence en 30 días.
+- **Mermas con aprobación** (`mermas`, MER-00001, función `resolver_merma`): daño, caducidad, extravío, etc., con foto. Otra persona (o un administrador) la aprueba y entonces se descuenta del almacén.
+- **Posiciones** (`posiciones`, `activos.posicion_id`, `consumible_posiciones`, `/posiciones`): pasillo · rack · nivel por almacén, creadas en serie. La etiqueta QR de la posición lleva `POS:<id>`; al escanearla se abre lo que debe haber en ese lugar.
+- **Conteo cíclico ABC** (`categorias.clase_abc`, `conteos_ciclicos`, vista `v_conteo_ciclico`, `/conteo-ciclico`): A cada 30 días, B cada 90 y C cada 180. Lista lo que toca contar, se escanea con QR, RFID o a mano y calcula la precisión del inventario.
+- **Material en tránsito**: el vale de salida puede llevar material del almacén. Se descuenta del origen al emitir el vale, aparece “en tránsito” en Almacén y entra al destino cuando la obra marca la llegada. Si el vale se cancela, el material regresa al origen.
+- **Integraciones** (Edge Functions con el encabezado `x-integracion-secreto` = secreto `INTEGRACION_SECRETO`):
+  - `incidente-externo` (POST JSON `{activo, descripcion, prioridad, tipo, ticket, reporta_nombre}`): la mesa de ayuda crea un reporte de falla; si el mismo ticket llega dos veces no lo duplica.
+  - `movimientos-export` (GET `?tipo=almacen|resguardos|vales&desde=AAAA-MM-DD&hasta=AAAA-MM-DD&empresa=&formato=json|csv`): movimientos para otro sistema, solo cantidades y lugares, sin importes.
+
 ## Correr en local
 
 ```bash
@@ -110,4 +124,4 @@ Publicado en GitHub Pages desde la carpeta `docs/` de la rama `main` (repo `Osca
 
 ## Roadmap
 
-0. Preparación · 1. **Registro de activos** ✅ · 2. **Resguardos y movimientos** ✅ · 2.5 **Catálogo, alta rápida y empresas** ✅ · 3A **Préstamos, reportes por QR, inventario físico** ✅ · 3B **Documentos y vigencias** ✅ · 3C **Control de personal** ✅ · 4 **Mantenimiento y flotilla** ✅ · 5 **Almacén, solicitudes y mapa** ✅ · **Inmuebles** ✅ · 6 **Inteligencia** ✅ (alta por foto, preguntas en español, app sin señal) · 7 **SAP PM/EHS** ✅ (componentes, fallas, confiabilidad, requisitos, vales)
+0. Preparación · 1. **Registro de activos** ✅ · 2. **Resguardos y movimientos** ✅ · 2.5 **Catálogo, alta rápida y empresas** ✅ · 3A **Préstamos, reportes por QR, inventario físico** ✅ · 3B **Documentos y vigencias** ✅ · 3C **Control de personal** ✅ · 4 **Mantenimiento y flotilla** ✅ · 5 **Almacén, solicitudes y mapa** ✅ · **Inmuebles** ✅ · 6 **Inteligencia** ✅ (alta por foto, preguntas en español, app sin señal) · 7 **SAP PM/EHS** ✅ (componentes, fallas, confiabilidad, requisitos, vales) · 8 **Almacén de clase mundial** ✅ (RFID, tickets, lotes, mermas, posiciones, conteo cíclico, tránsito, integraciones)

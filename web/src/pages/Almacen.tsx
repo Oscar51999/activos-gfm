@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Warehouse, PackagePlus, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, ArrowRightLeft, Search, AlertTriangle, Camera, Pencil, HardHat, History, Package } from 'lucide-react'
+import { Warehouse, PackagePlus, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, ArrowRightLeft, Search, AlertTriangle, Camera, Pencil, HardHat, History, Package, Trash2, Truck, CalendarX, Check, X } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { useLista, nombreEmpleado } from '../lib/hooks'
+import { useLista, nombreEmpleado, fecha } from '../lib/hooks'
 import { fotoProducto } from '../lib/logos'
 import { Cargando, Vacio, Aviso, Modal, Campo } from '../components/ui'
 import FotoActivo from '../components/FotoActivo'
 import { type Consumible, type Existencia, CATEGORIAS_CONS, UNIDADES, num, plural, totales } from '../lib/almacen'
 
+type LoteFila = { consumible_id: string; nombre: string; unidad: string; empresa_id: string; empresa: string; ubicacion_id: string | null; ubicacion: string | null; lote: string | null; caducidad: string | null; existencia: number }
+type Merma = { id: string; folio: string; consumible_id: string; empresa_id: string; lote: string | null; cantidad: number; motivo: string; descripcion: string | null; foto: string | null; estatus: 'pendiente' | 'aprobada' | 'rechazada'
+  respuesta: string | null; solicitante: string | null; created_at: string; consumibles: { nombre: string; unidad: string } | null; ubicaciones: { nombre: string } | null; empleados: { nombres: string; apellidos: string | null } | null }
+const MOTIVOS: Record<string, string> = { dano: 'Daño', caducidad: 'Caducó', extravio: 'Extravío', calibracion: 'Calibración / prueba', muestra: 'Muestra', otro: 'Otro' }
 type Mov = { id: string; tipo: 'entrada' | 'salida' | 'ajuste'; cantidad: number; notas: string | null; created_at: string; empresa_id: string; solicitud_id: string | null
   consumibles: { nombre: string; unidad: string } | null; empleados: { nombres: string; apellidos: string | null } | null; ubicaciones: { nombre: string } | null; empresas: { nombre: string; nombre_corto: string | null } | null }
 type Accion = 'entrada' | 'salida' | 'ajuste' | 'traspaso'
@@ -24,7 +28,7 @@ const TIPO_MOV = { entrada: ['Entrada', 'text-emerald-700'], salida: ['Salida', 
 export default function Almacen() {
   const { puedeEditar, puedeResguardar } = useAuth()
   const [qs, setQs] = useSearchParams()
-  const tab = (qs.get('tab') as 'existencias' | 'catalogo' | 'movimientos') || 'existencias'
+  const tab = (qs.get('tab') as 'existencias' | 'catalogo' | 'movimientos' | 'mermas' | 'caducidad') || 'existencias'
   const [empresa, setEmpresa] = useState(qs.get('empresa') ?? '')
   const [buscar, setBuscar] = useState('')
   const [soloBajo, setSoloBajo] = useState(qs.get('bajo') === '1')
@@ -33,6 +37,12 @@ export default function Almacen() {
   const [movs, setMovs] = useState<Mov[]>([])
   const [mov, setMov] = useState<{ accion: Accion; consumible?: string; ubicacion?: string | null; empresa?: string } | null>(null)
   const [editar, setEditar] = useState<Consumible | 'nuevo' | null>(null)
+  const [mermas, setMermas] = useState<Merma[]>([])
+  const [lotes, setLotes] = useState<LoteFila[]>([])
+  const [transito, setTransito] = useState<{ folio: string; consumible_id?: string; descripcion: string; cantidad: number; empresa_id: string }[]>([])
+  const [merma, setMerma] = useState<{ consumible?: string; ubicacion?: string | null; empresa?: string } | null>(null)
+  const [resolver, setResolver] = useState<{ m: Merma; aprobar: boolean } | null>(null)
+  const { perfil } = useAuth()
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto,color')
 
   const cargar = () => {
@@ -40,6 +50,10 @@ export default function Almacen() {
     supabase.from('v_existencias').select('*').then(({ data }) => setEx((data as Existencia[]) ?? []))
     supabase.from('movimientos_consumible').select('*, consumibles(nombre,unidad), empleados(nombres,apellidos), ubicaciones(nombre), empresas(nombre,nombre_corto)').order('created_at', { ascending: false }).limit(300)
       .then(({ data }) => setMovs((data as unknown as Mov[]) ?? []))
+    supabase.from('mermas').select('*, consumibles(nombre,unidad), ubicaciones(nombre), empleados(nombres,apellidos)').order('created_at', { ascending: false }).limit(300).then(({ data }) => setMermas((data as unknown as Merma[]) ?? []))
+    supabase.from('v_lotes').select('*').then(({ data }) => setLotes(((data as LoteFila[]) ?? []).filter(l => Number(l.existencia) > 0)))
+    supabase.from('vales_salida').select('folio,empresa_id,material').in('estatus', ['emitido', 'en_transito']).then(({ data }) => setTransito(((data ?? []) as { folio: string; empresa_id: string; material: { consumible_id?: string; descripcion: string; cantidad: number }[] }[])
+      .flatMap(v => v.material.filter(m => m.consumible_id).map(m => ({ ...m, folio: v.folio, empresa_id: v.empresa_id })))))
   }
   useEffect(cargar, [])
 
@@ -48,6 +62,9 @@ export default function Almacen() {
   const bajos = tot.filter(t => t.minimo > 0 && t.total < t.minimo)
 
   if (!cons) return <Cargando />
+  const hoyIso = new Date().toISOString().slice(0, 10), en30 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
+  const porCaducar = lotes.filter(l => l.caducidad && l.caducidad <= en30 && (!empresa || l.empresa_id === empresa)).sort((a, b) => a.caducidad!.localeCompare(b.caducidad!))
+  const mermasPend = mermas.filter(m => m.estatus === 'pendiente' && (!empresa || m.empresa_id === empresa))
   const q = buscar.trim().toLowerCase()
   const visibles = cons.filter(c => !q || [c.nombre, c.categoria, c.marca].some(x => x?.toLowerCase().includes(q)))
     .filter(c => !soloBajo || bajos.some(b => b.consumible_id === c.id))
@@ -76,8 +93,8 @@ export default function Almacen() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-2xl border border-stone-200 bg-stone-50 p-1">
-          {([['existencias', 'Existencias'], ['catalogo', 'Artículos'], ['movimientos', 'Movimientos']] as const).map(([k, t]) => (
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-stone-200 bg-stone-50 p-1">
+          {([['existencias', 'Existencias'], ['caducidad', `Por caducar${porCaducar.length ? ` · ${porCaducar.length}` : ''}`], ['mermas', `Mermas${mermasPend.length ? ` · ${mermasPend.length}` : ''}`], ['catalogo', 'Artículos'], ['movimientos', 'Movimientos']] as const).map(([k, t]) => (
             <button key={k} onClick={() => cambiarTab(k)} className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition ${tab === k ? 'bg-marca text-[#120D04]' : 'text-stone-500 hover:text-tinta'}`}>{t}</button>
           ))}
         </div>
@@ -85,7 +102,7 @@ export default function Almacen() {
           <option value="">Todas las empresas</option>
           {empresas.map(e => <option key={e.id} value={e.id}>{(e.nombre_corto as string) || e.nombre}</option>)}
         </select>
-        {tab !== 'movimientos' && <div className="relative min-w-0 flex-1 sm:max-w-xs">
+        {(tab === 'existencias' || tab === 'catalogo') && <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
           <input className="campo !pl-9" placeholder="Buscar casco, broca, disco…" value={buscar} onChange={e => setBuscar(e.target.value)} />
         </div>}
@@ -99,6 +116,12 @@ export default function Almacen() {
         </div>
       )}
 
+      {tab === 'existencias' && transito.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+          <Truck size={16} /><span className="min-w-0 flex-1">En tránsito con vale: {transito.filter(t => !empresa || t.empresa_id === empresa).slice(0, 4).map(t => `${num(t.cantidad)} ${t.descripcion} (${t.folio})`).join(' · ')}</span>
+          <Link to="/vales" className="text-xs font-medium underline">Ver vales</Link>
+        </div>
+      )}
       {tab === 'existencias' && (visibles.length === 0
         ? <div className="tarjeta"><Vacio titulo={soloBajo ? 'Nada bajo mínimo' : 'Sin artículos'} texto={soloBajo ? 'Todo está por arriba de su mínimo.' : 'Da de alta los artículos que se controlan por cantidad.'} /></div>
         : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -136,12 +159,56 @@ export default function Almacen() {
                     {(Object.keys(ACCIONES) as Accion[]).map(a => { const A = ACCIONES[a]; return (
                       <button key={a} className="btn-sec !px-2.5 !py-1.5 text-xs" onClick={() => setMov({ accion: a, consumible: c.id, empresa: empresa || lugares[0]?.empresa_id, ubicacion: lugares[0]?.ubicacion_id })}><A.icono size={13} />{A.texto}</button>
                     ) })}
+                    <button className="btn-sec !px-2.5 !py-1.5 text-xs" onClick={() => setMerma({ consumible: c.id, empresa: empresa || lugares[0]?.empresa_id, ubicacion: lugares[0]?.ubicacion_id })}><Trash2 size={13} />Merma</button>
                   </div>
                 )}
               </article>
             )
           })}
         </div>)}
+
+      {tab === 'caducidad' && (porCaducar.length === 0 ? <div className="tarjeta"><Vacio titulo="Nada por caducar" texto="Aquí aparecen los lotes que vencen en los próximos 30 días o ya vencieron. Captura el lote y la fecha al registrar entradas." /></div> : (
+        <div className="tarjeta divide-y divide-stone-100">
+          {porCaducar.map((l, i) => { const vencido = l.caducidad! < hoyIso; return (
+            <div key={i} className="flex flex-wrap items-center gap-3 p-3 text-sm">
+              <span className={`inline-flex w-36 shrink-0 items-center gap-1 text-xs font-medium ${vencido ? 'text-red-700' : 'text-amber-700'}`}><CalendarX size={14} />{vencido ? 'Caducó' : 'Caduca'} {fecha(l.caducidad)}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-medium">{l.nombre}</span><span className="block truncate text-xs text-stone-500">{[l.lote && `Lote ${l.lote}`, l.ubicacion, l.empresa].filter(Boolean).join(' · ')}</span></span>
+              <span className="cifra font-semibold">{num(l.existencia)} <span className="text-xs font-normal text-stone-500">{plural(l.unidad, l.existencia)}</span></span>
+              {puedeResguardar && <button className="btn-sec !px-2.5 !py-1.5 text-xs" onClick={() => setMerma({ consumible: l.consumible_id, empresa: l.empresa_id, ubicacion: l.ubicacion_id })}><Trash2 size={13} />Dar de baja</button>}
+            </div>
+          ) })}
+        </div>
+      ))}
+
+      {tab === 'mermas' && (mermas.filter(m => !empresa || m.empresa_id === empresa).length === 0 ? <div className="tarjeta"><Vacio titulo="Sin mermas" texto="Cuando algo se dañe, caduque o se pierda, solicita la merma aquí. Otra persona la aprueba y entonces se descuenta del almacén." /></div> : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {mermas.filter(m => !empresa || m.empresa_id === empresa).map(m => (
+            <article key={m.id} className="tarjeta min-w-0 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs text-stone-500">{m.folio}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${m.estatus === 'pendiente' ? 'bg-amber-50 text-amber-800 ring-amber-200' : m.estatus === 'aprobada' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-stone-100 text-stone-600 ring-stone-200'}`}>{m.estatus === 'pendiente' ? 'Por aprobar' : m.estatus === 'aprobada' ? 'Aprobada · descontada' : 'Rechazada'}</span>
+                <span className="text-[11px] text-stone-500">{MOTIVOS[m.motivo]}</span>
+                <span className="ml-auto text-[11px] text-stone-400">{new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</span>
+              </div>
+              <div className="mt-2 flex gap-3">
+                {m.foto && <img src={m.foto} alt="" className="h-14 w-16 shrink-0 rounded-lg object-cover" />}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium"><span className="cifra">{num(m.cantidad)}</span> {m.consumibles?.nombre}{m.lote ? <span className="text-xs text-stone-500"> · lote {m.lote}</span> : null}</p>
+                  <p className="text-xs text-stone-500">{[m.ubicaciones?.nombre, m.empleados && `responsable: ${nombreEmpleado(m.empleados)}`, m.solicitante && `pidió ${m.solicitante}`].filter(Boolean).join(' · ')}</p>
+                  {m.descripcion && <p className="mt-1 text-sm text-stone-600">{m.descripcion}</p>}
+                  {m.respuesta && <p className="mt-1 text-xs text-stone-500">Respuesta: {m.respuesta}</p>}
+                </div>
+              </div>
+              {m.estatus === 'pendiente' && puedeEditar && (
+                <div className="mt-3 flex gap-1.5 border-t border-stone-200 pt-3">
+                  <button className="btn-primario !px-3 !py-1.5 text-xs" onClick={() => setResolver({ m, aprobar: true })}><Check size={14} />Aprobar y descontar</button>
+                  <button className="btn-sec !px-3 !py-1.5 text-xs" onClick={() => setResolver({ m, aprobar: false })}><X size={14} />Rechazar</button>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      ))}
 
       {tab === 'catalogo' && (
         <div className="tarjeta overflow-x-auto">
@@ -183,6 +250,8 @@ export default function Almacen() {
       })()}
 
       {mov && <MovimientoConsumible inicial={mov} consumibles={cons} existencias={ex} onCerrar={() => setMov(null)} onListo={() => { setMov(null); cargar() }} />}
+      {merma && <MermaModal inicial={merma} consumibles={cons} existencias={ex} lotes={lotes} solicitante={perfil?.nombre ?? ''} onCerrar={() => setMerma(null)} onListo={() => { setMerma(null); cambiarTab('mermas'); cargar() }} />}
+      {resolver && <ResolverMerma {...resolver} onCerrar={() => setResolver(null)} onListo={() => { setResolver(null); cargar() }} />}
       {editar && <ConsumibleModal consumible={editar === 'nuevo' ? null : editar} onCerrar={() => setEditar(null)} onListo={() => { setEditar(null); cargar() }} />}
     </div>
   )
@@ -211,10 +280,19 @@ export function MovimientoConsumible({ inicial, consumibles, existencias, onCerr
   const [empleado, setEmpleado] = useState(inicial.empleado ?? '')
   const [cantidad, setCantidad] = useState('')
   const [notas, setNotas] = useState('')
+  const [lote, setLote] = useState('')
+  const [caducidad, setCaducidad] = useState('')
+  const [lotes, setLotes] = useState<LoteFila[]>([])
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
   const { items: ubis } = useLista('ubicaciones', 'id,nombre,empresa_id,tipo')
+  useEffect(() => {
+    if (!consumible || !empresa) { setLotes([]); return }
+    supabase.from('v_lotes').select('*').eq('consumible_id', consumible).eq('empresa_id', empresa).then(({ data }) => setLotes(((data as LoteFila[]) ?? []).filter(l => Number(l.existencia) > 0)))
+  }, [consumible, empresa])
+  const lotesAqui = lotes.filter(l => (l.ubicacion_id ?? '') === ubicacion).sort((a, b) => (a.caducidad ?? '9999').localeCompare(b.caducidad ?? '9999'))
+  useEffect(() => { if (accion !== 'entrada') setLote(lotesAqui[0]?.lote ?? '') }, [accion, ubicacion, lotes]) // eslint-disable-line react-hooks/exhaustive-deps
   const { items: emps } = useLista('empleados', 'id,nombre:nombres,apellidos,empresa_id,puesto', 'nombres')
   useEffect(() => { if (!empresa && empresas.length) setEmpresa(empresas[0].id) }, [empresas, empresa])
 
@@ -232,7 +310,9 @@ export function MovimientoConsumible({ inicial, consumibles, existencias, onCerr
     if (!(n >= 0) || cantidad === '' || (accion !== 'ajuste' && n <= 0)) return setError('Escribe una cantidad válida.')
     if ((accion === 'salida' || accion === 'traspaso') && n > disponible) return setError(`Solo hay ${num(disponible)} ${plural(c.unidad, disponible)} en ese lugar.`)
     if (accion === 'traspaso' && (!destino || destino === ubicacion)) return setError('Elige un destino distinto.')
-    const base = { consumible_id: c.id, empresa_id: empresa, ubicacion_id: ubicacion || null, notas: notas || null }
+    const lt = lotesAqui.find(l => (l.lote ?? '') === lote)
+    if ((accion === 'salida' || accion === 'traspaso') && lt && n > Number(lt.existencia)) return setError(`Del lote ${lote || 'sin lote'} solo hay ${num(lt.existencia)}. Elige otro lote o divide la salida.`)
+    const base = { consumible_id: c.id, empresa_id: empresa, ubicacion_id: ubicacion || null, notas: notas || null, lote: lote.trim() || null, caducidad: accion === 'entrada' ? caducidad || null : lt?.caducidad ?? null }
     let filas: Record<string, unknown>[] = []
     if (accion === 'entrada') filas = [{ ...base, tipo: 'entrada', cantidad: n }]
     if (accion === 'salida') filas = [{ ...base, tipo: 'salida', cantidad: n, empleado_id: empleado || null }]
@@ -282,6 +362,17 @@ export function MovimientoConsumible({ inicial, consumibles, existencias, onCerr
           </div>
           {c && accion !== 'entrada' && <span className="mt-1 block text-xs text-stone-500">Hay {num(disponible)} en este lugar{accion === 'ajuste' && cantidad !== '' ? ` · diferencia ${n - disponible > 0 ? '+' : ''}${num(n - disponible)}` : ''}</span>}
         </Campo>
+        {accion === 'entrada' && (
+          <div className="grid grid-cols-2 gap-3">
+            <Campo label="Lote (opcional)"><input className="campo" value={lote} onChange={e => setLote(e.target.value)} placeholder="Ej. L2410-07" /></Campo>
+            <Campo label="Caduca (opcional)"><input className="campo" type="date" value={caducidad} onChange={e => setCaducidad(e.target.value)} /></Campo>
+          </div>
+        )}
+        {accion !== 'entrada' && lotesAqui.length > 0 && (
+          <Campo label="Lote · primero el que caduca antes">
+            <select className="campo" value={lote} onChange={e => setLote(e.target.value)}>{lotesAqui.map(l => <option key={l.lote ?? ''} value={l.lote ?? ''}>{l.lote ?? 'Sin lote'} · {num(l.existencia)}{l.caducidad ? ` · caduca ${l.caducidad}` : ''}</option>)}</select>
+          </Campo>
+        )}
         <Campo label="Notas"><input className="campo" value={notas} onChange={e => setNotas(e.target.value)} placeholder={accion === 'entrada' ? 'Ej. Remisión 4521' : 'Opcional'} /></Campo>
         {error && <Aviso>{error}</Aviso>}
         <div className="flex justify-end gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className="btn-primario" disabled={guardando} onClick={guardar}><A.icono size={16} />{guardando ? 'Guardando…' : A.texto}</button></div>
@@ -357,5 +448,75 @@ export function EntregasEmpleado({ empleadoId }: { empleadoId: string }) {
         ))}
       </ul>
     </section>
+  )
+}
+
+function MermaModal({ inicial, consumibles, existencias, lotes, solicitante, onCerrar, onListo }: {
+  inicial: { consumible?: string; ubicacion?: string | null; empresa?: string }; consumibles: Consumible[]; existencias: Existencia[]; lotes: LoteFila[]; solicitante: string; onCerrar: () => void; onListo: () => void
+}) {
+  const [c, setC] = useState(inicial.consumible ?? ''), [empresa, setEmpresa] = useState(inicial.empresa ?? ''), [ubicacion, setUbicacion] = useState(inicial.ubicacion ?? '')
+  const [lote, setLote] = useState(''), [cant, setCant] = useState(''), [motivo, setMotivo] = useState('dano'), [desc, setDesc] = useState(''), [resp, setResp] = useState(''), [foto, setFoto] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
+  const { items: emps } = useLista('empleados', 'id,nombre:nombres,apellidos,empresa_id', 'nombres')
+  useEffect(() => { if (!empresa && empresas.length) setEmpresa(empresas[0].id) }, [empresas, empresa])
+  const lugares = existencias.filter(e => e.consumible_id === c && e.empresa_id === empresa && Number(e.existencia) > 0)
+  const lotesAqui = lotes.filter(l => l.consumible_id === c && l.empresa_id === empresa && (l.ubicacion_id ?? '') === ubicacion)
+  const hay = Number(lugares.find(l => (l.ubicacion_id ?? '') === ubicacion)?.existencia ?? 0)
+  const item = consumibles.find(x => x.id === c)
+  async function guardar() {
+    const n = Number(cant)
+    if (!c) return setError('Elige el artículo.')
+    if (!(n > 0)) return setError('Escribe la cantidad.')
+    if (n > hay) return setError(`Solo hay ${num(hay)} en ese lugar.`)
+    if (!desc.trim()) return setError('Describe qué pasó.')
+    const { error } = await supabase.from('mermas').insert({ consumible_id: c, empresa_id: empresa, ubicacion_id: ubicacion || null, lote: lote || null, cantidad: n, motivo, descripcion: desc.trim(), foto, responsable_id: resp || null, solicitante, estatus: 'pendiente' })
+    if (error) return setError(mensajeError(error))
+    onListo()
+  }
+  return (
+    <Modal abierto titulo="Solicitar merma" onCerrar={onCerrar} ancho="max-w-lg">
+      <div className="space-y-3">
+        <p className="text-xs text-stone-500">La merma no se descuenta hasta que otra persona con permiso la apruebe. Queda el registro de quién la pidió, quién la aprobó y a quién se le imputa.</p>
+        <Campo label="Artículo"><select className="campo" value={c} onChange={e => setC(e.target.value)}><option value="">Elige…</option>{consumibles.map(x => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select></Campo>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo label="Empresa"><select className="campo" value={empresa} onChange={e => { setEmpresa(e.target.value); setUbicacion('') }}>{empresas.map(e => <option key={e.id} value={e.id}>{(e.nombre_corto as string) || e.nombre}</option>)}</select></Campo>
+          <Campo label="Lugar"><select className="campo" value={ubicacion} onChange={e => setUbicacion(e.target.value)}><option value="">Sin lugar</option>{lugares.map(l => <option key={l.ubicacion_id ?? ''} value={l.ubicacion_id ?? ''}>{l.ubicacion ?? 'Sin lugar'} · hay {num(l.existencia)}</option>)}</select></Campo>
+          {lotesAqui.length > 0 && <Campo label="Lote"><select className="campo" value={lote} onChange={e => setLote(e.target.value)}><option value="">—</option>{lotesAqui.map(l => <option key={l.lote ?? ''} value={l.lote ?? ''}>{l.lote ?? 'Sin lote'}{l.caducidad ? ` · caduca ${l.caducidad}` : ''}</option>)}</select></Campo>}
+          <Campo label={`Cantidad${item ? ` (${plural(item.unidad, 2)})` : ''}`}><input className="campo cifra" type="number" min={0} step="any" value={cant} onChange={e => setCant(e.target.value)} /></Campo>
+          <Campo label="Motivo"><select className="campo" value={motivo} onChange={e => setMotivo(e.target.value)}>{Object.entries(MOTIVOS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></Campo>
+          <Campo label="Responsable (si aplica)"><select className="campo" value={resp} onChange={e => setResp(e.target.value)}><option value="">Nadie en particular</option>{emps.filter(x => x.empresa_id === empresa).map(x => <option key={x.id} value={x.id}>{x.nombre} {x.apellidos as string}</option>)}</select></Campo>
+        </div>
+        <Campo label="¿Qué pasó?"><textarea className="campo" rows={2} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ej. 3 cascos estrellados al caer de la plataforma" /></Campo>
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn-sec !px-3 !py-1.5 text-xs" onClick={() => input.current?.click()}><Camera size={14} />{foto ? 'Cambiar foto' : 'Foto de evidencia'}</button>
+          {foto && <img src={foto} alt="" className="h-12 w-14 rounded-lg object-cover" />}
+          <input ref={input} type="file" accept="image/*" capture="environment" hidden onChange={async e => { const a = e.target.files?.[0]; if (a) setFoto(await fotoProducto(a, 720)) }} />
+        </div>
+        {error && <Aviso>{error}</Aviso>}
+        <div className="flex justify-end gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className="btn-primario" onClick={guardar}><Trash2 size={16} />Solicitar merma</button></div>
+      </div>
+    </Modal>
+  )
+}
+
+function ResolverMerma({ m, aprobar, onCerrar, onListo }: { m: Merma; aprobar: boolean; onCerrar: () => void; onListo: () => void }) {
+  const [nota, setNota] = useState(''), [error, setError] = useState('')
+  async function guardar() {
+    const { error } = await supabase.rpc('resolver_merma', { p_id: m.id, p_aprobar: aprobar, p_respuesta: nota })
+    if (error) return setError(mensajeError(error))
+    onListo()
+  }
+  return (
+    <Modal abierto titulo={`${aprobar ? 'Aprobar' : 'Rechazar'} ${m.folio}`} onCerrar={onCerrar} ancho="max-w-md">
+      <div className="space-y-3">
+        <p className="text-sm">{num(m.cantidad)} · {m.consumibles?.nombre} · {MOTIVOS[m.motivo]}</p>
+        {aprobar && <p className="text-xs text-stone-500">Se descuenta del almacén en este momento.</p>}
+        <Campo label="Comentario"><textarea className="campo" rows={2} value={nota} onChange={e => setNota(e.target.value)} /></Campo>
+        {error && <Aviso>{error}</Aviso>}
+        <div className="flex justify-end gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className={aprobar ? 'btn-primario' : 'btn-peligro'} onClick={guardar}>{aprobar ? 'Aprobar' : 'Rechazar'}</button></div>
+      </div>
+    </Modal>
   )
 }

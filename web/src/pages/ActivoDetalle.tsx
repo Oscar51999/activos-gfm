@@ -8,6 +8,7 @@ import { DocumentosPanel } from '../components/Documentos'
 import LineaTiempo from '../components/LineaTiempo'
 import UsoPanel from '../components/UsoPanel'
 import Componentes from '../components/Componentes'
+import { PiezasCriticas } from '../components/Refacciones'
 import { tipoEquipo } from '../lib/mantenimiento'
 import { supabase, mensajeError, ESTATUS, BUCKET } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -19,7 +20,7 @@ import type { ActivoFila } from './Activos'
 import { TipoBadge } from './Movimientos'
 import type { TipoMov } from '../lib/supabase'
 
-type Detalle = ActivoFila & { valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean }
+type Detalle = ActivoFila & { valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; posicion?: string | null; clase_abc?: string | null }
 type Veh = { placa: string | null; anio: number | null; color: string | null; combustible: string | null; transmision: string | null; kilometraje: number | null; cilindros: number | null; pasajeros: number | null; capacidad_tanque: number | null }
 type Foto = { id: string; path: string; url?: string }
 type Resg = { movimiento_id: string; estado_fisico: string | null; movimientos: { folio: string; tipo: TipoMov; fecha: string; recibe_nombre: string | null; entrega_nombre: string | null; cancelado: boolean; ubicacion: { nombre: string } | null } | null }
@@ -147,7 +148,7 @@ export default function ActivoDetalle() {
         <ReportarFalla qr={(a as unknown as { qr: string }).qr} nombreInicial={perfilRep?.nombre ?? ''} onListo={() => cargarExtras()} />
       </Modal>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 *:min-w-0">
         <div className="space-y-6 lg:col-span-2">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="tarjeta flex items-start gap-3 p-4"><MapPin size={18} className="mt-0.5 text-marca-oscuro" /><div><p className="text-xs text-stone-500">Ubicación</p><p className="text-sm font-medium">{a.ubicacion ?? 'Sin ubicación'}</p></div></div>
@@ -160,6 +161,9 @@ export default function ActivoDetalle() {
             <dl className="grid gap-4 sm:grid-cols-3">
               <Dato k="Número de serie" v={a.serie} />
               <Dato k="Número económico" v={a.numero_economico} />
+              <Dato k="Posición en almacén" v={a.posicion} />
+              <Dato k="Etiqueta RFID (EPC)" v={a.rfid_epc && <span className="break-all font-mono text-xs">{a.rfid_epc}</span>} />
+              <Dato k="Conteo cíclico" v={a.clase_abc && `Clase ${a.clase_abc} · cada ${a.clase_abc === 'A' ? 30 : a.clase_abc === 'B' ? 90 : 180} días`} />
               <Dato k="Fecha de alta" v={fecha(a.fecha_alta)} />
               <Dato k="Valor de referencia" v={moneda(a.valor_referencia)} />
               <Dato k="Última actualización" v={fecha(a.updated_at)} />
@@ -182,6 +186,8 @@ export default function ActivoDetalle() {
           {tipoEquipo(a.categoria, a.es_vehiculo) !== 'otro' && <UsoPanel activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} qr={(a as unknown as { qr: string }).qr} tipo={tipoEquipo(a.categoria, a.es_vehiculo)} nombreUsuario={perfilRep?.nombre} />}
 
           <Componentes activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} />
+
+          {tipoEquipo(a.categoria, a.es_vehiculo) !== 'otro' && <PiezasCriticas activoId={a.id} modeloId={(a as unknown as { modelo_id: string | null }).modelo_id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} />}
 
           <DocumentosPanel empresaId={(a as unknown as { empresa_id: string }).empresa_id} activoId={a.id} esVehiculo={a.es_vehiculo} />
 

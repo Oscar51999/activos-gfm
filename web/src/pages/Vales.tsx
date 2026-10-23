@@ -10,11 +10,13 @@ import FotoActivo from '../components/FotoActivo'
 import EnviarEnlace, { urlPublica } from '../components/Enlace'
 import { LogoFirme } from '../components/Logo'
 import { fechaCorta, isoDia } from '../components/Prestamo'
+import { num } from '../lib/almacen'
 
 type Estatus = 'emitido' | 'en_transito' | 'recibido' | 'cancelado'
-type Vale = { id: string; folio: string; token: string; empresa_id: string; origen_id: string | null; destino_id: string | null; activos: string[]; material: { descripcion: string; cantidad: number }[]
+type Vale = { id: string; folio: string; token: string; empresa_id: string; origen_id: string | null; destino_id: string | null; activos: string[]; material: { descripcion: string; cantidad: number; consumible_id?: string; lote?: string | null; unidad?: string }[]
   transportista: string | null; vehiculo: string | null; motivo: string | null; vigencia: string; estatus: Estatus; salida_at: string | null; salida_por: string | null; recibido_at: string | null; recibido_por: string | null
   observaciones: string | null; created_at: string; empresas: { nombre: string; nombre_corto: string | null } | null; origen: { nombre: string } | null; destino: { nombre: string } | null }
+type LoteOrigen = { consumible_id: string; nombre: string; unidad: string; lote: string | null; caducidad: string | null; existencia: number }
 type Mini = { id: string; codigo: string; descripcion: string; marca: string | null; modelo: string | null; serie: string | null; numero_economico: string | null; ubicacion_id: string | null; ubicacion: string | null; estatus: string; modelo_foto: string | null; foto_principal: string | null; categoria: string | null }
 
 export const EST_VALE: Record<Estatus, { texto: string; clase: string; icono: typeof Clock }> = {
@@ -86,6 +88,8 @@ function NuevoVale({ onCerrar, onListo }: { onCerrar: () => void; onListo: (v: V
   const [sel, setSel] = useState<string[]>([])
   const [q, setQ] = useState('')
   const [material, setMaterial] = useState('')
+  const [lotes, setLotes] = useState<LoteOrigen[]>([])
+  const [cant, setCant] = useState<Record<string, string>>({})
   const [f, setF] = useState({ transportista: '', vehiculo: '', motivo: '', vigencia: isoDia(new Date(Date.now() + 2 * 864e5)) })
   const [error, setError] = useState('')
   useEffect(() => { if (!empresa && empresas.length) setEmpresa(empresas[0].id) }, [empresas, empresa])
@@ -94,6 +98,13 @@ function NuevoVale({ onCerrar, onListo }: { onCerrar: () => void; onListo: (v: V
     supabase.from('v_activos').select('id,codigo,descripcion,marca,modelo,serie,numero_economico,ubicacion_id,ubicacion,estatus,modelo_foto,foto_principal,categoria').eq('empresa_id', empresa).neq('estatus', 'baja').order('codigo').limit(3000)
       .then(({ data }) => setActs((data as Mini[]) ?? []))
   }, [empresa])
+  useEffect(() => {
+    setCant({}); setLotes([])
+    if (!origen) return
+    supabase.from('v_lotes').select('consumible_id,nombre,unidad,lote,caducidad,existencia').eq('ubicacion_id', origen).gt('existencia', 0).order('nombre')
+      .then(({ data }) => setLotes((data as LoteOrigen[]) ?? []))
+  }, [origen])
+  const llaveLote = (l: LoteOrigen) => `${l.consumible_id}|${l.lote ?? ''}`
   const vis = useMemo(() => acts.filter(a => (!origen || a.ubicacion_id === origen) && (!q || [a.codigo, a.descripcion, a.marca, a.modelo, a.serie, a.numero_economico].some(x => x?.toLowerCase().includes(q.toLowerCase())))).slice(0, 80), [acts, origen, q])
 
   async function guardar() {
@@ -101,10 +112,23 @@ function NuevoVale({ onCerrar, onListo }: { onCerrar: () => void; onListo: (v: V
     if (!origen || !destino) return setError('Elige de dónde sale y a dónde va.')
     if (origen === destino) return setError('El destino debe ser distinto al origen.')
     const mat = material.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const m = l.match(/^(\d+(?:\.\d+)?)\s*[x×]?\s+(.+)$/i); return m ? { cantidad: Number(m[1]), descripcion: m[2] } : { cantidad: 1, descripcion: l } })
-    if (!sel.length && !mat.length) return setError('Agrega al menos un equipo o material.')
-    const { data, error } = await supabase.from('vales_salida').insert({ empresa_id: empresa, origen_id: origen, destino_id: destino, activos: sel, material: mat, transportista: f.transportista || null, vehiculo: f.vehiculo || null, motivo: f.motivo || null, vigencia: f.vigencia, estatus: 'emitido' }).select(SEL).single()
+    const deAlmacen: Vale['material'] = []
+    for (const l of lotes) {
+      const n = Number(cant[llaveLote(l)] || 0)
+      if (!n) continue
+      if (n < 0 || n > Number(l.existencia)) return setError(`De ${l.nombre}${l.lote ? ` (lote ${l.lote})` : ''} solo hay ${num(l.existencia)}.`)
+      deAlmacen.push({ consumible_id: l.consumible_id, descripcion: l.nombre + (l.lote ? ` · lote ${l.lote}` : ''), cantidad: n, lote: l.lote, unidad: l.unidad })
+    }
+    if (!sel.length && !mat.length && !deAlmacen.length) return setError('Agrega al menos un equipo o material.')
+    const { data, error } = await supabase.from('vales_salida').insert({ empresa_id: empresa, origen_id: origen, destino_id: destino, activos: sel, material: [...deAlmacen, ...mat], transportista: f.transportista || null, vehiculo: f.vehiculo || null, motivo: f.motivo || null, vigencia: f.vigencia, estatus: 'emitido' }).select(SEL).single()
     if (error) return setError(mensajeError(error))
-    onListo(data as unknown as Vale)
+    const vale = data as unknown as Vale
+    if (deAlmacen.length) {
+      // El material sale del almacén de origen al emitir el vale y entra al destino cuando la obra marca la llegada: mientras tanto queda "en tránsito".
+      const { error: e2 } = await supabase.from('movimientos_consumible').insert(deAlmacen.map(m => ({ consumible_id: m.consumible_id, empresa_id: empresa, ubicacion_id: origen, tipo: 'salida', cantidad: m.cantidad, lote: m.lote || null, vale_id: vale.id, notas: `Sale con el vale ${vale.folio}` })))
+      if (e2) return setError(`El vale ${vale.folio} se emitió, pero no se pudo descontar el material: ${mensajeError(e2)}`)
+    }
+    onListo(vale)
   }
   const ubisE = ubis.filter(u => u.empresa_id === empresa)
   return (
@@ -130,7 +154,21 @@ function NuevoVale({ onCerrar, onListo }: { onCerrar: () => void; onListo: (v: V
             ))}
           </div>
         </div>
-        <Campo label="Material o herramienta menor (un renglón por cosa, ej. “10 cascos”)"><textarea className="campo" rows={2} value={material} onChange={e => setMaterial(e.target.value)} placeholder={'10 cascos\n2 rollos de cinta de precaución'} /></Campo>
+        {origen && lotes.length > 0 && (
+          <div>
+            <span className="etiqueta">Material del almacén (se descuenta al emitir y entra al destino cuando llega)</span>
+            <div className="grid max-h-48 gap-1.5 overflow-y-auto sm:grid-cols-2">
+              {lotes.map(l => (
+                <label key={llaveLote(l)} className={`flex items-center gap-2 rounded-xl border p-1.5 text-sm ${Number(cant[llaveLote(l)] || 0) > 0 ? 'border-marca bg-marca/10' : 'border-stone-200'}`}>
+                  <input type="number" min={0} max={l.existencia} step="any" className="campo !w-20 !py-1 text-right" value={cant[llaveLote(l)] ?? ''} placeholder="0" onChange={e => setCant(c => ({ ...c, [llaveLote(l)]: e.target.value }))} />
+                  <span className="min-w-0"><span className="block truncate text-xs font-medium">{l.nombre}</span>
+                    <span className="block text-[11px] text-stone-500">hay {num(l.existencia)} {l.unidad}{l.lote ? ` · lote ${l.lote}` : ''}{l.caducidad ? ` · cad. ${fechaCorta(l.caducidad)}` : ''}</span></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <Campo label="Otro material sin control de almacén (un renglón por cosa, ej. “10 cascos”)"><textarea className="campo" rows={2} value={material} onChange={e => setMaterial(e.target.value)} placeholder={'10 cascos\n2 rollos de cinta de precaución'} /></Campo>
         <div className="grid gap-3 sm:grid-cols-4">
           <Campo label="Quién lo lleva"><input className="campo" value={f.transportista} onChange={e => setF({ ...f, transportista: e.target.value })} /></Campo>
           <Campo label="Vehículo / placas"><input className="campo" value={f.vehiculo} onChange={e => setF({ ...f, vehiculo: e.target.value })} placeholder="CT-014 · CZ-1234-A" /></Campo>
@@ -150,7 +188,14 @@ function VerVale({ vale: v, onCerrar, onCambio }: { vale: Vale; onCerrar: () => 
   useEffect(() => { if (v.activos.length) supabase.from('v_activos').select('id,codigo,descripcion,marca,modelo,serie,numero_economico,ubicacion_id,ubicacion,estatus,modelo_foto,foto_principal,categoria').in('id', v.activos).then(({ data }) => setActs((data as Mini[]) ?? [])) }, [v])
   const url = urlPublica(`vale/${v.token}`)
   const E = EST_VALE[v.estatus]
-  async function cancelar() { await supabase.from('vales_salida').update({ estatus: 'cancelado' }).eq('id', v.id); onCambio() }
+  async function cancelar() {
+    const { error } = await supabase.from('vales_salida').update({ estatus: 'cancelado' }).eq('id', v.id)
+    if (error) return
+    // El material del almacén que se había descontado regresa al origen.
+    const devolver = v.material.filter(m => m.consumible_id)
+    if (devolver.length && v.origen_id) await supabase.from('movimientos_consumible').insert(devolver.map(m => ({ consumible_id: m.consumible_id, empresa_id: v.empresa_id, ubicacion_id: v.origen_id, tipo: 'entrada', cantidad: m.cantidad, lote: m.lote || null, vale_id: v.id, notas: `Regresa: vale ${v.folio} cancelado` })))
+    onCambio()
+  }
   return (
     <Modal abierto titulo={`Vale ${v.folio}`} onCerrar={onCerrar} ancho="max-w-2xl">
       <div className="space-y-4">
@@ -168,7 +213,7 @@ function VerVale({ vale: v, onCerrar, onCambio }: { vale: Vale; onCerrar: () => 
           </div>
           <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-stone-300 text-left text-[10px] uppercase tracking-wider text-stone-500"><th className="py-1">Código</th><th>Equipo</th><th>Serie / Eco.</th></tr></thead>
             <tbody>{acts.map(a => <tr key={a.id} className="border-b border-stone-200"><td className="py-1 font-mono">{a.codigo}</td><td>{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</td><td>{[a.serie, a.numero_economico].filter(Boolean).join(' · ')}</td></tr>)}
-              {v.material.map((m, i) => <tr key={'m' + i} className="border-b border-stone-200"><td className="py-1">{m.cantidad}</td><td colSpan={2}>{m.descripcion}</td></tr>)}</tbody></table>
+              {v.material.map((m, i) => <tr key={'m' + i} className="border-b border-stone-200"><td className="py-1">{m.cantidad}{m.unidad ? ` ${m.unidad}` : ''}</td><td colSpan={2}>{m.descripcion}</td></tr>)}</tbody></table>
           {v.motivo && <p className="mt-3 text-xs text-stone-600">Motivo: {v.motivo}</p>}
           <p className="mt-3 text-[10px] text-stone-500">Vigilancia: escanea el QR para registrar la salida y la llegada.</p>
         </div>
@@ -184,7 +229,7 @@ function VerVale({ vale: v, onCerrar, onCambio }: { vale: Vale; onCerrar: () => 
 }
 
 type ValePub = { folio: string; estatus: Estatus; vigencia: string; motivo: string | null; transportista: string | null; vehiculo: string | null; empresa: string; origen: string | null; destino: string | null
-  material: { descripcion: string; cantidad: number }[]; salida_at: string | null; salida_por: string | null; recibido_at: string | null; recibido_por: string | null; emitido_at: string
+  material: { descripcion: string; cantidad: number; consumible_id?: string; lote?: string | null; unidad?: string }[]; salida_at: string | null; salida_por: string | null; recibido_at: string | null; recibido_por: string | null; emitido_at: string
   activos: { codigo: string; descripcion: string; marca: string | null; modelo: string | null; serie: string | null; eco: string | null; foto: string | null }[] }
 
 /** Lo que ve vigilancia en la caseta al escanear el QR del vale (sin cuenta). */

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard,
+  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, RefreshCcw, Grid3x3,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ROLES, supabase } from '../lib/supabase'
@@ -33,6 +33,8 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/prestamos', icono: CalendarClock, texto: 'Préstamos', alerta: 'prestamos' },
     { to: '/reportes', icono: Siren, texto: 'Reportes de falla', alerta: 'reportes' },
     { to: '/inventarios', icono: ClipboardCheck, texto: 'Inventario físico' },
+    { to: '/conteo-ciclico', icono: RefreshCcw, texto: 'Conteo cíclico' },
+    { to: '/posiciones', icono: Grid3x3, texto: 'Posiciones de almacén' },
     { to: '/confirmaciones', icono: ShieldCheck, texto: 'Confirmaciones' },
     { to: '/traspasos', icono: Repeat, texto: 'Traspasos entre empresas' },
   ] },

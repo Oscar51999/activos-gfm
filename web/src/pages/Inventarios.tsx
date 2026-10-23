@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ScanLine, Plus, ArrowLeft, CheckCircle2, AlertTriangle, MapPinned, HelpCircle, Keyboard, Camera, Lock, Trash2, MoveRight, ClipboardCheck } from 'lucide-react'
 import { supabase, mensajeError, type Estatus } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { leerQR } from '../lib/qr'
+import { coincideLectura, separarLecturas } from '../lib/qr'
 import { Cargando, Vacio, Aviso, Modal, Campo, EstatusBadge } from '../components/ui'
 import FotoActivo from '../components/FotoActivo'
 import LogoEmpresa from '../components/LogoEmpresa'
@@ -13,7 +13,7 @@ const Camara = lazy(() => import('../components/CamaraQR'))
 type Inv = { id: string; folio: string; empresa_id: string; ubicacion_id: string | null; nombre: string; estatus: 'abierto' | 'cerrado'; created_at: string; cerrado_at: string | null
   resumen: { esperados: number; encontrados: number; faltantes: number; fuera: number; desconocidos: number } | null
   empresas?: EmpresaLogo | null; ubicaciones?: { nombre: string } | null }
-type Act = { id: string; codigo: string; qr: string; descripcion: string; serie: string | null; numero_economico: string | null; estatus: Estatus; ubicacion_id: string | null; ubicacion: string | null
+type Act = { id: string; codigo: string; qr: string; rfid_epc?: string | null; descripcion: string; serie: string | null; numero_economico: string | null; estatus: Estatus; ubicacion_id: string | null; ubicacion: string | null
   responsable: string | null; marca: string | null; modelo: string | null; categoria: string; foto_principal: string | null; modelo_foto: string | null }
 type Lectura = { id: string; activo_id: string | null; leido: string; created_at: string }
 
@@ -112,7 +112,7 @@ export function InventarioConteo() {
   useEffect(() => {
     supabase.from('inventarios').select('*,empresas(nombre,nombre_corto,logo_path,logo_oscuro,color),ubicaciones(nombre)').eq('id', id!).single().then(({ data }) => {
       const i = data as unknown as Inv; setInv(i)
-      supabase.from('v_activos').select('id,codigo,qr,descripcion,serie,numero_economico,estatus,ubicacion_id,ubicacion,responsable,marca,modelo,categoria,foto_principal,modelo_foto')
+      supabase.from('v_activos').select('id,codigo,qr,rfid_epc,descripcion,serie,numero_economico,estatus,ubicacion_id,ubicacion,responsable,marca,modelo,categoria,foto_principal,modelo_foto')
         .eq('empresa_id', i.empresa_id).neq('estatus', 'baja').limit(10000).then(({ data: a }) => {
           const l = (a as Act[]) ?? []; setTodos(l); setEsperados(i.ubicacion_id ? l.filter(x => x.ubicacion_id === i.ubicacion_id) : l)
         })
@@ -137,9 +137,7 @@ export function InventarioConteo() {
 
   async function registrar(valor: string) {
     const t = valor.trim(); if (!t || !inv) return
-    const qr = leerQR(t)
-    const up = t.toUpperCase()
-    const a = qr ? todos.find(x => x.qr === qr) : todos.find(x => x.codigo === up || x.numero_economico?.toUpperCase() === up || x.serie?.toUpperCase() === up)
+    const a = todos.find(x => coincideLectura(x, t))
     if (a && leidos.has(a.id)) { setFlash({ tipo: 'repetido', msg: `${a.codigo} ya estaba contado` }); sonar(false); return }
     const { data, error } = await supabase.from('inventario_lecturas').insert({ inventario_id: inv.id, activo_id: a?.id ?? null, leido: t }).select('id,activo_id,leido,created_at').single()
     if (error) { setFlash({ tipo: 'error', msg: mensajeError(error) }); sonar(false); return }
@@ -196,7 +194,8 @@ export function InventarioConteo() {
               </div>
               {camara && <Suspense fallback={<Cargando texto="Abriendo cámara…" />}><Camara onLeer={registrar} /></Suspense>}
               <form onSubmit={e => { e.preventDefault(); registrar(texto); setTexto('') }} className="mt-3 flex gap-2">
-                <input ref={input} autoFocus className="campo font-mono" placeholder="Escanea o escribe código, serie o No. económico y Enter" value={texto} onChange={e => setTexto(e.target.value)} list="codigos-inv" />
+                <input ref={input} autoFocus className="campo font-mono" placeholder="Escanea QR o RFID, o escribe código, serie o No. económico y Enter" value={texto} onChange={e => setTexto(e.target.value)}
+                  onPaste={e => { const xs = separarLecturas(e.clipboardData.getData('text')); if (xs.length > 1) { e.preventDefault(); (async () => { for (const x of xs) await registrar(x) })() } }} list="codigos-inv" />
                 <datalist id="codigos-inv">{faltantes.slice(0, 200).map(a => <option key={a.id} value={a.codigo}>{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</option>)}</datalist>
                 <button className="btn-primario">Contar</button>
               </form>

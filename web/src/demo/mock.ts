@@ -355,13 +355,60 @@ export function crearDatos() {
     { id: 'vs3', folio: 'VS-00003', token: uid(), empresa_id: 'e1', origen_id: 'u1', destino_id: 'u2', activos: ['a6'], material: [{ cantidad: 12, descripcion: 'cascos' }], transportista: 'Janani Aguilar', vehiculo: 'CT-014', motivo: null, vigencia: dia(-18), estatus: 'recibido', salida_at: hace(20), salida_por: 'Vigilante Soto', recibido_at: hace(19.9), recibido_por: 'Velador obra GF-214', observaciones: null, created_by: 'u-demo', created_at: hace(20.1) },
   ]
 
+  // ───── Fase 8: RFID, posiciones, lotes, mermas, piezas críticas, conteo cíclico ─────
+  const ABC: Record<string, string> = { c1: 'A', c2: 'A', c4: 'A', c5: 'A', c3: 'B', c6: 'B', c7: 'B', c8: 'C' }
+  for (const c of categorias as Row[]) c.clase_abc = ABC[c.id as string] ?? 'C'
+  const epc = (codigo: string) => '47464D' + Number((codigo.match(/\d+/) ?? ['0'])[0]).toString(16).toUpperCase().padStart(18, '0')
+  for (const a of activos as Row[]) { a.rfid_epc = epc(String(a.codigo)); a.posicion_id ??= null }
+  const PO = (id: string, pasillo: string | null, rack: string | null, nivel: string | null, codigo: string, descripcion: string | null = null) =>
+    ({ id, empresa_id: 'e1', ubicacion_id: 'u1', pasillo, rack, nivel, posicion: null, codigo, descripcion, activo: true, created_at: hace(30) })
+  const posiciones = [
+    PO('po1', 'A', '01', '1', 'A-01-1', 'Cascos'), PO('po2', 'A', '01', '2', 'A-01-2', 'Chalecos'), PO('po3', 'A', '01', '3', 'A-01-3'),
+    PO('po4', 'A', '02', '1', 'A-02-1', 'Herramienta eléctrica'), PO('po5', 'A', '02', '2', 'A-02-2', 'Equipo de topografía'), PO('po6', 'A', '02', '3', 'A-02-3', 'Químicos con caducidad'),
+    PO('po7', 'B', '01', '1', 'B-01-1', 'Cómputo'), PO('po8', null, null, null, 'JAULA', 'Jaula con candado: equipo de valor'),
+  ]
+  const enU1 = (activos as Row[]).filter(a => a.ubicacion_id === 'u1')
+  enU1.forEach((a, i) => { a.posicion_id = ['po4', 'po5', 'po7', 'po8'][i % 4] })
+  ;(consumibles as Row[]).push(
+    { ...CS('cs9', 'Resina epóxica para anclaje', 'Consumible de obra', 'pieza', 'Hilti', 6, 'rollo', '#a8a29e'), created_at: hace(60) },
+    { ...CS('cs10', 'Filtro de aceite motor (retroexcavadora)', 'Otro', 'pieza', 'Caterpillar', 2, 'disco', '#facc15') },
+    { ...CS('cs11', 'Diente de cucharón', 'Otro', 'pieza', 'Caterpillar', 4, 'cucharon', '#facc15') },
+  )
+  for (const m of movimientos_consumible as Row[]) { m.lote ??= null; m.caducidad ??= null; m.ot_id ??= null; m.vale_id ??= null; m.merma_id ??= null }
+  ;(movimientos_consumible as Row[]).push(
+    MC('cs9', 'e1', 'u1', 'entrada', 8, 50, { lote: 'RE-2408', caducidad: dia(18), notas: 'Remisión 4788', ot_id: null, vale_id: null, merma_id: null }),
+    MC('cs9', 'e1', 'u1', 'entrada', 12, 10, { lote: 'RE-2410', caducidad: dia(160), notas: 'Remisión 4930', ot_id: null, vale_id: null, merma_id: null }),
+    MC('cs9', 'e1', 'u1', 'salida', 3, 6, { lote: 'RE-2408', caducidad: null, notas: 'Anclas en GF-214', ot_id: null, vale_id: null, merma_id: null }),
+    MC('cs10', 'e2', 'u5', 'entrada', 2, 35, { lote: null, caducidad: null, ot_id: null, vale_id: null, merma_id: null }),
+    MC('cs11', 'e2', 'u5', 'entrada', 10, 35, { lote: null, caducidad: null, ot_id: null, vale_id: null, merma_id: null }),
+    MC('cs11', 'e2', 'u5', 'salida', 4, 8, { lote: null, caducidad: null, ot_id: 'h09', vale_id: null, merma_id: null, notas: 'Orden de trabajo OT-H009' }),
+    MC('cs5', 'e1', 'u1', 'ajuste', -4, 15, { lote: null, caducidad: null, ot_id: null, vale_id: null, merma_id: 'me1', notas: 'Merma MER-00001 · dano' }),
+  )
+  const consumible_posiciones = [
+    { consumible_id: 'cs1', ubicacion_id: 'u1', posicion_id: 'po1', empresa_id: 'e1' }, { consumible_id: 'cs2', ubicacion_id: 'u1', posicion_id: 'po2', empresa_id: 'e1' },
+    { consumible_id: 'cs9', ubicacion_id: 'u1', posicion_id: 'po6', empresa_id: 'e1' },
+  ]
+  const mermas = [
+    { id: 'me1', folio: 'MER-00001', consumible_id: 'cs5', empresa_id: 'e1', ubicacion_id: 'u1', lote: null, cantidad: 4, motivo: 'dano', descripcion: 'Caja mojada por goteras; discos estrellados', foto: null, responsable_id: null, estatus: 'aprobada', respuesta: 'Reportar gotera a mantenimiento', solicitado_por: 'u-3', solicitante: 'Luis Adrián Avilés', resuelto_por: 'u-demo', resuelto_at: hace(15), created_at: hace(15.2) },
+    { id: 'me2', folio: 'MER-00002', consumible_id: 'cs9', empresa_id: 'e1', ubicacion_id: 'u1', lote: 'RE-2408', cantidad: 2, motivo: 'caducidad', descripcion: 'Cartuchos endurecidos antes de la fecha', foto: null, responsable_id: null, estatus: 'pendiente', respuesta: null, solicitado_por: 'u-3', solicitante: 'Luis Adrián Avilés', resuelto_por: null, resuelto_at: null, created_at: hace(0.2) },
+    { id: 'me3', folio: 'MER-00003', consumible_id: 'cs3', empresa_id: 'e2', ubicacion_id: 'u5', lote: null, cantidad: 6, motivo: 'extravio', descripcion: 'No aparecen en el conteo semanal', foto: null, responsable_id: 'em5', estatus: 'pendiente', respuesta: null, solicitado_por: 'u-3', solicitante: 'Luis Adrián Avilés', resuelto_por: null, resuelto_at: null, created_at: hace(1) },
+  ]
+  const moRetro = (activos.find(a => a.id === 'a3') as Row).modelo_id
+  const piezas_criticas = [
+    { id: 'pc1', modelo_id: moRetro, activo_id: null, consumible_id: 'cs10', cantidad_minima: 3, notas: null, created_at: hace(30) },
+    { id: 'pc2', modelo_id: moRetro, activo_id: null, consumible_id: 'cs11', cantidad_minima: 4, notas: null, created_at: hace(30) },
+  ]
+  const conteos_ciclicos = (activos as Row[]).filter(a => a.estatus !== 'baja').slice(0, 14).map((a, i) => ({
+    id: uid(), activo_id: a.id, empresa_id: a.empresa_id, ubicacion_esperada_id: a.ubicacion_id, encontrado: i !== 5, ubicacion_ok: i === 9 ? false : i === 5 ? null : true,
+    metodo: i % 3 === 0 ? 'rfid' : i % 3 === 1 ? 'qr' : 'manual', notas: null, contado_por: 'u-demo', created_at: hace(i < 6 ? 40 - i * 3 : 100 + i * 4) }))
+
   const perfiles = [
     { id: 'u-demo', nombre: 'Oscar Cota', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60) },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
-    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
+    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
   return { db, urls }
 }
 
@@ -376,7 +423,34 @@ function vista(db: DB, t: string): Row[] {
       marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: byId(db, 'modelos', a.modelo_id)?.nombre ?? null,
       ubicacion: u?.nombre ?? null, ubicacion_tipo: u?.tipo ?? null, responsable: nombre(byId(db, 'empleados', a.responsable_id)) || null,
       placa: db.activo_vehiculo.find(v => v.activo_id === a.id)?.placa ?? null,
-      modelo_foto: byId(db, 'modelos', a.modelo_id)?.foto_path ?? null, responsable_puesto: byId(db, 'empleados', a.responsable_id)?.puesto ?? null }
+      modelo_foto: byId(db, 'modelos', a.modelo_id)?.foto_path ?? null, responsable_puesto: byId(db, 'empleados', a.responsable_id)?.puesto ?? null,
+      posicion: byId(db, 'posiciones', a.posicion_id)?.codigo ?? null, clase_abc: c?.clase_abc ?? 'C' }
+  })
+  if (t === 'v_lotes') {
+    const m = new Map<string, Row>()
+    for (const x of db.movimientos_consumible) {
+      if (x.lote == null && x.caducidad == null) continue
+      const c = byId(db, 'consumibles', x.consumible_id); if (!c || !c.activo) continue
+      const k = `${x.consumible_id}|${x.empresa_id}|${x.ubicacion_id ?? ''}|${x.lote ?? ''}`
+      const e = byId(db, 'empresas', x.empresa_id)
+      const r = m.get(k) ?? { consumible_id: c.id, nombre: c.nombre, unidad: c.unidad, empresa_id: x.empresa_id, empresa: e?.nombre_corto ?? e?.nombre, ubicacion_id: x.ubicacion_id ?? null,
+        ubicacion: byId(db, 'ubicaciones', x.ubicacion_id)?.nombre ?? null, lote: x.lote ?? null, caducidad: null, existencia: 0 }
+      r.existencia = Number(r.existencia) + (x.tipo === 'salida' ? -Number(x.cantidad) : Number(x.cantidad))
+      if (x.caducidad && (!r.caducidad || String(x.caducidad) > String(r.caducidad))) r.caducidad = x.caducidad
+      m.set(k, r)
+    }
+    return [...m.values()].filter(r => Number(r.existencia) !== 0)
+  }
+  if (t === 'v_conteo_ciclico') return db.activos.filter(a => a.estatus !== 'baja').map(a => {
+    const c = byId(db, 'categorias', a.categoria_id), e = byId(db, 'empresas', a.empresa_id), mo = byId(db, 'modelos', a.modelo_id)
+    const fechas = [...db.conteos_ciclicos.filter(x => x.activo_id === a.id).map(x => String(x.created_at)), ...db.inventario_lecturas.filter(x => x.activo_id === a.id).map(x => String(x.created_at))].sort()
+    const ultimo = fechas.at(-1) ?? null
+    const cada = c?.clase_abc === 'A' ? 30 : c?.clase_abc === 'B' ? 90 : 180
+    const proximo = new Date(new Date(String(ultimo ?? a.created_at ?? hace(400))).getTime() + cada * 864e5).toISOString().slice(0, 10)
+    return { activo_id: a.id, codigo: a.codigo, descripcion: a.descripcion, serie: a.serie, rfid_epc: a.rfid_epc, estatus: a.estatus, empresa_id: a.empresa_id, empresa: e?.nombre_corto ?? e?.nombre,
+      ubicacion_id: a.ubicacion_id, ubicacion: byId(db, 'ubicaciones', a.ubicacion_id)?.nombre ?? null, posicion: byId(db, 'posiciones', a.posicion_id)?.codigo ?? null,
+      categoria: c?.nombre, clase_abc: c?.clase_abc ?? 'C', cada_dias: cada, ultimo, proximo, marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: mo?.nombre ?? null,
+      modelo_foto: mo?.foto_path ?? null, foto_principal: a.foto_principal, responsable: nombre(byId(db, 'empleados', a.responsable_id)), qr: a.qr, numero_economico: a.numero_economico }
   })
   if (t === 'v_movimientos') return db.movimientos.map(m => ({ ...m, empresa: byId(db, 'empresas', m.empresa_id)?.nombre,
     a_empleado: nombre(byId(db, 'empleados', m.a_empleado_id)), a_ubicacion: byId(db, 'ubicaciones', m.a_ubicacion_id)?.nombre ?? null,
@@ -454,9 +528,9 @@ function vista(db: DB, t: string): Row[] {
 // ───────── select con relaciones (subconjunto de PostgREST) ─────────
 const FK: Record<string, string> = { empresa_id: 'empresas', departamento_id: 'departamentos', marca_id: 'marcas', modelo_id: 'modelos', activo_id: 'activos',
   movimiento_id: 'movimientos', responsable_id: 'empleados', padre_id: 'categorias', a_empleado_id: 'empleados', a_ubicacion_id: 'ubicaciones',
-  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla' }
+  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla', ot_id: 'ordenes_trabajo', vale_id: 'vales_salida', merma_id: 'mermas', posicion_id: 'posiciones', ubicacion_esperada_id: 'ubicaciones' }
 const TABLA_FK: Record<string, string> = { empresas: 'empresa_id', departamentos: 'departamento_id', marcas: 'marca_id', modelos: 'modelo_id', activos: 'activo_id',
-  movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id' }
+  movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id', posiciones: 'posicion_id', ordenes_trabajo: 'ot_id', vales_salida: 'vale_id' }
 
 function partes(s: string) {
   const out: string[] = []; let d = 0, cur = ''
@@ -543,11 +617,15 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'inmuebles') { base.codigo ??= 'INM-' + String(db.inmuebles.length + 1).padStart(4, '0'); base.activo ??= true; base.servicios ??= []; base.updated_at = base.created_at }
   if (t === 'consumibles') { base.minimo ??= 0; base.unidad ??= 'pieza' }
   if (t === 'solicitudes') { base.folio ??= 'SOL-' + String(db.solicitudes.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente'; base.created_by ??= 'u-demo' }
-  if (t === 'movimientos_consumible') { base.created_by ??= 'u-demo' }
+  if (t === 'movimientos_consumible') { base.created_by ??= 'u-demo'; base.lote ??= null; base.caducidad ??= null; base.ot_id ??= null; base.vale_id ??= null; base.merma_id ??= null }
+  if (t === 'mermas') { base.folio ??= 'MER-' + String(db.mermas.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente'; base.solicitado_por ??= 'u-demo'; base.respuesta ??= null; base.resuelto_at ??= null }
+  if (t === 'posiciones') { base.activo ??= true; base.descripcion ??= null }
+  if (t === 'conteos_ciclicos') { base.contado_por ??= 'u-demo' }
   if (t === 'inventarios') { base.folio ??= 'INV-' + String(db.inventarios.length + 1).padStart(4, '0'); base.estatus ??= 'abierto'; base.resumen ??= null }
   if (t === 'activos') {
     folioAct = Math.max(folioAct, db.activos.length)
     base.codigo ??= 'ACT-' + String(++folioAct).padStart(6, '0'); base.qr ??= uid(); base.estatus ??= 'disponible'
+    base.rfid_epc ??= '47464D' + Number((String(base.codigo).match(/\d+/) ?? ['0'])[0]).toString(16).toUpperCase().padStart(18, '0'); base.posicion_id ??= null
     base.fecha_alta ??= hoy; base.updated_at = base.created_at
   }
   return base
@@ -732,8 +810,18 @@ export function instalarDemo(base: string) {
       }
       if (v.estatus === 'recibido') return err('La llegada ya se registró')
       Object.assign(v, { estatus: 'recibido', recibido_at: ahora, recibido_por: body.p_nombre, salida_at: v.salida_at ?? ahora })
-      for (const a of db.activos) if ((v.activos as string[]).includes(a.id as string) && a.empresa_id === v.empresa_id && a.estatus !== 'baja') a.ubicacion_id = v.destino_id
+      for (const a of db.activos) if ((v.activos as string[]).includes(a.id as string) && a.empresa_id === v.empresa_id && a.estatus !== 'baja') { a.ubicacion_id = v.destino_id; a.posicion_id = null }
+      for (const it of (v.material as Row[]) ?? []) if (it.consumible_id && v.destino_id)
+        db.movimientos_consumible.push(defaults(db, 'movimientos_consumible', { consumible_id: it.consumible_id, empresa_id: v.empresa_id, ubicacion_id: v.destino_id, tipo: 'entrada', cantidad: Number(it.cantidad), lote: it.lote ?? null, vale_id: v.id, notas: 'Llegó con el vale ' + v.folio }))
       return json('Llegada registrada')
+    }
+    if (path.startsWith('/rest/v1/rpc/resolver_merma')) {
+      const m = db.mermas.find(x => x.id === body?.p_id)
+      if (!m) return json({ message: 'Merma no encontrada', code: 'P0001' }, 400)
+      if (m.estatus !== 'pendiente') return json({ message: 'La merma ya fue resuelta', code: 'P0001' }, 400)
+      Object.assign(m, { estatus: body.p_aprobar ? 'aprobada' : 'rechazada', respuesta: String(body.p_respuesta ?? '').trim() || null, resuelto_por: 'u-demo', resuelto_at: new Date().toISOString() })
+      if (body.p_aprobar) db.movimientos_consumible.push(defaults(db, 'movimientos_consumible', { consumible_id: m.consumible_id, empresa_id: m.empresa_id, ubicacion_id: m.ubicacion_id, tipo: 'ajuste', cantidad: -Number(m.cantidad), empleado_id: m.responsable_id ?? null, lote: m.lote ?? null, merma_id: m.id, notas: `Merma ${m.folio} · ${m.motivo}` }))
+      return json(m.folio)
     }
     if (path.startsWith('/functions/v1/leer-etiqueta')) {
       // En la vista previa no hay IA: simula dos lecturas típicas (una que está en el catálogo y otra que no).
@@ -773,6 +861,12 @@ export function instalarDemo(base: string) {
           const ex = db.activo_vehiculo.find(v => v.activo_id === r.activo_id)
           if (ex) { Object.assign(ex, r); hechos.push(ex); continue }
           db.activo_vehiculo.push({ ...r }); hechos.push(r); continue
+        }
+        const conflicto = params.get('on_conflict')
+        if (conflicto) {
+          const cols = conflicto.split(',')
+          const ex = (db[tabla] ?? []).find(x => cols.every(k => String(x[k]) === String(r[k])))
+          if (ex) { if (!prefer.includes('ignore-duplicates')) { Object.assign(ex, r); hechos.push(ex) } continue }
         }
         if (tabla === 'marcas' && db.marcas.some(m => String(m.nombre).toLowerCase() === String(r.nombre).toLowerCase()))
           return json({ message: 'duplicate key value violates unique constraint', code: '23505' }, 409)

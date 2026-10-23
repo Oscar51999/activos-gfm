@@ -5,6 +5,7 @@ import { supabase, mensajeError, type Estatus } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fotoProducto } from '../lib/logos'
 import { useLista } from '../lib/hooks'
+import { RefaccionesOT } from '../components/Refacciones'
 import { ESTATUS_OT, DISPARO, type EstatusOT, type Disparo } from '../lib/mantenimiento'
 import { Cargando, Vacio, Modal, Campo, Aviso, EstatusBadge } from '../components/ui'
 import FotoActivo from '../components/FotoActivo'
@@ -370,6 +371,7 @@ export function OrdenTrabajo() {
               <input ref={campo === 'fotos_antes' ? inAntes : inDesp} type="file" accept="image/*" hidden onChange={e => agregarFoto(campo, e.target.files?.[0])} />
             </section>
           ))}
+          <RefaccionesOT otId={o.id} folio={o.folio} empresaId={o.empresa_id} abierta={o.estatus !== 'terminada' && o.estatus !== 'cancelada'} />
           {o.estatus === 'terminada' && (o.refacciones || o.notas_cierre || o.dano_id) && (
             <section className="tarjeta p-5"><h2 className="mb-2 font-semibold">Cierre</h2>
               {(o.dano_id || o.causa_id || o.accion_id) && <p className="mb-2 flex flex-wrap gap-1.5">{[o.dano_id, o.causa_id, o.accion_id].map((c, i) => { const x = codigos.find(k => k.id === c); return x ? <span key={i} className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-600"><span className="font-mono text-marca">{x.codigo as string}</span> {x.nombre}</span> : null })}</p>}

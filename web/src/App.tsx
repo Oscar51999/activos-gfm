@@ -39,6 +39,8 @@ import Inmuebles, { InmuebleDetalle } from './pages/Inmuebles'
 import Preguntar from './pages/Preguntar'
 import Confiabilidad from './pages/Confiabilidad'
 import Vales, { ValePublico } from './pages/Vales'
+import Posiciones from './pages/Posiciones'
+import ConteoCiclico from './pages/ConteoCiclico'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -144,6 +146,8 @@ function Rutas() {
         <Route path="preguntar" element={<Preguntar />} />
         <Route path="confiabilidad" element={<Confiabilidad />} />
         <Route path="vales" element={<Vales />} />
+        <Route path="posiciones" element={<Posiciones />} />
+        <Route path="conteo-ciclico" element={<ConteoCiclico />} />
         <Route path="codigos-falla" element={<CodigosFalla />} />
         <Route path="requisitos" element={<RequisitosOperacion />} />
         <Route path="inmuebles/:id" element={<InmuebleDetalle />} />
