@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { procesarLogo, type EmpresaLogo } from '../lib/logos'
 import { Cargando, Modal, Campo, Aviso, EstatusBadge, Vacio } from '../components/ui'
 import LogoEmpresa from '../components/LogoEmpresa'
+import MapaMexico from '../components/MapaMexico'
 import FotoActivo from '../components/FotoActivo'
 import { ListaEmpleados, Avatar } from '../components/Empleados'
 import { TipoBadge } from './Movimientos'
@@ -102,6 +103,7 @@ export default function Empresas() {
           </div>
         ))}
       </div>
+      <div className="mt-8"><MapaMexico /></div>
       <EmpresaModal abierto={modal} onCerrar={() => setModal(false)} onGuardado={() => { setModal(false); cargar() }} />
     </div>
   )
@@ -306,6 +308,7 @@ export function EmpresaDetalle() {
           </div>
         )}
 
+        {tab === 'ubicaciones' && <div className="mb-5"><MapaMexico empresaId={id} /></div>}
         {tab === 'ubicaciones' && (
           ubis.length === 0 ? <div className="tarjeta"><Vacio titulo="Sin ubicaciones" texto="Da de alta obras, almacenes y oficinas en Organización → Ubicaciones." accion={<Link className="btn-sec" to="/ubicaciones">Ir a Ubicaciones</Link>} /></div> : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

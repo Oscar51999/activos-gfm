@@ -104,6 +104,10 @@ Sistema propio de control de activos: registro con QR, ubicación y responsable,
   - `incidente-externo` (POST JSON `{activo, descripcion, prioridad, tipo, ticket, reporta_nombre}`): la mesa de ayuda crea un reporte de falla; si el mismo ticket llega dos veces no lo duplica.
   - `movimientos-export` (GET `?tipo=almacen|resguardos|vales&desde=AAAA-MM-DD&hasta=AAAA-MM-DD&empresa=&formato=json|csv`): movimientos para otro sistema, solo cantidades y lugares, sin importes.
 
+## Mapa de la República
+
+- En **Empresas** (y en la pestaña Ubicaciones de cada empresa) aparece el mapa de México con los 32 estados (`web/src/lib/mapaMexico.ts`, contornos de Natural Earth). Los estados con obra se iluminan; al tocar uno se acerca a sus obras y al tocar una obra se ve su equipo y fallas abiertas. Con “Marcar obra” se da de alta una obra nueva o se ubica una existente tocando el mapa (o pegando el enlace de Google Maps).
+
 ## Correr en local
 
 ```bash
