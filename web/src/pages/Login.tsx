@@ -64,7 +64,7 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="text-[11px] uppercase tracking-[.2em] text-stone-400">Departamento de TI · Grupo Empresarial Firme</p>
+        <p className="text-[11px] uppercase tracking-[.2em] text-stone-400">Departamento de TICS · Grupo Empresarial Firme</p>
       </div>
 
       <div className="relative flex items-center justify-center p-6">

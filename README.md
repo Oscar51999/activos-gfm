@@ -108,6 +108,12 @@ Sistema propio de control de activos: registro con QR, ubicación y responsable,
 
 - En **Empresas** (y en la pestaña Ubicaciones de cada empresa) aparece el mapa de México con los 32 estados (`web/src/lib/mapaMexico.ts`, contornos de Natural Earth). Los estados con obra se iluminan; al tocar uno se acerca a sus obras y al tocar una obra se ve su equipo y fallas abiertas. Con “Marcar obra” se da de alta una obra nueva o se ubica una existente tocando el mapa (o pegando el enlace de Google Maps).
 
+## Empresas, buscador y desasignar
+
+- Las empresas son las mismas 7 de los formularios del grupo (Grupo Firme de México, CISA, Vanguardia, MUPO, Inmobiliaria Atardecer de La Paz, Punta Cortez y Santa Cruz Fid). “Grupo Empresarial Firme” es el grupo, no una empresa elegible (quedó inactiva).
+- **Buscador** (`components/BuscadorEmpresa.tsx`) en Empresas (eliges la empresa o todas) y dentro de cada empresa: activos, empleados, productos, marcas, obras, almacén, inmuebles y documentos; sin importar acentos.
+- **Desasignar** (`components/Desasignar.tsx`): en la lista de empleados “Ver lo asignado” despliega todo lo que trae cada persona; se desasigna uno, varios o todo. Registra una devolución con folio (función `registrar_movimiento`) y el equipo queda disponible en el lugar elegido.
+
 ## Correr en local
 
 ```bash

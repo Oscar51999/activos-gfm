@@ -7,6 +7,7 @@ import { procesarLogo, type EmpresaLogo } from '../lib/logos'
 import { Cargando, Modal, Campo, Aviso, EstatusBadge, Vacio } from '../components/ui'
 import LogoEmpresa from '../components/LogoEmpresa'
 import MapaMexico from '../components/MapaMexico'
+import BuscadorEmpresa from '../components/BuscadorEmpresa'
 import FotoActivo from '../components/FotoActivo'
 import { ListaEmpleados, Avatar } from '../components/Empleados'
 import { TipoBadge } from './Movimientos'
@@ -37,7 +38,6 @@ export default function Empresas() {
   const [emps, setEmps] = useState<{ id: string; empresa_id: string }[]>([])
   const [pend, setPend] = useState<{ empresa_id: string }[]>([])
   const [modal, setModal] = useState(false)
-  const [q, setQ] = useState('')
 
   const cargar = () => {
     supabase.from('empresas').select('*').eq('activo', true).order('nombre').then(({ data }) => setEmpresas((data as Empresa[]) ?? []))
@@ -54,8 +54,7 @@ export default function Empresas() {
   }).sort((x, y) => y.activos - x.activos), [empresas, acts, emps, pend])
 
   if (!empresas) return <Cargando />
-  const t = q.trim().toLowerCase()
-  const vis = datos.filter(d => !t || [d.e.nombre, d.e.nombre_corto, d.e.razon_social].some(x => x?.toLowerCase().includes(t)))
+  const vis = datos
   const tot = { activos: datos.reduce((s, d) => s + d.activos, 0), empleados: emps.length, asignados: datos.reduce((s, d) => s + d.asignados, 0) }
 
   return (
@@ -67,10 +66,11 @@ export default function Empresas() {
           <p className="mt-1 text-sm text-stone-500">{empresas.length} empresas · {tot.activos} activos · {tot.empleados} empleados · {tot.asignados} activos asignados</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <div className="relative"><Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo w-56 pl-10" placeholder="Buscar empresa…" value={q} onChange={e => setQ(e.target.value)} /></div>
           {esAdmin && <button className="btn-sec" onClick={() => setModal(true)}><Plus size={16} />Nueva empresa</button>}
         </div>
       </div>
+
+      <div className="mb-6"><BuscadorEmpresa /></div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {vis.map(({ e, a, activos, asignados, empleados, sinFirma }, i) => (
@@ -225,6 +225,8 @@ export function EmpresaDetalle() {
           </div>
         </div>
       </header>
+
+      <div className="mb-6"><BuscadorEmpresa empresaId={e.id} /></div>
 
       <nav className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-stone-200 bg-stone-50 p-1">
         {TABS.map(([kk, txt]) => (

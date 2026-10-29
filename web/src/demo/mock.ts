@@ -44,8 +44,7 @@ export function crearDatos() {
     E('e3', 'Control de Ingeniería y Servicios Añadidos', 'CISA', '#5B9BD5', 'app:cisa'),
     E('e4', 'Comercializadora Mupo', 'MUPO', '#8DC63F', 'app:mupo'),
     E('e5', 'Proyectos y Desarrollos Punta Cortez', 'Punta Cortez', '#FBBA16', 'app:punta-cortez'),
-    E('e6', 'Grupo Santa Cruz Desarrollos', 'Santa Cruz', '#C2552B', 'app:santacruz'),
-    E('e7', 'Grupo Empresarial Firme', 'Grupo Firme', '#F9B234', 'app:grupo-firme'),
+    E('e6', 'Santa Cruz Fid', 'Santa Cruz Fid', '#C2552B', 'app:santacruz'),
     E('e8', 'Inmobiliaria Atardecer de La Paz', 'Atardecer', '#F28C38', null),
   ]
   const categorias = [
@@ -79,7 +78,7 @@ export function crearDatos() {
   const MOD = (id: string) => modelos.find(m => m.id === id)!
   const D = (id: string, e: string, nombre: string) => ({ id, empresa_id: e, nombre, activo: true })
   const departamentos = [D('d1', 'e1', 'Obra'), D('d2', 'e1', 'Administración'), D('d3', 'e1', 'Topografía'), D('d4', 'e2', 'Maquinaria'), D('d5', 'e2', 'Obra'),
-    D('d6', 'e3', 'Topografía'), D('d7', 'e4', 'Ventas'), D('d8', 'e5', 'Obra'), D('d9', 'e7', 'Tecnologías de la información'), D('d10', 'e6', 'Proyectos')]
+    D('d6', 'e3', 'Topografía'), D('d7', 'e4', 'Ventas'), D('d8', 'e5', 'Obra'), D('d9', 'e1', 'Tecnologías de la información'), D('d10', 'e6', 'Proyectos')]
   const Emp = (id: string, e: string, n: string, a: string, puesto: string, d: string | null = null) => ({ id, empresa_id: e, nombres: n, apellidos: a, puesto, departamento_id: d, codigo: id.replace('em', '10').toUpperCase(), email: `${n.split(' ')[0].toLowerCase()}.${a.split(' ')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}@grupofirme.mx`, telefono: null, activo: true })
   const empleados = [
     Emp('em1', 'e1', 'Janani', 'Aguilar Patrón', 'Residente de obra', 'd1'), Emp('em2', 'e1', 'Luis Adrián', 'Avilés Cota', 'Jefe de obra', 'd1'),
@@ -88,7 +87,7 @@ export function crearDatos() {
     Emp('em7', 'e2', 'José Manuel', 'Higuera', 'Operador de maquinaria', 'd4'), Emp('em8', 'e3', 'Daniela', 'Castro Amador', 'Jefa de topografía', 'd6'),
     Emp('em9', 'e3', 'Héctor', 'Geraldo', 'Cadenero', 'd6'), Emp('em10', 'e4', 'Paola', 'Meza', 'Ejecutiva de ventas', 'd7'),
     Emp('em11', 'e5', 'Arturo', 'Lucero', 'Residente de obra', 'd8'), Emp('em12', 'e5', 'Sofía', 'Green', 'Supervisora de obra', 'd8'),
-    Emp('em13', 'e7', 'Oscar', 'Cota Pérez', 'Jefe de TI', 'd9'), Emp('em14', 'e6', 'Ricardo', 'Osuna', 'Gerente de proyectos', 'd10'),
+    Emp('em13', 'e1', 'Oscar', 'Cota Pérez', 'Jefe de TI', 'd9'), Emp('em14', 'e6', 'Ricardo', 'Osuna', 'Gerente de proyectos', 'd10'),
   ]
   const U = (id: string, e: string, nombre: string, tipo: string, codigo: string, resp: string | null = null) => ({ id, empresa_id: e, nombre, tipo, codigo, responsable_id: resp, direccion: 'La Paz, B.C.S.', activo: true, sucursal_id: null, latitud: null, longitud: null })
   const ubicaciones = [
@@ -96,7 +95,7 @@ export function crearDatos() {
     U('u3', 'e1', 'GF-212 Montaje Mov. Tierra', 'obra', 'GF-212', 'em2'), U('u4', 'e1', 'Oficina corporativa', 'oficina', 'OF-01'),
     U('u5', 'e2', 'Patio de maquinaria El Centenario', 'patio', 'PAT-01'), U('u6', 'e2', 'VG-069 Caseta vigilancia', 'obra', 'VG-069', 'em6'),
     U('u7', 'e3', 'Oficina CISA', 'oficina', 'CI-01', 'em8'), U('u8', 'e4', 'Bodega MUPO', 'almacen', 'MU-01', 'em10'),
-    U('u9', 'e5', 'PC-03 Fraccionamiento Punta Cortez', 'obra', 'PC-03', 'em11'), U('u10', 'e7', 'Corporativo Grupo Firme', 'oficina', 'GF-HQ', 'em13'),
+    U('u9', 'e5', 'PC-03 Fraccionamiento Punta Cortez', 'obra', 'PC-03', 'em11'), U('u10', 'e1', 'Corporativo Grupo Firme', 'oficina', 'GF-HQ', 'em13'),
     U('u11', 'e6', 'Desarrollo Santa Cruz Etapa 1', 'obra', 'SC-01', 'em14'),
   ]
   const COORD: Record<string, [number, number]> = { u1: [24.1236, -110.3045], u2: [24.158, -110.329], u3: [24.0905, -110.356], u4: [24.143, -110.3115], u5: [24.104, -110.413],
@@ -140,9 +139,9 @@ export function crearDatos() {
     A({ mo: 'mo13', e: 'e5', s: 'DW771-0091', u: 'u9', r: 'em12', est: 'asignado', v: 3900 }),
     A({ mo: 'mo12', e: 'e5', s: 'H700-01', u: 'u9', est: 'disponible', v: 450 }),
     A({ mo: 'mo12', e: 'e5', s: 'H700-02', u: 'u9', est: 'disponible', v: 450 }),
-    A({ mo: 'mo4', e: 'e7', s: 'PF4GF-TI01', u: 'u10', r: 'em13', est: 'asignado', v: 25900 }),
-    A({ mo: 'mo10', e: 'e7', s: 'R5CX10TI1', u: 'u10', r: 'em13', est: 'asignado', v: 8900 }),
-    A({ mo: 'mo11', e: 'e7', s: 'PHBQ998877', u: 'u10', est: 'disponible', v: 11200 }),
+    A({ mo: 'mo4', e: 'e1', s: 'PF4GF-TI01', u: 'u10', r: 'em13', est: 'asignado', v: 25900 }),
+    A({ mo: 'mo10', e: 'e1', s: 'R5CX10TI1', u: 'u10', r: 'em13', est: 'asignado', v: 8900 }),
+    A({ mo: 'mo11', e: 'e1', s: 'PHBQ998877', u: 'u10', est: 'disponible', v: 11200 }),
     A({ mo: 'mo4', e: 'e6', s: 'PF4SC0001', u: 'u11', r: 'em14', est: 'asignado', v: 23900 }),
     A({ mo: 'mo8', e: 'e2', s: 'MK-GA4530-77', u: 'u5', est: 'siniestrado', v: 2400 }),
     A({ mo: 'mo14', e: 'e2', s: 'H65-22018', u: 'u6', est: 'asignado', r: 'em5', v: 0 }),
@@ -304,7 +303,7 @@ export function crearDatos() {
     servicios: [], colindancias: null, observaciones: null, foto: null, latitud: null, longitud: null, ubicacion_id: null, activo: true, created_at: hace(200), updated_at: hace(20), ...o })
   const foto = (cielo: string, cuerpo: string, techo: string) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220"><defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cielo}"/><stop offset="1" stop-color="#0b0d11"/></linearGradient></defs><rect width="400" height="220" fill="url(#c)"/><rect y="170" width="400" height="50" fill="#1c1a17"/><rect x="70" y="80" width="260" height="95" fill="${cuerpo}"/><path d="M60 82l140-45 140 45z" fill="${techo}"/>${Array.from({ length: 5 }, (_, i) => `<rect x="${92 + i * 46}" y="105" width="26" height="30" fill="#0b0d11" opacity=".55"/>`).join('')}<rect x="180" y="140" width="40" height="35" fill="#0b0d11" opacity=".7"/></svg>`)
   const inmuebles = [
-    IN('in1', 'INM-0001', 'e7', 'Corporativo Grupo Firme', 'oficina', { propietario: 'Grupo Empresarial Firme SA de CV', clave_catastral: '101-001-045-012', superficie_terreno: 850, superficie_construccion: 1240, calle: 'Blvd. Forjadores', numero_ext: '1520', colonia: 'Fovissste', cp: '23080', situacion: 'oficina', servicios: ['agua', 'luz', 'drenaje', 'internet', 'pavimento'], latitud: 24.1475, longitud: -110.306, ubicacion_id: 'u10', foto: foto('#1e3a5f', '#d6d3d1', '#78716c') }),
+    IN('in1', 'INM-0001', 'e1', 'Corporativo Grupo Firme', 'oficina', { propietario: 'Grupo Firme de México SA de CV', clave_catastral: '101-001-045-012', superficie_terreno: 850, superficie_construccion: 1240, calle: 'Blvd. Forjadores', numero_ext: '1520', colonia: 'Fovissste', cp: '23080', situacion: 'oficina', servicios: ['agua', 'luz', 'drenaje', 'internet', 'pavimento'], latitud: 24.1475, longitud: -110.306, ubicacion_id: 'u10', foto: foto('#1e3a5f', '#d6d3d1', '#78716c') }),
     IN('in2', 'INM-0002', 'e2', 'Patio de maquinaria El Centenario', 'patio', { propietario: 'Construcciones y Terracerías Vanguardia SA de CV', clave_catastral: '104-020-118-001', superficie_terreno: 12500, superficie_construccion: 320, calle: 'Carretera Transpeninsular', numero_ext: 'km 12', colonia: 'El Centenario', clasificacion: 'suburbana', situacion: 'empresa_socios', servicios: ['agua', 'luz'], latitud: 24.104, longitud: -110.413, ubicacion_id: 'u5', colindancias: 'Norte: 125 m con carretera\nSur: 125 m con parcela 44\nOriente: 100 m con camino vecinal\nPoniente: 100 m con parcela 46', foto: foto('#5b3a1a', '#a8a29e', '#57534e') }),
     IN('in3', 'INM-0003', 'e1', 'Bodega Almacén central', 'bodega', { propietario: 'Grupo Firme de México SA de CV', superficie_terreno: 1200, superficie_construccion: 900, calle: 'Calle Ignacio Ramírez', numero_ext: '340', colonia: 'Centro', situacion: 'empresa_socios', servicios: ['agua', 'luz', 'drenaje', 'internet'], latitud: 24.1236, longitud: -110.3045, ubicacion_id: 'u1', foto: foto('#3f2a14', '#e7e5e4', '#a8a29e') }),
     IN('in4', 'INM-0004', 'e5', 'Terreno Punta Cortez lote 18', 'terreno', { propietario: 'Proyectos y Desarrollos Punta Cortez SA de CV', clave_catastral: '108-055-018-000', superficie_terreno: 4800, manzana: '7', lote: '18', colonia: 'Fracc. Punta Cortez', situacion: 'reserva', clasificacion: 'suburbana', latitud: 24.21, longitud: -110.31 }),
@@ -312,10 +311,10 @@ export function crearDatos() {
   ]
   const DI = (id: string, i: string, e: string, tipo: string, venceEn: number | null, o: Row = {}) => ({ ...D2(id, e, tipo, venceEn, {}), inmueble_id: i, subtipo: null, ...o })
   ;(documentos as Row[]).push(
-    DI('di1', 'in1', 'e7', 'escritura', null, { numero: '22,971', emisor: 'Notaría 11 La Paz' }), DI('di2', 'in1', 'e7', 'registro_publico', null, { numero: 'Folio real 45812' }),
-    DI('di3', 'in1', 'e7', 'predial', 88, { numero: '101-001-045-012', emisor: 'Ayuntamiento de La Paz' }), DI('di4', 'in1', 'e7', 'uso_suelo', 140, { emisor: 'Desarrollo Urbano La Paz' }),
-    DI('di5', 'in1', 'e7', 'pc_dictamen', 20, { emisor: 'Protección Civil Municipal' }), DI('di6', 'in1', 'e7', 'poliza_seguro', 210, { numero: 'GNP-INM-9921', emisor: 'GNP Seguros', subtipo: 'Daños al inmueble' }),
-    DI('di7', 'in1', 'e7', 'fumigacion', -4, { emisor: 'Control de Plagas del Pacífico' }), DI('di8', 'in1', 'e7', 'plano', null, { subtipo: 'Arquitectónico' }),
+    DI('di1', 'in1', 'e1', 'escritura', null, { numero: '22,971', emisor: 'Notaría 11 La Paz' }), DI('di2', 'in1', 'e1', 'registro_publico', null, { numero: 'Folio real 45812' }),
+    DI('di3', 'in1', 'e1', 'predial', 88, { numero: '101-001-045-012', emisor: 'Ayuntamiento de La Paz' }), DI('di4', 'in1', 'e1', 'uso_suelo', 140, { emisor: 'Desarrollo Urbano La Paz' }),
+    DI('di5', 'in1', 'e1', 'pc_dictamen', 20, { emisor: 'Protección Civil Municipal' }), DI('di6', 'in1', 'e1', 'poliza_seguro', 210, { numero: 'GNP-INM-9921', emisor: 'GNP Seguros', subtipo: 'Daños al inmueble' }),
+    DI('di7', 'in1', 'e1', 'fumigacion', -4, { emisor: 'Control de Plagas del Pacífico' }), DI('di8', 'in1', 'e1', 'plano', null, { subtipo: 'Arquitectónico' }),
     DI('di9', 'in2', 'e2', 'escritura', null, { numero: '8,114', emisor: 'Notaría 3 La Paz' }), DI('di10', 'in2', 'e2', 'predial', -12, { emisor: 'Ayuntamiento de La Paz' }),
     DI('di11', 'in2', 'e2', 'uso_suelo', 60, { emisor: 'Desarrollo Urbano La Paz' }), DI('di12', 'in3', 'e1', 'escritura', null, {}), DI('di13', 'in3', 'e1', 'registro_publico', null, {}),
     DI('di14', 'in3', 'e1', 'predial', 88, {}), DI('di15', 'in3', 'e1', 'pc_dictamen', 9, { emisor: 'Protección Civil Municipal' }), DI('di16', 'in3', 'e1', 'pipc', 160, {}),

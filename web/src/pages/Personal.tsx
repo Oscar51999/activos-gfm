@@ -14,6 +14,7 @@ import { DocumentosPanel } from '../components/Documentos'
 import { EntregasEmpleado } from './Almacen'
 import { PedirConfirmacion } from './Confirmaciones'
 import { Modal, Campo, Aviso } from '../components/ui'
+import { DesasignarModal, type ActAsignado } from '../components/Desasignar'
 import type { EmpresaLogo } from '../lib/logos'
 
 /** Directorio de todo el personal del grupo. */
@@ -29,8 +30,7 @@ export default function Personal() {
   )
 }
 
-type Act = { id: string; codigo: string; descripcion: string; serie: string | null; numero_economico: string | null; estatus: Estatus; categoria: string
-  marca: string | null; modelo: string | null; ubicacion: string | null; foto_principal: string | null; modelo_foto: string | null; updated_at: string }
+type Act = ActAsignado & { estatus: Estatus; categoria: string; updated_at: string }
 type Mov = { id: string; folio: string; tipo: TipoMov; fecha: string; num_activos: number; firmado: boolean; a_ubicacion: string | null; a_empleado_id: string | null }
 
 /** Ficha del empleado: sus datos, todo lo que tiene asignado y su historial de resguardos. */
@@ -46,6 +46,8 @@ export function EmpleadoDetalle() {
   const [baja, setBaja] = useState(false)
   const [fb, setFb] = useState({ fecha: new Date().toISOString().slice(0, 10), motivo: '', forzar: false })
   const [errBaja, setErrBaja] = useState('')
+  const [quitar, setQuitar] = useState<Act[] | null>(null)
+  const [marcados, setMarcados] = useState<Set<string>>(new Set())
   const { esAdmin } = useAuth()
   const nav = useNavigate()
   async function darDeBaja() {
@@ -93,7 +95,7 @@ export function EmpleadoDetalle() {
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               {puedeResguardar && <Link to={`/resguardos/nuevo?tipo=asignacion&empresa=${e.empresa_id}&empleado=${e.id}`} className="btn-primario"><ClipboardSignature size={16} />Asignar activos</Link>}
-              {puedeResguardar && acts.length > 0 && <Link to={`/resguardos/nuevo?tipo=devolucion&activos=${acts.map(a => a.id).join(',')}`} className="btn-sec"><Undo2 size={16} />Devolver todo</Link>}
+              {puedeResguardar && acts.length > 0 && <button className="btn-sec" onClick={() => setQuitar(acts)}><Undo2 size={16} />Desasignar todo</button>}
               {acts.length > 0 && <Link to={`/empleados/${e.id}/resguardo`} className="btn-sec"><Printer size={16} />Resguardo vigente</Link>}
               {puedeResguardar && <Link to={`/kits?empleado=${e.id}`} className="btn-sec"><Package size={16} />Entregar kit</Link>}
               {puedeResguardar && acts.length > 0 && <button className="btn-sec" onClick={() => setConfirmar(true)}><ShieldCheck size={16} />Pedir confirmación</button>}
@@ -112,7 +114,13 @@ export function EmpleadoDetalle() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
         <section className="min-w-0">
-          <h2 className="mb-3 text-sm font-semibold">Lo que tiene asignado</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold">Lo que tiene asignado</h2>
+            {puedeResguardar && marcados.size > 0 && <div className="flex gap-2">
+              <button className="btn-sec !py-1.5 text-xs" onClick={() => setMarcados(new Set())}>Quitar selección</button>
+              <button className="btn-primario !py-1.5 text-xs" onClick={() => setQuitar(acts.filter(a => marcados.has(a.id)))}><Undo2 size={14} />Desasignar {marcados.size}</button>
+            </div>}
+          </div>
           {acts.length === 0 ? <div className="tarjeta"><Vacio titulo="Sin activos a su cargo" texto="Cuando le asignes algo, aparecerá aquí con su foto."
             accion={puedeResguardar && <Link to={`/resguardos/nuevo?tipo=asignacion&empresa=${e.empresa_id}&empleado=${e.id}`} className="btn-primario"><ClipboardSignature size={16} />Asignar activos</Link>} /></div> : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,7 +128,10 @@ export function EmpleadoDetalle() {
                 <div key={a.id} className="tarjeta viva group min-w-0 animate-entrar overflow-hidden" style={{ animationDelay: `${i * 40}ms` }}>
                   <Link to={`/activos/${a.id}`} className="block">
                     <div className="relative"><FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} className="aspect-[16/10] w-full" icono={36} />
-                      <span className="absolute left-2 top-2"><EstatusBadge estatus={a.estatus} /></span></div>
+                      <span className="absolute left-2 top-2"><EstatusBadge estatus={a.estatus} /></span>
+                      {puedeResguardar && a.estatus === 'asignado' && <label className="absolute right-2 top-2 grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-[#0E1015]/80" onClick={ev => ev.stopPropagation()}>
+                        <input type="checkbox" className="accent-[#F9B234]" aria-label={`Seleccionar ${a.codigo}`} checked={marcados.has(a.id)} onChange={() => setMarcados(m => { const x = new Set(m); if (x.has(a.id)) x.delete(a.id); else x.add(a.id); return x })} />
+                      </label>}</div>
                     <div className="p-4 pb-2">
                       <p className="font-mono text-[11px] text-marca">{a.codigo}</p>
                       <p className="truncate font-medium">{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</p>
@@ -130,7 +141,7 @@ export function EmpleadoDetalle() {
                     </div>
                   </Link>
                   {puedeResguardar && <div className="flex gap-1 px-3 pb-3">
-                    <Link to={`/resguardos/nuevo?tipo=devolucion&activos=${a.id}`} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs text-stone-500 hover:bg-stone-100 hover:text-tinta"><Undo2 size={13} />Devolver</Link>
+                    {a.estatus === 'asignado' && <button onClick={() => setQuitar([a])} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs text-stone-500 hover:bg-stone-100 hover:text-red-600"><Undo2 size={13} />Desasignar</button>}
                     <Link to={`/resguardos/nuevo?tipo=traspaso&activos=${a.id}`} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs text-stone-500 hover:bg-stone-100 hover:text-tinta"><ArrowLeftRight size={13} />Traspasar</Link>
                   </div>}
                 </div>
@@ -160,6 +171,7 @@ export function EmpleadoDetalle() {
           </div>
         </aside>
       </div>
+      {quitar && <DesasignarModal empleado={e} activos={quitar} onCerrar={() => setQuitar(null)} onListo={() => { setQuitar(null); setMarcados(new Set()); cargar() }} />}
       <PedirConfirmacion abierto={confirmar} empleadoId={e.id} onCerrar={() => setConfirmar(false)} onHecho={() => {}} />
       <Modal abierto={baja} onCerrar={() => setBaja(false)} titulo={`Dar de baja a ${e.nombres}`}>
         <div className="space-y-4">

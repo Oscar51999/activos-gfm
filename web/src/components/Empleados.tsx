@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, UserPlus, FileSpreadsheet, ClipboardSignature, ChevronRight, Check } from 'lucide-react'
+import { Search, UserPlus, FileSpreadsheet, ClipboardSignature, ChevronRight, ChevronDown, Check, Undo2 } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { nombreEmpleado } from '../lib/hooks'
 import { Modal, Campo, Aviso, Cargando, Vacio } from './ui'
 import FotoActivo from './FotoActivo'
+import { DesasignarModal, type ActAsignado } from './Desasignar'
 
 export type Empleado = { id: string; empresa_id: string; codigo: string | null; nombres: string; apellidos: string | null; puesto: string | null
   departamento_id: string | null; email: string | null; telefono: string | null; activo: boolean; departamentos?: { nombre: string } | null; empresas?: { nombre: string; nombre_corto?: string | null } | null }
-type ActMini = { id: string; responsable_id: string | null; foto_principal: string | null; modelo_foto: string | null; categoria: string; estatus: string }
+type ActMini = ActAsignado & { responsable_id: string | null }
 
 const PALETA = ['#F9B234', '#38BDF8', '#34D399', '#A78BFA', '#FB7185', '#F472B6', '#2DD4BF', '#FACC15']
 export function colorPersona(id: string) { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PALETA[h % PALETA.length] }
@@ -30,12 +31,15 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
   const [nuevo, setNuevo] = useState(false)
   const [importar, setImportar] = useState(false)
   const [n, setN] = useState(0)
+  const [abierto, setAbierto] = useState<Set<string>>(new Set())
+  const [marcados, setMarcados] = useState<Set<string>>(new Set())
+  const [quitar, setQuitar] = useState<{ e: Empleado; acts: ActMini[] } | null>(null)
 
   useEffect(() => {
     let a = supabase.from('empleados').select('*,departamentos(nombre),empresas(nombre,nombre_corto)').eq('activo', true).order('nombres')
     if (empresaId) a = a.eq('empresa_id', empresaId)
     a.then(({ data }) => setLista((data as unknown as Empleado[]) ?? []))
-    let b = supabase.from('v_activos').select('id,responsable_id,foto_principal,modelo_foto,categoria,estatus').neq('estatus', 'baja').limit(20000)
+    let b = supabase.from('v_activos').select('id,codigo,descripcion,marca,modelo,serie,numero_economico,estatus,empresa_id,ubicacion_id,ubicacion,responsable_id,foto_principal,modelo_foto,categoria').neq('estatus', 'baja').limit(20000)
     if (empresaId) b = b.eq('empresa_id', empresaId)
     b.then(({ data }) => setActs((data as ActMini[]) ?? []))
   }, [empresaId, n, recargarFuera])
@@ -50,7 +54,8 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
   if (!lista) return <Cargando />
   const t = q.trim().toLowerCase()
   const vis = lista.filter(e => (!depto || e.departamentos?.nombre === depto) && (!soloCon || porEmp.has(e.id))
-    && (!t || [nombreEmpleado(e), e.puesto, e.codigo, e.email].some(x => x?.toLowerCase().includes(t))))
+    && (!t || [nombreEmpleado(e), e.puesto, e.codigo, e.email].some(x => x?.toLowerCase().includes(t))
+      || (porEmp.get(e.id) ?? []).some(a => [a.codigo, a.descripcion, a.marca, a.modelo, a.serie, a.numero_economico].some(x => x?.toLowerCase().includes(t)))))
   const conActivos = lista.filter(e => porEmp.has(e.id)).length
 
   return (
@@ -58,7 +63,7 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1 basis-56">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-          <input className="campo pl-10" placeholder="Buscar por nombre, puesto o número…" value={q} onChange={e => setQ(e.target.value)} />
+          <input className="campo pl-10" placeholder="Buscar persona, puesto, o lo que trae (código, marca, serie)…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
         {deptos.length > 0 && <select className="campo w-auto" value={depto} onChange={e => setDepto(e.target.value)}><option value="">Todos los departamentos</option>{deptos.map(d => <option key={d}>{d}</option>)}</select>}
         <button onClick={() => setSoloCon(s => !s)} className={`rounded-xl border px-3 py-2.5 text-sm transition ${soloCon ? 'border-marca bg-marca/10 text-marca' : 'border-stone-300 text-stone-600'}`}>Con activos ({conActivos})</button>
@@ -70,7 +75,7 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
       <p className="mb-3 text-xs text-stone-500">{vis.length} de {lista.length} empleados · {conActivos} con activos a su cargo</p>
 
       {vis.length === 0 ? <div className="tarjeta"><Vacio titulo={lista.length ? 'Sin coincidencias' : 'Sin empleados todavía'} texto={lista.length ? undefined : 'Agrega uno por uno o pega tu lista desde Excel.'} /></div> : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {vis.map((e, i) => {
             const suyos = porEmp.get(e.id) ?? []
             return (
@@ -94,11 +99,48 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
                     <Link to={`/empleados/${e.id}`} title="Ver ficha" className="grid h-8 w-8 place-items-center rounded-lg border border-stone-300 text-stone-500 transition hover:border-marca hover:text-marca"><ChevronRight size={16} /></Link>
                   </div>
                 </div>
+                {suyos.length > 0 && (
+                  <button onClick={() => setAbierto(s => { const x = new Set(s); if (x.has(e.id)) x.delete(e.id); else x.add(e.id); return x })}
+                    className="mt-3 flex w-full items-center justify-between rounded-lg border border-stone-200 px-3 py-1.5 text-xs text-stone-500 transition hover:border-marca/50 hover:text-tinta" aria-expanded={abierto.has(e.id)}>
+                    {abierto.has(e.id) ? 'Ocultar lo asignado' : `Ver lo asignado (${suyos.length})`}<ChevronDown size={14} className={`transition ${abierto.has(e.id) ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+                {abierto.has(e.id) && (() => {
+                  const sel = suyos.filter(a => marcados.has(a.id))
+                  return (
+                    <div className="mt-2 animate-entrar">
+                      <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200">
+                        {suyos.map(a => (
+                          <li key={a.id} className="flex items-center gap-2 p-2">
+                            {puedeResguardar && <input type="checkbox" className="accent-[#F9B234]" checked={marcados.has(a.id)} disabled={a.estatus !== 'asignado'} aria-label={`Seleccionar ${a.codigo}`}
+                              onChange={() => setMarcados(s => { const x = new Set(s); if (x.has(a.id)) x.delete(a.id); else x.add(a.id); return x })} />}
+                            <FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} icono={13} className="h-9 w-10 shrink-0 rounded-md" />
+                            <Link to={`/activos/${a.id}`} className="min-w-0 flex-1 hover:text-marca">
+                              <span className="block font-mono text-[10px] text-marca">{a.codigo}</span>
+                              <span className="block truncate text-xs">{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</span>
+                              <span className="block truncate text-[10px] text-stone-400">{[a.serie && `S/N ${a.serie}`, a.numero_economico, a.estatus !== 'asignado' && a.estatus.replace('_', ' ')].filter(Boolean).join(' · ') || a.ubicacion || a.categoria}</span>
+                            </Link>
+                            {puedeResguardar && a.estatus === 'asignado' && <button onClick={() => setQuitar({ e, acts: [a] })} title="Desasignar" aria-label={`Desasignar ${a.codigo}`}
+                              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-stone-400 transition hover:bg-stone-100 hover:text-red-600"><Undo2 size={14} /></button>}
+                          </li>
+                        ))}
+                      </ul>
+                      {puedeResguardar && (
+                        <div className="mt-2 flex gap-2">
+                          <button className="btn-sec flex-1 !px-2 !py-1.5 text-xs" disabled={!sel.length} onClick={() => setQuitar({ e, acts: sel })}><Undo2 size={13} />Desasignar {sel.length || ''} seleccionados</button>
+                          <button className="btn-sec flex-1 !px-2 !py-1.5 text-xs" onClick={() => setQuitar({ e, acts: suyos })}>Desasignar todo</button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}
         </div>
       )}
+      {quitar && <DesasignarModal empleado={quitar.e} activos={quitar.acts} onCerrar={() => setQuitar(null)}
+        onListo={() => { setQuitar(null); setMarcados(new Set()); setN(x => x + 1) }} />}
       <EmpleadoModal abierto={nuevo} empresaId={empresaId} onCerrar={() => setNuevo(false)} onGuardado={() => { setNuevo(false); setN(x => x + 1) }} />
       <ImportarEmpleados abierto={importar} empresaId={empresaId} onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); setN(x => x + 1) }} />
     </div>
