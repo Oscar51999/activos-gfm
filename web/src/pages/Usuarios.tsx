@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
 import { Encabezado, Modal, Campo, Aviso, Cargando } from '../components/ui'
 
-type Perfil = { id: string; nombre: string; email: string | null; rol: Rol; activo: boolean; todas_empresas: boolean; empleado_id: string | null; created_at: string }
+type Perfil = { id: string; nombre: string; usuario?: string | null; email: string | null; rol: Rol; activo: boolean; todas_empresas: boolean; empleado_id: string | null; created_at: string }
 
 export default function Usuarios() {
   const { perfil: yo } = useAuth()
@@ -33,7 +33,7 @@ export default function Usuarios() {
     if (!edit) return
     setError('')
     const { error } = await supabase.from('perfiles').update({
-      nombre: edit.nombre, rol: edit.rol, activo: edit.activo, todas_empresas: edit.todas_empresas, empleado_id: edit.empleado_id || null,
+      nombre: edit.nombre, usuario: edit.usuario?.trim().toUpperCase() || null, rol: edit.rol, activo: edit.activo, todas_empresas: edit.todas_empresas, empleado_id: edit.empleado_id || null,
     }).eq('id', edit.id)
     if (error) { setError(mensajeError(error)); return }
     const antes = accesos[edit.id] ?? []
@@ -62,7 +62,7 @@ export default function Usuarios() {
           <tbody className="divide-y divide-stone-100">
             {filas.map(f => (
               <tr key={f.id} className="hover:bg-stone-50">
-                <td className="px-4 py-2.5 font-medium">{f.nombre}</td>
+                <td className="px-4 py-2.5 font-medium">{f.nombre}{f.usuario && <span className="block font-mono text-[10px] text-stone-500">{f.usuario}</span>}</td>
                 <td className="px-4 py-2.5 text-stone-600">{f.email}</td>
                 <td className="px-4 py-2.5">{ROLES[f.rol]}</td>
                 <td className="px-4 py-2.5 text-xs">{f.todas_empresas || f.rol === 'admin' ? 'Todas' : (accesos[f.id] ?? []).map(id => empresas.items.find(e => e.id === id)?.nombre).filter(Boolean).join(', ') || <span className="text-rojo">Ninguna</span>}</td>
@@ -79,6 +79,7 @@ export default function Usuarios() {
           <form onSubmit={guardar} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Campo label="Nombre"><input className="campo" value={edit.nombre} onChange={e => setEdit({ ...edit, nombre: e.target.value })} /></Campo>
+              <Campo label="Usuario para entrar (ej. OSCAR COTA)"><input className="campo uppercase" value={edit.usuario ?? ''} onChange={e => setEdit({ ...edit, usuario: e.target.value })} /></Campo>
               <Campo label="Correo"><input className="campo" value={edit.email ?? ''} disabled /></Campo>
               <Campo label="Rol">
                 <select className="campo" value={edit.rol} disabled={edit.id === yo?.id} onChange={e => setEdit({ ...edit, rol: e.target.value as Rol })}>

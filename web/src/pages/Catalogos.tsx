@@ -6,6 +6,7 @@ import { nombreEmpleado } from '../lib/hooks'
 type R = Record<string, unknown>
 const emp = (f: R) => (f.empresas as { nombre?: string } | null)?.nombre ?? '—'
 const activo = (f: R) => f.activo === false ? <span className="text-xs text-stone-400">Inactivo</span> : <span className="text-xs text-emerald-700">Activo</span>
+const refCC = { tabla: 'centros_costo', select: 'id,nombre,clave,empresa_id', etiqueta: (r: R) => `${r.clave} - ${r.nombre}`, porEmpresa: true }
 const refEmpleado = { tabla: 'empleados', select: 'id,nombres,apellidos,empresa_id', etiqueta: (r: R) => nombreEmpleado(r as never), porEmpresa: true }
 
 export function Empresas() {
@@ -56,12 +57,13 @@ export function Empleados() {
 
 export function Ubicaciones() {
   return <Catalogo tabla="ubicaciones" titulo="Ubicaciones" sub="Obras, almacenes, oficinas y patios donde están los activos." porEmpresa
-    select="*,empresas(nombre),responsable:empleados(nombres,apellidos)"
+    select="*,empresas(nombre),responsable:empleados(nombres,apellidos),cc:cc_id(clave,nombre)"
     campos={[
       { key: 'nombre', label: 'Nombre', requerido: true },
       { key: 'tipo', label: 'Tipo', tipo: 'enum', opciones: TIPOS_UBICACION, requerido: true, defecto: 'obra' },
       { key: 'codigo', label: 'Código / # de obra' },
       { key: 'responsable_id', label: 'Responsable', tipo: 'ref', ref: refEmpleado },
+      { key: 'cc_id', label: 'Centro de costo', tipo: 'ref', ref: refCC },
       { key: 'direccion', label: 'Dirección', completo: true },
       { key: 'latitud', label: 'Latitud', tipo: 'numero' },
       { key: 'longitud', label: 'Longitud', tipo: 'numero' },
@@ -70,6 +72,7 @@ export function Ubicaciones() {
       { key: 'nombre', label: 'Ubicación' },
       { key: 'tipo', label: 'Tipo', render: f => TIPOS_UBICACION[f.tipo as keyof typeof TIPOS_UBICACION] },
       { key: 'codigo', label: 'Código' },
+      { key: 'cc', label: 'CC', render: f => (f.cc as { clave?: string } | null)?.clave ?? '—' },
       { key: 'resp', label: 'Responsable', render: f => nombreEmpleado(f.responsable as never) || '—' },
       { key: 'empresa', label: 'Empresa', render: emp },
     ]}
@@ -162,4 +165,20 @@ export function RequisitosOperacion() {
       { key: 'bloquear', label: 'Si falta', render: f => f.bloquear ? 'Bloquea' : 'Avisa' },
     ]}
     buscarEn={['descripcion']} />
+}
+
+/** Centros de costo: los mismos de los formularios de Compras, Requisiciones y Comprobaciones. */
+export function CentrosCosto() {
+  return <Catalogo tabla="centros_costo" titulo="Centros de costo" sub="Los mismos CC de los formularios de Compras, Requisiciones y Comprobaciones, por empresa." porEmpresa orden="clave"
+    select="*,empresas(nombre)"
+    campos={[
+      { key: 'clave', label: 'Clave', requerido: true },
+      { key: 'nombre', label: 'Nombre', requerido: true, completo: true },
+    ]}
+    columnas={[
+      { key: 'clave', label: 'Clave', render: f => <span className="font-mono text-xs">{String(f.clave)}</span> },
+      { key: 'nombre', label: 'Centro de costo' },
+      { key: 'empresa', label: 'Empresa', render: emp },
+    ]}
+    buscarEn={['clave', 'nombre']} />
 }

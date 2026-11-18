@@ -17,7 +17,7 @@ import Movimientos from './pages/Movimientos'
 import MovimientoNuevo from './pages/MovimientoNuevo'
 import MovimientoDetalle from './pages/MovimientoDetalle'
 import ResguardoEmpleado from './pages/ResguardoEmpleado'
-import { Sucursales, Departamentos, Ubicaciones, Categorias, Marcas, Modelos, Proveedores, CodigosFalla, RequisitosOperacion } from './pages/Catalogos'
+import { Sucursales, Departamentos, Ubicaciones, Categorias, Marcas, Modelos, Proveedores, CodigosFalla, RequisitosOperacion, CentrosCosto } from './pages/Catalogos'
 import Empresas, { EmpresaDetalle } from './pages/Empresas'
 import Personal, { EmpleadoDetalle } from './pages/Personal'
 import Productos, { ProductoDetalle } from './pages/Productos'
@@ -163,6 +163,7 @@ function Rutas() {
         <Route path="marcas" element={<Marcas />} />
         <Route path="modelos" element={<Modelos />} />
         <Route path="proveedores" element={<Proveedores />} />
+        <Route path="centros-costo" element={<CentrosCosto />} />
         <Route path="cambiar-contrasena" element={<CambiarContrasena />} />
         {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />

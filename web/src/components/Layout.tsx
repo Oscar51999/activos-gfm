@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, RefreshCcw, Grid3x3,
+  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ROLES, supabase } from '../lib/supabase'
@@ -52,6 +52,7 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/categorias', icono: Tags, texto: 'Categorías' },
     { to: '/marcas', icono: Tags, texto: 'Marcas' },
     { to: '/proveedores', icono: Truck, texto: 'Proveedores' },
+    { to: '/centros-costo', icono: Hash, texto: 'Centros de costo' },
   ] },
 ]
 

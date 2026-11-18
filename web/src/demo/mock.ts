@@ -401,13 +401,19 @@ export function crearDatos() {
     id: uid(), activo_id: a.id, empresa_id: a.empresa_id, ubicacion_esperada_id: a.ubicacion_id, encontrado: i !== 5, ubicacion_ok: i === 9 ? false : i === 5 ? null : true,
     metodo: i % 3 === 0 ? 'rfid' : i % 3 === 1 ? 'qr' : 'manual', notas: null, contado_por: 'u-demo', created_at: hace(i < 6 ? 40 - i * 3 : 100 + i * 4) }))
 
+  const CCX = (e: string, clave: string, nombre: string) => ({ id: 'cc-' + e + clave, empresa_id: e, clave, nombre, activo: true, created_at: hace(30) })
+  const centros_costo = [
+    CCX('e1', '101', 'CAMPAMENTO TRABAJADORES LA RIBERA'), CCX('e1', '103', 'PROPIO CENTRO FIRME'), CCX('e1', '127', 'ENTREPIEDRAS'), CCX('e1', 'ADM', 'AREA ADMINISTRATIVA'), CCX('e1', 'CI8', 'COSTOS INDIRECTOS LA PAZ'),
+    CCX('e2', '501', 'CP AMAN BOH EDIFICIO 3'), CCX('e2', '518', 'YACHT CLUB'), CCX('e2', 'ADM', 'AREA ADMINISTRATIVA'),
+    CCX('e3', '406', 'SERVICIOS ZONA LA PAZ'), CCX('e4', '601', 'VENTAS Y COMERCIALIZACION'), CCX('e5', '705', 'SANTA CRUZ STORAGE'), CCX('e6', '301', 'CASA CLUB'), CCX('e8', '201', 'VENTA Y COMERCIALIZACIÓN INMOBILIARIA'),
+  ]
   const perfiles = [
-    { id: 'u-demo', nombre: 'Oscar Cota', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60) },
+    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60) },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
-    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
+    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
   return { db, urls }
 }
 
@@ -527,7 +533,7 @@ function vista(db: DB, t: string): Row[] {
 // ───────── select con relaciones (subconjunto de PostgREST) ─────────
 const FK: Record<string, string> = { empresa_id: 'empresas', departamento_id: 'departamentos', marca_id: 'marcas', modelo_id: 'modelos', activo_id: 'activos',
   movimiento_id: 'movimientos', responsable_id: 'empleados', padre_id: 'categorias', a_empleado_id: 'empleados', a_ubicacion_id: 'ubicaciones',
-  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla', ot_id: 'ordenes_trabajo', vale_id: 'vales_salida', merma_id: 'mermas', posicion_id: 'posiciones', ubicacion_esperada_id: 'ubicaciones' }
+  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla', cc_id: 'centros_costo', ot_id: 'ordenes_trabajo', vale_id: 'vales_salida', merma_id: 'mermas', posicion_id: 'posiciones', ubicacion_esperada_id: 'ubicaciones' }
 const TABLA_FK: Record<string, string> = { empresas: 'empresa_id', departamentos: 'departamento_id', marcas: 'marca_id', modelos: 'modelo_id', activos: 'activo_id',
   movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id', posiciones: 'posicion_id', ordenes_trabajo: 'ot_id', vales_salida: 'vale_id' }
 
@@ -813,6 +819,10 @@ export function instalarDemo(base: string) {
       for (const it of (v.material as Row[]) ?? []) if (it.consumible_id && v.destino_id)
         db.movimientos_consumible.push(defaults(db, 'movimientos_consumible', { consumible_id: it.consumible_id, empresa_id: v.empresa_id, ubicacion_id: v.destino_id, tipo: 'entrada', cantidad: Number(it.cantidad), lote: it.lote ?? null, vale_id: v.id, notas: 'Llegó con el vale ' + v.folio }))
       return json('Llegada registrada')
+    }
+    if (path.startsWith('/rest/v1/rpc/correo_de_usuario')) {
+      const u = String(body?.p_usuario ?? '').trim().toUpperCase()
+      return json(db.perfiles.find(p => String(p.usuario ?? '').toUpperCase() === u && p.activo)?.email ?? null)
     }
     if (path.startsWith('/rest/v1/rpc/resolver_merma')) {
       const m = db.mermas.find(x => x.id === body?.p_id)
