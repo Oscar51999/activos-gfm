@@ -45,7 +45,7 @@ export function crearDatos() {
     E('e4', 'Comercializadora Mupo', 'MUPO', '#8DC63F', 'app:mupo'),
     E('e5', 'Proyectos y Desarrollos Punta Cortez', 'Punta Cortez', '#FBBA16', 'app:punta-cortez'),
     E('e6', 'Santa Cruz Fid', 'Santa Cruz Fid', '#C2552B', 'app:santacruz'),
-    E('e8', 'Inmobiliaria Atardecer de La Paz', 'Atardecer', '#F28C38', null),
+    E('e8', 'Inmobiliaria Atardecer de La Paz', 'Atardecer', '#F28C38', 'app:atardecer'),
   ]
   const categorias = [
     { id: 'c1', nombre: 'Vehículos', es_vehiculo: true }, { id: 'c2', nombre: 'Maquinaria pesada', es_vehiculo: true },
