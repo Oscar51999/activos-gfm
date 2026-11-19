@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles, FileUp, Camera, Loader2, Check, Trash2, Plus, Search, UserRound, Tags, PenLine, ChevronLeft, FileText, Warehouse, RotateCcw } from 'lucide-react'
+import { Sparkles, FileUp, Camera, Loader2, Check, Trash2, Plus, Search, UserRound, Tags, PenLine, ChevronLeft, FileText, Warehouse, RotateCcw, Wand2 } from 'lucide-react'
 import { leerDocumento, type DocumentoLeido } from '../lib/ia'
+import { leerArchivo } from '../lib/lector'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { nombreEmpleado } from '../lib/hooks'
@@ -13,6 +14,7 @@ type Empresa = { id: string; nombre: string; nombre_corto: string | null; rfc: s
 type Cat = { id: string; nombre: string; es_vehiculo: boolean }
 
 const norm = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
+const METODO: Record<string, string> = { xml: 'XML de factura', pdf: 'Texto del PDF', ocr: 'Lector de texto (OCR)', excel: 'Excel / CSV', texto: 'Texto', ia: 'IA' }
 const TIPO_DOC: Record<string, string> = { factura: 'Factura', bitacora: 'Bitácora', lista: 'Lista', remision: 'Remisión', foto: 'Foto', otro: 'Documento' }
 
 function categoriaDe(nombre: string | null, cats: Cat[]): string {
@@ -21,9 +23,9 @@ function categoriaDe(nombre: string | null, cats: Cat[]): string {
   const objetivo = Object.entries(sin).find(([k]) => n.includes(k))?.[1] ?? n
   return (cats.find(c => norm(c.nombre) === objetivo) ?? cats.find(c => n && norm(c.nombre).includes(n)) ?? cats.find(c => norm(c.nombre) === 'equipomenor') ?? cats[0])?.id ?? ''
 }
-function empresaDe(doc: DocumentoLeido, empresas: Empresa[]): string {
+function empresaDe(doc: DocumentoLeido & { rfcs?: string[] }, empresas: Empresa[]): string {
   const rfc = norm(doc.empresa?.rfc), rs = norm(doc.empresa?.razon_social)
-  if (rfc) { const e = empresas.find(x => norm(x.rfc) === rfc); if (e) return e.id }
+  for (const r of [rfc, ...(doc.rfcs ?? []).map(norm)]) { if (!r) continue; const e = empresas.find(x => norm(x.rfc) === r); if (e) return e.id }
   if (rs) {
     const e = empresas.find(x => [x.razon_social, x.nombre, x.nombre_corto].some(v => { const n = norm(v); return n.length > 3 && (rs.includes(n) || n.includes(rs)) }))
     if (e) return e.id
@@ -37,7 +39,9 @@ export default function AltaInteligente() {
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [cats, setCats] = useState<Cat[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
-  const [doc, setDoc] = useState<(DocumentoLeido & { vista?: string; nombre: string }) | null>(null)
+  const [doc, setDoc] = useState<(DocumentoLeido & { vista?: string; nombre: string; metodo: string }) | null>(null)
+  const [ultimo, setUltimo] = useState<File | null>(null)
+  const [avance, setAvance] = useState('')
   const [filas, setFilas] = useState<Renglon[]>([])
   const [leyendo, setLeyendo] = useState(false)
   const [error, setError] = useState('')
@@ -57,19 +61,25 @@ export default function AltaInteligente() {
       .then(({ data }) => setEmpleados((data as unknown as Empleado[]) ?? []))
   }, [])
 
-  async function leer(f?: File | null) {
+  function cargar(d: DocumentoLeido & { vista?: string; rfcs?: string[] }, f: File, metodo: string) {
+    let k = 0
+    const fs: Renglon[] = d.equipos.map(e => ({
+      k: k++, incluir: true, descripcion: e.descripcion ?? [e.marca, e.modelo].filter(Boolean).join(' '), marca: e.marca ?? '', modelo: e.modelo ?? '',
+      serie: e.serie ?? '', eco: e.numero_economico ?? '', placa: e.placa ?? '', categoria_id: categoriaDe(e.categoria, cats), cantidad: Math.max(1, Math.min(200, Number(e.cantidad) || 1)),
+    }))
+    setDoc({ ...d, nombre: f.name, metodo }); setFilas(fs); setEmpresa(empresaDe(d, empresas))
+    if (!fs.length) setError('No encontré equipos en el archivo. Agrégalos a mano abajo, prueba con el XML de la factura o con “Leer con IA”.')
+  }
+
+  /** Primero el lector gratis (XML, PDF, OCR, Excel); la IA solo si la piden. */
+  async function leer(f?: File | null, conIA = false) {
     if (!f) return
-    setLeyendo(true); setError(''); setDoc(null); setFilas([]); setEmpleado(null)
+    setLeyendo(true); setError(''); setAvance(''); setUltimo(f)
+    if (!conIA) { setDoc(null); setFilas([]); setEmpleado(null) }
     try {
-      const d = await leerDocumento(f, nota.trim() || undefined)
-      let k = 0
-      const fs: Renglon[] = d.equipos.map(e => ({
-        k: k++, incluir: true, descripcion: e.descripcion ?? [e.marca, e.modelo].filter(Boolean).join(' '), marca: e.marca ?? '', modelo: e.modelo ?? '',
-        serie: e.serie ?? '', eco: e.numero_economico ?? '', placa: e.placa ?? '', categoria_id: categoriaDe(e.categoria, cats), cantidad: Math.max(1, Math.min(200, Number(e.cantidad) || 1)),
-      }))
-      setDoc({ ...d, nombre: f.name }); setFilas(fs); setEmpresa(empresaDe(d, empresas))
-      if (!fs.length) setError('No encontré equipos en el documento. Puedes agregarlos a mano abajo o probar con otra foto más clara.')
-    } catch (e) { setError((e as Error).message) } finally { setLeyendo(false) }
+      if (conIA) { setAvance('Leyendo con IA…'); cargar(await leerDocumento(f, nota.trim() || undefined), f, 'ia') }
+      else { const d = await leerArchivo(f, setAvance); cargar(d, f, d.metodo) }
+    } catch (e) { setError((e as Error).message) } finally { setLeyendo(false); setAvance('') }
   }
 
   const incluidos = filas.filter(f => f.incluir && f.descripcion.trim())
@@ -157,7 +167,7 @@ export default function AltaInteligente() {
         <p className="mt-1 text-sm text-stone-500">La IA lee los equipos (marca, modelo, serie, placa) y la empresa. Tú solo revisas y dices a quién se le entrega.</p>
       </div>
 
-      <input ref={archivo} type="file" accept="image/*,application/pdf" hidden onChange={e => { leer(e.target.files?.[0]); e.target.value = '' }} />
+      <input ref={archivo} type="file" accept="image/*,application/pdf,.pdf,.xml,text/xml,.xlsx,.csv,.txt" hidden onChange={e => { leer(e.target.files?.[0]); e.target.value = '' }} />
       <input ref={camara} type="file" accept="image/*" capture="environment" hidden onChange={e => { leer(e.target.files?.[0]); e.target.value = '' }} />
 
       {!doc && (
@@ -166,10 +176,11 @@ export default function AltaInteligente() {
           <div className="grid place-items-center gap-4 rounded-2xl border-2 border-dashed border-stone-300 px-4 py-10 text-center">
             {leyendo ? <>
               <Loader2 size={36} className="animate-spin text-marca" />
-              <p className="font-medium">Leyendo el documento…</p><p className="text-sm text-stone-500">Suele tardar entre 5 y 20 segundos.</p>
+              <p className="font-medium">Leyendo el documento…</p><p className="text-sm text-stone-500">{avance || 'Un momento…'}</p>
             </> : <>
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-marca/15 text-marca"><FileUp size={26} /></span>
-              <div><p className="font-semibold">Arrastra aquí el archivo</p><p className="text-sm text-stone-500">Factura en PDF, foto de la factura, bitácora o lista de equipo, o foto de la etiqueta del equipo.</p></div>
+              <div><p className="font-semibold">Arrastra aquí el archivo</p><p className="text-sm text-stone-500">XML o PDF de la factura, foto, bitácora en Excel o CSV, o la foto de la etiqueta del equipo.</p>
+                <p className="mt-1 text-xs text-emerald-700">Se lee aquí mismo, sin costo. Con el XML de la factura sale exacto.</p></div>
               <div className="flex flex-wrap justify-center gap-2">
                 <button className="btn-primario" onClick={() => archivo.current?.click()}><FileUp size={16} />Elegir archivo</button>
                 <button className="btn-sec" onClick={() => camara.current?.click()}><Camera size={16} />Tomar foto</button>
@@ -187,12 +198,16 @@ export default function AltaInteligente() {
             <section className="tarjeta flex flex-wrap items-center gap-4 p-4">
               {doc.vista ? <img src={doc.vista} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" /> : <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-stone-100 text-marca"><FileText size={26} /></span>}
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-marca"><Sparkles size={12} />{TIPO_DOC[doc.tipo_documento ?? ''] ?? 'Documento'} · confianza {doc.confianza ?? 'media'}</p>
+                <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-marca"><Sparkles size={12} />{TIPO_DOC[doc.tipo_documento ?? ''] ?? 'Documento'} · {METODO[doc.metodo] ?? doc.metodo} · confianza {doc.confianza ?? 'media'}</p>
                 <p className="truncate font-medium">{[doc.proveedor?.nombre, doc.folio && `Folio ${doc.folio}`, doc.fecha].filter(Boolean).join(' · ') || doc.nombre}</p>
                 <p className="truncate text-xs text-stone-500">{doc.empresa?.razon_social ? `Para: ${doc.empresa.razon_social}${doc.empresa.rfc ? ` (${doc.empresa.rfc})` : ''}` : 'No se ve a qué empresa se facturó'}</p>
               </div>
-              <button className="btn-sec" onClick={otra}><RotateCcw size={15} />Otro</button>
+              <div className="flex flex-wrap gap-2">
+                {doc.metodo !== 'xml' && doc.metodo !== 'ia' && doc.metodo !== 'excel' && ultimo && <button className="btn-sec" disabled={leyendo} onClick={() => leer(ultimo, true)} title="Usa la IA de Claude (requiere la clave configurada)">{leyendo ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}Leer con IA</button>}
+                <button className="btn-sec" onClick={otra}><RotateCcw size={15} />Otro</button>
+              </div>
             </section>
+            {doc.metodo !== 'xml' && doc.metodo !== 'excel' && <Aviso tipo="info">Leído sin IA: revisa marca, modelo y series antes de dar de alta. Si tienes el <b>XML</b> de la factura, súbelo: sale exacto.</Aviso>}
 
             <section className="tarjeta overflow-hidden">
               <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">

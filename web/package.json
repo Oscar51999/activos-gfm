@@ -13,10 +13,12 @@
     "@supabase/supabase-js": "^2.117.2",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^1.50.0",
+    "pdfjs-dist": "^4.10.38",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
