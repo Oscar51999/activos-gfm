@@ -31,8 +31,8 @@ export const ESTATUS: Record<Estatus, { texto: string; clase: string }> = {
 
 export const ROLES: Record<Rol, string> = {
   admin: 'Administrador',
-  almacen: 'Almacén (captura)',
-  supervisor: 'Supervisor (consulta y resguardos)',
+  supervisor: 'Supervisor (todo menos usuarios)',
+  almacen: 'Almacén (resguardos y movimientos)',
   consulta: 'Solo consulta',
 }
 

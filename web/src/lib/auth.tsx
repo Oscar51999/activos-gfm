@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const activo = !!perfil?.activo
   const value: Ctx = {
     session, perfil, cargando,
-    puedeEditar: activo && (perfil!.rol === 'admin' || perfil!.rol === 'almacen'),
+    puedeEditar: activo && (perfil!.rol === 'admin' || perfil!.rol === 'supervisor'),
     esAdmin: activo && perfil!.rol === 'admin',
     esSuper: activo && !!perfil!.es_super,
     apariencia, setApariencia,

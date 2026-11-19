@@ -124,7 +124,7 @@ export default function Usuarios() {
                 </Campo>
               )}
             </div>
-            <p className="text-xs text-stone-500"><b>Administrador:</b> todo, incluidos usuarios. <b>Almacén:</b> da de alta y edita activos y catálogos. <b>Supervisor</b> y <b>Solo consulta:</b> ven la información de sus empresas.</p>
+            <p className="text-xs text-stone-500"><b>Administrador:</b> todo, incluidos usuarios y permisos. <b>Supervisor:</b> todo lo demás (altas, edición de activos y catálogos, resguardos). <b>Almacén:</b> resguardos, préstamos, vales, inventarios y fallas, sin dar de alta ni editar activos. <b>Solo consulta:</b> ve la información de sus empresas.</p>
             {error && <Aviso>{error}</Aviso>}
             <div className="flex justify-end gap-2 border-t border-stone-200 pt-4">
               <button type="button" className="btn-sec" onClick={() => setEdit(null)}>Cancelar</button>

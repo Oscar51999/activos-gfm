@@ -142,7 +142,7 @@ export default function AltaInteligente() {
 
   function otra() { setHecho(null); setDoc(null); setFilas([]); setEmpleado(null); setEmpresa(''); setError(''); setQ('') }
 
-  if (!puedeEditar) return <Aviso tipo="info">Solo Almacén y administradores pueden dar de alta activos.</Aviso>
+  if (!puedeEditar) return <Aviso tipo="info">Solo supervisores y administradores pueden dar de alta activos.</Aviso>
 
   if (hecho) return (
     <div className="mx-auto max-w-2xl animate-entrar py-6 text-center">
