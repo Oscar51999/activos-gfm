@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Plus, Minus, Maximize2, Crosshair, X, Boxes, Siren, Building2, Warehouse, Briefcase, Truck, ChevronLeft, ExternalLink, Link2 } from 'lucide-react'
+import { MapPin, Plus, Minus, Maximize2, Crosshair, X, Boxes, Siren, Building2, Warehouse, Briefcase, Truck, Landmark, ChevronLeft, ExternalLink, Link2 } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { nombreEmpleado } from '../lib/hooks'
@@ -10,7 +10,7 @@ import { Modal, Campo, Aviso } from './ui'
 
 type Ubi = { id: string; nombre: string; tipo: string | null; codigo: string | null; empresa_id: string; latitud: number | null; longitud: number | null
   empresas: { nombre: string; nombre_corto: string | null; color: string | null } | null; empleados: { nombres: string; apellidos: string | null } | null
-  cc_id?: string | null; cc?: { lugar: string | null; aprox: boolean; ccId: string } }
+  cc_id?: string | null; cc?: { lugar: string | null; aprox: boolean; ccId: string }; inm?: string }
 type CC = { id: string; clave: string; nombre: string; empresa_id: string; latitud: number | null; longitud: number | null; lugar: string | null; ubicacion_aprox: boolean
   empresas: { nombre: string; nombre_corto: string | null; color: string | null } | null }
 
@@ -28,8 +28,8 @@ function separar<T extends { latitud: number | null; longitud: number | null }>(
 type Caja = { x: number; y: number; w: number; h: number }
 type Lugar = Ubi & { x: number; y: number; estado: string | null; equipos: number; reportes: number }
 
-const TIPOS: Record<string, { texto: string; icono: typeof MapPin }> = { obra: { texto: 'Obras', icono: Building2 }, almacen: { texto: 'Almacenes', icono: Warehouse }, oficina: { texto: 'Oficinas', icono: Briefcase }, patio: { texto: 'Patios', icono: Truck } }
-const TIPO1: Record<string, string> = { obra: 'Obra', almacen: 'Almacén', oficina: 'Oficina', patio: 'Patio', taller: 'Taller', sitio: 'Sitio' }
+const TIPOS: Record<string, { texto: string; icono: typeof MapPin }> = { obra: { texto: 'Obras', icono: Building2 }, almacen: { texto: 'Almacenes', icono: Warehouse }, oficina: { texto: 'Oficinas', icono: Briefcase }, patio: { texto: 'Patios', icono: Truck }, inmueble: { texto: 'Inmuebles', icono: Landmark } }
+const TIPO1: Record<string, string> = { inmueble: 'Inmueble', obra: 'Obra', almacen: 'Almacén', oficina: 'Oficina', patio: 'Patio', taller: 'Taller', sitio: 'Sitio' }
 const TODO: Caja = { x: 0, y: 0, w: MX.W, h: MX.H }
 
 // Polígonos de cada estado (ya proyectados) para saber en qué estado cae cada obra y para hacer zoom al estado.
@@ -76,7 +76,8 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
     Promise.all([
       supabase.from('ubicaciones').select('id,nombre,tipo,codigo,empresa_id,latitud,longitud,cc_id,empresas(nombre,nombre_corto,color),empleados(nombres,apellidos)').eq('activo', true).order('nombre'),
       supabase.from('centros_costo').select('id,clave,nombre,empresa_id,latitud,longitud,lugar,ubicacion_aprox,empresas(nombre,nombre_corto,color)').eq('activo', true).eq('es_obra', true).not('latitud', 'is', null).order('clave'),
-    ]).then(([u, c]) => {
+      supabase.from('inmuebles').select('id,codigo,nombre,empresa_id,latitud,longitud,empresas(nombre,nombre_corto,color)').eq('activo', true).not('latitud', 'is', null),
+    ]).then(([u, c, im]) => {
       const ubs = (u.data as unknown as Ubi[]) ?? []
       // Los centros de costo de obra también son lugares del mapa (salvo los que ya tienen una ubicación propia con coordenadas)
       const conUbi = new Set(ubs.filter(x => x.cc_id && x.latitud != null).map(x => x.cc_id))
@@ -84,7 +85,10 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
         id: 'cc:' + x.id, nombre: x.nombre, tipo: 'obra', codigo: x.clave, empresa_id: x.empresa_id, latitud: x.latitud, longitud: x.longitud,
         empresas: x.empresas, empleados: null, cc: { lugar: x.lugar, aprox: x.ubicacion_aprox, ccId: x.id },
       }))
-      setUbis([...ubs, ...ccs])
+      const inms = ((im.data as unknown as { id: string; codigo: string; nombre: string; empresa_id: string; latitud: number; longitud: number; empresas: Ubi['empresas'] }[]) ?? []).map<Ubi>(x => ({
+        id: 'inm:' + x.id, nombre: x.nombre, tipo: 'inmueble', codigo: x.codigo, empresa_id: x.empresa_id, latitud: x.latitud, longitud: x.longitud, empresas: x.empresas, empleados: null, inm: x.id,
+      }))
+      setUbis([...ubs, ...ccs, ...inms])
     })
   }
   useEffect(() => {
@@ -238,7 +242,9 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
               </div>
               {lugarSel.empleados && <p className="text-sm"><span className="text-stone-500">Responsable: </span>{nombreEmpleado(lugarSel.empleados)}</p>}
               <div className="flex flex-col gap-2">
-                {lugarSel.cc
+                {lugarSel.inm
+                  ? <Link className="btn-primario" to={`/inmuebles/${lugarSel.inm}`}><Landmark size={15} />Ver inmueble (pagos y fallas)</Link>
+                  : lugarSel.cc
                   ? <Link className="btn-primario" to="/centros-costo"><Boxes size={15} />Ver centros de costo</Link>
                   : <Link className="btn-primario" to={`/activos?ubicacion=${lugarSel.id}`}><Boxes size={15} />Ver el equipo de esta obra</Link>}
                 {lugarSel.cc && puedeEditar && <CorregirCC ccId={lugarSel.cc.ccId} onListo={cargar} />}

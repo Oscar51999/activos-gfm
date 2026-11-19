@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Sparkles, FileUp, Camera, Loader2, Check, Trash2, Plus, Search, UserRound, Tags, PenLine, ChevronLeft, FileText, Warehouse, RotateCcw, Wand2 } from 'lucide-react'
 import { leerDocumento, type DocumentoLeido } from '../lib/ia'
 import { leerArchivo } from '../lib/lector'
+import { faltanParaAsignar } from '../lib/requisitos'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { nombreEmpleado } from '../lib/hooks'
@@ -51,6 +52,7 @@ export default function AltaInteligente() {
   const [nota, setNota] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [hecho, setHecho] = useState<{ ids: string[]; codigos: string[]; mov: string | null } | null>(null)
+  const [faltan, setFaltan] = useState<string[]>([])
   const archivo = useRef<HTMLInputElement>(null)
   const camara = useRef<HTMLInputElement>(null)
 
@@ -89,6 +91,13 @@ export default function AltaInteligente() {
   const distinta = !!(emp && empresa && emp.empresa_id !== empresa)
   const t = norm(q)
   const lista = useMemo(() => empleados.filter(e => !t || norm(`${e.nombres} ${e.apellidos ?? ''} ${e.puesto ?? ''} ${e.empresas?.nombre_corto ?? ''}`).includes(t)).slice(0, 60), [empleados, t])
+  const clavesCat = incluidos.map(f => f.categoria_id).sort().join(',')
+  useEffect(() => {
+    let vivo = true
+    if (!empleado) { setFaltan([]); return }
+    faltanParaAsignar(empleado, clavesCat.split(',').filter(Boolean).map(categoria_id => ({ categoria_id }))).then(f => { if (vivo) setFaltan(f) })
+    return () => { vivo = false }
+  }, [empleado, clavesCat])
   const cambiar = (k: number, c: Partial<Renglon>) => setFilas(fs => fs.map(f => f.k === k ? { ...f, ...c } : f))
 
   async function crear() {
@@ -265,8 +274,9 @@ export default function AltaInteligente() {
               {empresa && doc.empresa?.razon_social && <p className="text-[11px] text-emerald-700">Detectada en el documento.</p>}
               {distinta && <div className="space-y-2"><Aviso>El documento es de {empresas.find(x => x.id === empresa)?.nombre_corto} y {nombreEmpleado(emp)} es de {emp?.empresas?.nombre_corto}. El resguardo tiene que ser de la misma empresa.</Aviso>
                 <button className="btn-sec w-full text-xs" onClick={() => setEmpresa(emp!.empresa_id)}>Dar de alta a nombre de {emp?.empresas?.nombre_corto}</button></div>}
+              {faltan.length > 0 && <Aviso>No se puede entregar a {nombreEmpleado(emp)}: le falta {faltan.join(', ').toLowerCase()}. Súbela en su ficha (<Link to={`/empleados/${empleado}`} className="underline">Documentos</Link>) o elige a otra persona.</Aviso>}
               {error && <Aviso>{error}</Aviso>}
-              <button className="btn-primario w-full py-3" disabled={guardando || !incluidos.length || empleado === null || !empresaFinal || distinta} onClick={crear}>
+              <button className="btn-primario w-full py-3" disabled={guardando || !incluidos.length || empleado === null || !empresaFinal || distinta || faltan.length > 0} onClick={crear}>
                 {guardando ? <><Loader2 size={16} className="animate-spin" />Creando…</> : <><Check size={16} />Dar de alta {unidades} activo(s)</>}
               </button>
               {empleado === null && <p className="text-center text-[11px] text-stone-500">Elige a quién se entrega (o “Nadie”).</p>}

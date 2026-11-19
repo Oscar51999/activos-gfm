@@ -4,13 +4,15 @@ import { Camera, Trash2, Sun, Moon, KeyRound, ShieldAlert, Save, Loader2 } from 
 import { supabase, ROLES, mensajeError } from '../lib/supabase'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { comprimir } from '../lib/fotos'
-import { aplicarTema, temaActual, type Tema } from '../lib/tema'
+import { aplicarTema, aplicarApariencia, temaActual, ACENTOS, type Tema } from '../lib/tema'
 import { Encabezado, Campo, Aviso } from '../components/ui'
 import { Avatar } from '../components/Layout'
 
 /** Mi perfil: foto, datos de contacto y cómo se ve la app. Lo tiene todo usuario. */
 export default function Perfil() {
-  const { perfil, esSuper, recargarPerfil } = useAuth()
+  const { perfil, esSuper, recargarPerfil, apariencia } = useAuth()
+  const [acento, setAcento] = useState<string | null>(null)
+  useEffect(() => { setAcento(perfil?.preferencias?.acento ?? null) }, [perfil])
   const [f, setF] = useState({ nombre: '', telefono: '', puesto: '' })
   const [empresas, setEmpresas] = useState<string[]>([])
   const [tema, setTema] = useState<Tema>(temaActual())
@@ -60,6 +62,11 @@ export default function Perfil() {
     await supabase.storage.from('perfiles').remove([perfil!.foto_path])
     await supabase.from('perfiles').update({ foto_path: null }).eq('id', perfil!.id)
     await recargarPerfil()
+  }
+
+  async function elegirAcento(hex: string | null) {
+    setAcento(hex); aplicarApariencia({ ...apariencia, acento: hex ?? apariencia.acento })
+    await supabase.from('perfiles').update({ preferencias: { ...(perfil!.preferencias ?? {}), acento: hex } }).eq('id', perfil!.id)
   }
 
   async function elegirTema(t: Tema) {
@@ -116,6 +123,16 @@ export default function Perfil() {
               <span><span className="block font-medium">{n}</span><span className="block text-xs text-stone-500">{d}</span></span>
             </button>
           ))}
+        </div>
+        <h4 className="mb-2 mt-5 text-sm font-medium">Mi color</h4>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => elegirAcento(null)} className={`rounded-xl border px-3 py-2 text-sm ${!acento ? 'border-marca bg-marca/10' : 'border-stone-200'}`}>El de la empresa</button>
+          {ACENTOS.map(c => (
+            <button key={c.hex} onClick={() => elegirAcento(c.hex)} title={c.nombre} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${acento === c.hex ? 'border-marca bg-marca/10' : 'border-stone-200 hover:border-stone-300'}`}>
+              <span className="h-4 w-4 rounded-full" style={{ background: c.hex }} />{c.nombre}
+            </button>
+          ))}
+          <label className="flex items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-sm">Otro <input type="color" value={acento ?? '#E2A64B'} onChange={e => elegirAcento(e.target.value)} className="h-6 w-8 cursor-pointer bg-transparent" /></label>
         </div>
       </section>
     </div>

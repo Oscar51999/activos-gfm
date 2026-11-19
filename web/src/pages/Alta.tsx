@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Plus, Search, Trash2, PackagePlus, Tags, PenLine, Sparkles, ClipboardPaste, UserRound, MapPin, Camera, Loader2, ScanText, FileUp } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, Search, Trash2, PackagePlus, Tags, PenLine, Sparkles, ClipboardPaste, UserRound, MapPin, Camera, Loader2, ScanText, FileUp, Car, MessageSquareText, AlertTriangle } from 'lucide-react'
 import { leerEtiqueta, buscarProducto, type Lectura } from '../lib/ia'
+import { faltanParaAsignar } from '../lib/requisitos'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
@@ -11,7 +12,7 @@ import ProductoModal, { type Producto } from '../components/ProductoModal'
 import LogoEmpresa from '../components/LogoEmpresa'
 import type { EmpresaLogo } from '../lib/logos'
 
-type Fila = { serie: string; eco: string }
+type Fila = { serie: string; eco: string; placa?: string; anio?: string; color?: string; motor?: string; km?: string; comentario?: string }
 type Empresa = EmpresaLogo & { id: string }
 const PASOS = ['Producto', 'Unidades', 'Destino'] as const
 
@@ -34,6 +35,11 @@ export default function Alta() {
   const [ubicacion, setUbicacion] = useState('')
   const [empleado, setEmpleado] = useState('')
   const [notas, setNotas] = useState('')
+  const [descripcion, setDescripcion] = useState('')
+  const [fechaAlta, setFechaAlta] = useState(new Date().toISOString().slice(0, 10))
+  const [factura, setFactura] = useState('')
+  const [sinSerie, setSinSerie] = useState(false)
+  const [faltan, setFaltan] = useState<string[]>([])
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [hecho, setHecho] = useState<{ ids: string[]; codigos: string[]; mov: string | null } | null>(null)
@@ -56,9 +62,16 @@ export default function Alta() {
   const refs = useRef<(HTMLInputElement | null)[]>([])
   const [enfocar, setEnfocar] = useState<number | null>(null)
   useEffect(() => { if (enfocar != null && refs.current[enfocar]) { refs.current[enfocar]!.focus(); setEnfocar(null) } }, [enfocar, filas])
+  // ¿El empleado tiene la licencia o certificación que pide este equipo?
+  useEffect(() => {
+    let vivo = true
+    if (!empleado || !prod) { setFaltan([]); return }
+    faltanParaAsignar(empleado, [{ categoria_id: prod.categoria_id, modelo_id: prod.id }]).then(f => { if (vivo) setFaltan(f) })
+    return () => { vivo = false }
+  }, [empleado, prod])
 
   useEffect(() => {
-    supabase.from('modelos').select('*,marcas(nombre),categorias(nombre)').eq('activo', true).order('nombre').then(({ data }) => {
+    supabase.from('modelos').select('*,marcas(nombre),categorias(nombre,es_vehiculo)').eq('activo', true).order('nombre').then(({ data }) => {
       const l = (data as unknown as Producto[]) ?? []
       setProductos(l)
       const pre = sp.get('producto') && l.find(p => p.id === sp.get('producto'))
@@ -68,7 +81,7 @@ export default function Alta() {
       .then(({ data }) => { const l = (data as Empresa[]) ?? []; setEmpresas(l); if (!sp.get('empresa') && l.length === 1) setEmpresa(l[0].id) })
   }, [sp])
 
-  const validas = filas.filter(f => f.serie.trim() || f.eco.trim())
+  const validas = filas.filter(f => f.serie.trim() || f.eco.trim() || f.placa?.trim() || f.comentario?.trim())
   const cantidad = Math.max(validas.length, filas.length === 1 && !filas[0].serie && !filas[0].eco ? 1 : validas.length)
   const repetidas = useMemo(() => {
     const vistos = new Set<string>(), rep = new Set<string>()
@@ -107,13 +120,22 @@ export default function Alta() {
       const lista = validas.length ? validas : [{ serie: '', eco: '' }]
       const filasBD = lista.map(f => ({
         empresa_id: empresa, categoria_id: prod.categoria_id, marca_id: prod.marca_id, modelo_id: prod.id,
-        descripcion: prod.descripcion || `${prod.categorias?.nombre ? prod.categorias.nombre.replace(/s$/, '') + ' ' : ''}${prod.marcas?.nombre ?? ''} ${prod.nombre}`.trim(),
-        serie: f.serie.trim() || null, numero_economico: f.eco.trim() || null,
-        ubicacion_id: ubicacion || null, valor_referencia: valor ? Number(valor) : null, notas: notas.trim() || null,
+        descripcion: descripcion.trim() || descDefecto,
+        serie: f.serie.trim() || null, numero_economico: f.eco.trim() || null, fecha_alta: fechaAlta || undefined,
+        ubicacion_id: ubicacion || null, valor_referencia: valor ? Number(valor) : null,
+        notas: [f.comentario?.trim(), factura.trim() && `Factura ${factura.trim()}`, notas.trim()].filter(Boolean).join(' · ') || null,
       }))
       const { data, error } = await supabase.from('activos').insert(filasBD).select('id,codigo')
       if (error) throw error
       const creados = (data as { id: string; codigo: string }[]) ?? []
+      if (esVehiculo) {
+        const veh = creados.map((c, i) => ({ activo_id: c.id, placa: lista[i].placa?.trim().toUpperCase() || null, anio: lista[i].anio ? Number(lista[i].anio) : null, color: lista[i].color?.trim() || null,
+          numero_motor: lista[i].motor?.trim() || null, kilometraje: lista[i].km ? Number(lista[i].km) : null }))
+        const rv = await supabase.from('activo_vehiculo').upsert(veh, { onConflict: 'activo_id' })
+        if (rv.error) throw rv.error
+        const kms = creados.map((c, i) => ({ activo_id: c.id, empresa_id: empresa, tipo: 'km', valor: Number(lista[i].km), nota: 'Kilometraje al dar de alta' })).filter(x => x.valor > 0)
+        if (kms.length) await supabase.from('lecturas').insert(kms)
+      }
       let mov: string | null = null
       if (empleado) {
         const emp = empleados.items.find(x => x.id === empleado)
@@ -128,7 +150,7 @@ export default function Alta() {
     } catch (e) { setError(mensajeError(e)) } finally { setGuardando(false) }
   }
 
-  function reiniciar() { setHecho(null); setPaso(0); setProd(null); setFilas([{ serie: '', eco: '' }]); setValor(''); setEmpleado(''); setNotas('') }
+  function reiniciar() { setHecho(null); setPaso(0); setProd(null); setFilas([{ serie: '', eco: '' }]); setValor(''); setEmpleado(''); setNotas(''); setDescripcion(''); setFactura(''); setSinSerie(false) }
 
   if (!productos) return <Cargando />
 
@@ -154,7 +176,10 @@ export default function Alta() {
   const emp = empresas.find(e => e.id === empresa)
   const ubis = ubicaciones.items.filter(u => (u as { empresa_id?: string }).empresa_id === empresa)
   const emps = empleados.items.filter(u => (u as { empresa_id?: string }).empresa_id === empresa)
-  const puedeSeguir = paso === 0 ? !!prod : paso === 1 ? !!empresa && repetidas.size === 0 : true
+  const esVehiculo = !!(prod?.categorias as { es_vehiculo?: boolean } | null | undefined)?.es_vehiculo
+  const descDefecto = prod ? (prod.descripcion || `${prod.categorias?.nombre ? prod.categorias.nombre.replace(/s$/, '') + ' ' : ''}${prod.marcas?.nombre ?? ''} ${prod.nombre}`.trim()) : ''
+  const sinSerieN = (validas.length ? validas : filas).filter(f => !f.serie.trim()).length
+  const puedeSeguir = paso === 0 ? !!prod : paso === 1 ? !!empresa && repetidas.size === 0 && (sinSerieN === 0 || sinSerie) : true
 
   return (
     <div>
@@ -250,32 +275,55 @@ export default function Alta() {
                 ))}
               </div>
             </div>
+            <div className="tarjeta space-y-4 p-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold"><MessageSquareText size={16} className="text-marca" />Descripción y datos de compra</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Campo label="Descripción" className="sm:col-span-2"><input className="campo" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder={descDefecto} /></Campo>
+                <Campo label="Fecha de alta / compra"><input className="campo" type="date" value={fechaAlta} onChange={e => setFechaAlta(e.target.value)} /></Campo>
+                <Campo label="Factura o folio de compra"><input className="campo" value={factura} onChange={e => setFactura(e.target.value)} placeholder="A-4821" /></Campo>
+                <Campo label="Comentarios para todas las unidades" className="sm:col-span-2"><textarea className="campo" rows={2} value={notas} onChange={e => setNotas(e.target.value)} placeholder="Accesorios incluidos, garantía, estado, observaciones…" /></Campo>
+              </div>
+            </div>
             <div className="tarjeta p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold">Números de serie <span className="ml-1 rounded-full bg-marca/15 px-2 py-0.5 text-xs text-marca">{cantidad} unidad(es)</span></h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold">{esVehiculo && <Car size={16} className="text-marca" />}{esVehiculo ? 'Unidades (VIN, placas y datos del vehículo)' : 'Números de serie'} <span className="ml-1 rounded-full bg-marca/15 px-2 py-0.5 text-xs text-marca">{cantidad} unidad(es)</span></h2>
                 <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500"><ClipboardPaste size={13} />Puedes pegar una columna de Excel · Enter agrega renglón</span>
               </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 px-1 text-[10px] uppercase tracking-wider text-stone-500"><span>#</span><span>Serie</span><span>No. económico / placa</span><span /></div>
+              <div className="space-y-3">
                 {filas.map((f, i) => {
                   const rep = f.serie.trim() && repetidas.has(f.serie.trim().toUpperCase())
+                  const set = (c: Partial<Fila>) => setFilas(fs => fs.map((x, k) => k === i ? { ...x, ...c } : x))
                   return (
-                    <div key={i} className="grid grid-cols-[2rem_1fr_1fr_2rem] items-center gap-2">
-                      <span className="cifra text-center text-xs text-stone-400">{i + 1}</span>
-                      <input ref={el => { refs.current[i] = el }} className={`campo font-mono ${rep ? '!border-red-200 !bg-red-50' : ''}`} placeholder="Ej. PF3XYZ12" value={f.serie}
-                        onChange={e => setFilas(fs => fs.map((x, k) => k === i ? { ...x, serie: e.target.value } : x))} onPaste={e => pegar(i, e, 'serie')} onKeyDown={e => tecla(i, e)} />
-                      <input className="campo" placeholder="Opcional" value={f.eco}
-                        onChange={e => setFilas(fs => fs.map((x, k) => k === i ? { ...x, eco: e.target.value } : x))} onPaste={e => pegar(i, e, 'eco')} onKeyDown={e => tecla(i, e)} />
-                      <button className="grid h-9 w-8 place-items-center rounded-lg text-stone-400 hover:text-red-700 disabled:opacity-30" disabled={filas.length === 1}
-                        onClick={() => setFilas(fs => fs.filter((_, k) => k !== i))} aria-label="Quitar renglón"><Trash2 size={15} /></button>
+                    <div key={i} className="rounded-xl border border-stone-200 p-3">
+                      <div className="mb-2 flex items-center justify-between"><span className="cifra text-xs font-semibold text-stone-500">Unidad {i + 1}</span>
+                        <button className="grid h-7 w-7 place-items-center rounded-lg text-stone-400 hover:text-red-700 disabled:opacity-30" disabled={filas.length === 1} onClick={() => setFilas(fs => fs.filter((_, k) => k !== i))} aria-label="Quitar unidad"><Trash2 size={14} /></button></div>
+                      <div className={`grid gap-2 ${esVehiculo ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                        <Campo label={esVehiculo ? 'VIN / No. de serie *' : 'No. de serie *'}><input ref={el => { refs.current[i] = el }} className={`campo font-mono ${rep ? '!border-red-200 !bg-red-50' : ''}`} placeholder={esVehiculo ? '17 caracteres' : 'Ej. PF3XYZ12'} value={f.serie}
+                          onChange={e => set({ serie: e.target.value })} onPaste={e => pegar(i, e, 'serie')} onKeyDown={e => tecla(i, e)} /></Campo>
+                        <Campo label="No. económico"><input className="campo" placeholder="Opcional" value={f.eco} onChange={e => set({ eco: e.target.value })} onPaste={e => pegar(i, e, 'eco')} onKeyDown={e => tecla(i, e)} /></Campo>
+                        {esVehiculo && <>
+                          <Campo label="Placas"><input className="campo uppercase" value={f.placa ?? ''} onChange={e => set({ placa: e.target.value })} placeholder="CY-12-345" /></Campo>
+                          <Campo label="Año (modelo)"><input className="campo" type="number" min="1980" max="2100" value={f.anio ?? ''} onChange={e => set({ anio: e.target.value })} placeholder="2024" /></Campo>
+                          <Campo label="Color"><input className="campo" value={f.color ?? ''} onChange={e => set({ color: e.target.value })} placeholder="Blanco" /></Campo>
+                          <Campo label="No. de motor"><input className="campo font-mono" value={f.motor ?? ''} onChange={e => set({ motor: e.target.value })} /></Campo>
+                          <Campo label="Kilometraje actual"><input className="campo" type="number" min="0" value={f.km ?? ''} onChange={e => set({ km: e.target.value })} placeholder="0" /></Campo>
+                        </>}
+                        <Campo label="Comentario de esta unidad" className={esVehiculo ? 'sm:col-span-2' : 'sm:col-span-2'}><input className="campo" value={f.comentario ?? ''} onChange={e => set({ comentario: e.target.value })} placeholder="Rayón en la tapa, trae cargador…" /></Campo>
+                      </div>
                     </div>
                   )
                 })}
               </div>
               {repetidas.size > 0 && <div className="mt-3"><Aviso>Hay series repetidas: {[...repetidas].join(', ')}</Aviso></div>}
+              {sinSerieN > 0 && (
+                <label className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <input type="checkbox" className="mt-0.5" checked={sinSerie} onChange={e => setSinSerie(e.target.checked)} />
+                  <span>{sinSerieN} unidad(es) sin número de serie. Márcalo si de verdad no tienen (herramienta menor, mobiliario) para poder seguir.</span>
+                </label>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn-sec !py-1.5 text-xs" onClick={() => setFilas(f => [...f, { serie: '', eco: '' }])}><Plus size={14} />Renglón</button>
-                <button className="btn-sec !py-1.5 text-xs" onClick={() => setFilas(f => [...f, ...Array.from({ length: 5 }, () => ({ serie: '', eco: '' }))])}><Plus size={14} />5 renglones</button>
+                <button className="btn-sec !py-1.5 text-xs" onClick={() => setFilas(f => [...f, { serie: '', eco: '' }])}><Plus size={14} />Unidad</button>
+                <button className="btn-sec !py-1.5 text-xs" onClick={() => setFilas(f => [...f, ...Array.from({ length: 5 }, () => ({ serie: '', eco: '' }))])}><Plus size={14} />5 unidades</button>
               </div>
             </div>
           </div>
@@ -315,7 +363,6 @@ export default function Alta() {
                 ))}
               </div>
             </div>
-            <Campo label="Notas (opcional)"><textarea className="campo" rows={2} value={notas} onChange={e => setNotas(e.target.value)} placeholder="Factura, accesorios incluidos, observaciones…" /></Campo>
           </div>
           <aside className="tarjeta h-fit p-5">
             <h2 className="mb-4 text-sm font-semibold">Resumen</h2>
@@ -326,8 +373,9 @@ export default function Alta() {
               <div className="flex justify-between gap-3"><dt className="text-stone-500">Ubicación</dt><dd className="truncate text-right">{ubis.find(u => u.id === ubicacion)?.nombre ?? '—'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-stone-500">Se entrega a</dt><dd className="truncate text-right">{empleado ? nombreEmpleado(emps.find(e => e.id === empleado) as never) : 'Nadie'}</dd></div>
             </dl>
+            {faltan.length > 0 && <div className="mt-4"><Aviso><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /><span>No se puede entregar a {nombreEmpleado(emps.find(e => e.id === empleado) as never)}: le falta {faltan.join(', ').toLowerCase()}. Súbela en su ficha (<Link to={`/empleados/${empleado}`} className="underline">Empleados → Documentos</Link>) o elige otra persona.</span></span></Aviso></div>}
             {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
-            <button className="btn-primario mt-5 w-full py-3" disabled={guardando} onClick={guardar}>
+            <button className="btn-primario mt-5 w-full py-3" disabled={guardando || faltan.length > 0} onClick={guardar}>
               {guardando ? 'Guardando…' : <><Check size={16} />Dar de alta {cantidad} activo(s)</>}
             </button>
           </aside>

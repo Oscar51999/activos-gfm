@@ -52,7 +52,10 @@ export function crearDatos() {
     { id: 'c3', nombre: 'Herramienta', es_vehiculo: false }, { id: 'c4', nombre: 'Equipo de cómputo', es_vehiculo: false },
     { id: 'c5', nombre: 'Equipo de topografía', es_vehiculo: false }, { id: 'c6', nombre: 'Equipo menor', es_vehiculo: false },
     { id: 'c7', nombre: 'Telefonía', es_vehiculo: false }, { id: 'c8', nombre: 'Seguridad', es_vehiculo: false },
-  ].map(c => ({ ...c, activo: true, padre_id: null }))
+  ].map(c => ({ ...c, activo: true, padre_id: null as string | null }))
+  // subtipos (como en el sistema real)
+  ;[['c4', 'Laptops'], ['c4', 'Monitores'], ['c4', 'Impresoras y multifuncionales'], ['c1', 'Pick-up'], ['c1', 'Sedán'], ['c2', 'Retroexcavadoras'], ['c3', 'Herramienta eléctrica'], ['c5', 'Estaciones totales']]
+    .forEach(([p, n], i) => categorias.push({ id: 'cs' + i, nombre: n, es_vehiculo: p === 'c1' || p === 'c2', activo: true, padre_id: p }))
   const marcas = ['Nissan', 'Toyota', 'Caterpillar', 'John Deere', 'Bosch', 'Makita', 'Lenovo', 'Leica', 'Honda', 'Samsung', 'HP', '3M', 'DeWalt'].map((n, i) => ({ id: 'm' + i, nombre: n, activo: true }))
   const M = (n: string) => marcas.find(m => m.nombre === n)!.id
   const P = (id: string, marca: string, nombre: string, cat: string, desc: string, dib: keyof typeof DIBUJOS, color: string) =>
@@ -414,7 +417,12 @@ export function crearDatos() {
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
-    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
+    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [], actividades: [
+      { id: 'ac1', titulo: 'Configurar laptops nuevas de Vanguardia', grupo: 'Equipos', descripcion: null, estatus: 'en_curso', prioridad: 'alta', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: new Date().toISOString().slice(0, 10), fecha_fin: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10), avance: 40, orden: 1, created_at: hace(2) },
+      { id: 'ac2', titulo: 'Instalar access point en Entrepiedras', grupo: 'Redes', descripcion: 'Torre 2', estatus: 'pendiente', prioridad: 'media', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10), avance: 0, orden: 2, created_at: hace(1) },
+      { id: 'ac3', titulo: 'Renovar antivirus', grupo: 'Equipos', descripcion: null, estatus: 'atorado', prioridad: 'urgente', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), avance: 20, orden: 3, created_at: hace(5) },
+      { id: 'ac4', titulo: 'Inventario de radios', grupo: 'Equipos', descripcion: null, estatus: 'listo', prioridad: 'baja', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: null, avance: 100, orden: 4, created_at: hace(9) },
+    ], inmueble_pagos: [], inmueble_fallas: [], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
   return { db, urls }
 }
 
@@ -835,6 +843,7 @@ export function instalarDemo(base: string) {
       return json(id)
     }
     if (path.startsWith('/rest/v1/rpc/admin_contrasena')) return json(null)
+    if (path.startsWith('/rest/v1/rpc/usuarios_para_asignar')) return json(db.perfiles.filter(p => p.activo).map(p => ({ id: p.id, nombre: p.nombre, foto_path: null, rol: p.rol })))
     if (path.startsWith('/rest/v1/rpc/admin_eliminar_usuario')) { db.perfiles = db.perfiles.filter(p => p.id !== body?.p_id); return json(null) }
     if (path.startsWith('/rest/v1/rpc/admin_eliminar_activo')) { db.movimiento_activos = db.movimiento_activos.filter(m => m.activo_id !== body?.p_id); db.activos = db.activos.filter(a => a.id !== body?.p_id); return json(null) }
     if (path.startsWith('/rest/v1/rpc/resolver_merma')) {

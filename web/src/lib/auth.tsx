@@ -14,7 +14,7 @@ export type Perfil = {
   foto_path?: string | null
   telefono?: string | null
   puesto?: string | null
-  preferencias?: { tema?: Tema } | null
+  preferencias?: { tema?: Tema; accesos?: string[]; acento?: string | null } | null
   es_super?: boolean
 }
 
@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [cargando, setCargando] = useState(true)
   const [apariencia, setAp] = useState<Apariencia>({})
-  const setApariencia = (a: Apariencia) => { setAp(a); aplicarApariencia(a) }
+  const [acentoPersonal, setAcentoPersonal] = useState<string | null>(null)
+  // el color que elige cada persona manda sobre el de la empresa
+  const setApariencia = (a: Apariencia) => { setAp(a); aplicarApariencia({ ...a, acento: acentoPersonal ?? a.acento }) }
 
   async function cargarPerfil(uid: string | undefined) {
     if (!uid) { setPerfil(null); return }
@@ -55,8 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // El tema elegido en el perfil sigue a la persona en cualquier equipo
     const t = p?.preferencias?.tema
     if (t && t !== temaGuardado()) aplicarTema(t)
+    const ac = p?.preferencias?.acento ?? null
+    setAcentoPersonal(ac)
+    if (ac) aplicarApariencia({ ...apariencia, acento: ac })
     if (p?.activo) supabase.from('ajustes').select('valor').eq('clave', 'apariencia').maybeSingle()
-      .then(({ data: a }) => { if (a) setApariencia((a as { valor: Apariencia }).valor ?? {}) })
+      .then(({ data: a }) => { if (a) { const v = (a as { valor: Apariencia }).valor ?? {}; setAp(v); aplicarApariencia({ ...v, acento: ac ?? v.acento }) } })
   }
 
   useEffect(() => {

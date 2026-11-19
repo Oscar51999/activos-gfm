@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
 import AsistenteFlotante from './AsistenteFlotante'
+import { registrarReciente } from '../lib/recientes'
 import { ROLES, supabase } from '../lib/supabase'
 import { LogoFirme, MonogramaFirme } from './Logo'
 import Comandos, { type Destino } from './Comandos'
@@ -53,7 +54,7 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/requisitos', icono: IdCard, texto: 'Requisitos para operar' },
     { to: '/codigos-falla', icono: ListTree, texto: 'Códigos de falla' },
     { to: '/categorias', icono: Tags, texto: 'Categorías' },
-    { to: '/marcas', icono: Tags, texto: 'Marcas' },
+    { to: '/marcas', icono: Tags, texto: 'Marcas y modelos' },
     { to: '/proveedores', icono: Truck, texto: 'Proveedores' },
     { to: '/centros-costo', icono: Hash, texto: 'Centros de costo' },
   ] },
@@ -126,7 +127,7 @@ function useReflejo() {
 }
 
 export default function Layout() {
-  const { esAdmin, esSuper } = useAuth()
+  const { esAdmin, esSuper, puedeEditar } = useAuth()
   const [abierto, setAbierto] = useState(false)
   const [compacto, setCompacto] = useState(() => leer('gfm.menu') === 'compacto')
   const [buscar, setBuscar] = useState(false)
@@ -144,10 +145,11 @@ export default function Layout() {
     ]).then(([p, r, v, m, a]) => setAlertas({ prestamos: p.data?.length ?? 0, reportes: r.data?.length ?? 0, vigencias: v.data?.length ?? 0, mantenimiento: m.data?.length ?? 0, solicitudes: a.pendientes, almacen: a.bajo }))
   }, [loc.pathname])
 
-  const todos = useMemo(() => [...grupos, ...(esAdmin ? [{ titulo: 'Administración', items: [
-    { to: '/usuarios', icono: UserCog, texto: 'Usuarios' },
+  const todos = useMemo(() => [...grupos, ...(puedeEditar ? [{ titulo: 'Administración', items: [
+    { to: '/actividades', icono: CalendarCheck, texto: 'Actividades' },
+    ...(esAdmin ? [{ to: '/usuarios', icono: UserCog, texto: 'Usuarios' }] : []),
     ...(esSuper ? [{ to: '/admin', icono: ShieldAlert, texto: 'Panel de administrador' }] : []),
-  ] }] : [])], [esAdmin, esSuper])
+  ] }] : [])], [puedeEditar, esAdmin, esSuper])
   const destinos = useMemo<Destino[]>(() => [
     ...todos.flatMap(g => g.items.map(i => ({ to: i.to, texto: i.texto, icono: i.icono, grupo: g.titulo }))),
     { to: '/alta', texto: 'Alta de activos', icono: PackagePlus, grupo: 'Acción' },
@@ -166,6 +168,7 @@ export default function Layout() {
     window.addEventListener('keydown', f); return () => window.removeEventListener('keydown', f)
   }, [])
   useEffect(() => { setAbierto(false) }, [loc.pathname])
+  useEffect(() => { if (actual && actual.to !== '/' && loc.pathname === actual.to) registrarReciente(actual.to, actual.texto, actual.grupo ?? '') }, [loc.pathname, actual])
 
   const alternar = () => setCompacto(c => { guardar('gfm.menu', c ? 'amplio' : 'compacto'); return !c })
 

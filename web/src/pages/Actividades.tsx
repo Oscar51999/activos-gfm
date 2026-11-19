@@ -1,0 +1,277 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
+import { CalendarDays, KanbanSquare, Table2, Plus, ChevronLeft, ChevronRight, ChevronDown, Search, Trash2, Check, X } from 'lucide-react'
+import { supabase, mensajeError } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { useLista } from '../lib/hooks'
+import { Cargando, Modal, Campo, Aviso } from '../components/ui'
+import { Avatar } from '../components/Layout'
+
+type Estatus = 'pendiente' | 'en_curso' | 'atorado' | 'listo'
+type Prioridad = 'baja' | 'media' | 'alta' | 'urgente'
+type Act = { id: string; titulo: string; grupo: string; descripcion: string | null; estatus: Estatus; prioridad: Prioridad; responsable_id: string | null; empresa_id: string | null
+  fecha_inicio: string | null; fecha_fin: string | null; avance: number; orden: number; created_at: string }
+type Usuario = { id: string; nombre: string; foto_path: string | null }
+
+// Colores tipo Monday: el estatus se ve de lejos
+const ESTATUS: Record<Estatus, { t: string; c: string }> = {
+  pendiente: { t: 'Pendiente', c: '#9AA0AA' }, en_curso: { t: 'En curso', c: '#E2A64B' }, atorado: { t: 'Atorado', c: '#E2445C' }, listo: { t: 'Listo', c: '#00C875' },
+}
+const PRIORIDAD: Record<Prioridad, { t: string; c: string }> = {
+  baja: { t: 'Baja', c: '#579BFC' }, media: { t: 'Media', c: '#A25DDC' }, alta: { t: 'Alta', c: '#FDAB3D' }, urgente: { t: 'Urgente', c: '#E2445C' },
+}
+const COLORES_GRUPO = ['#579BFC', '#A25DDC', '#00C875', '#FDAB3D', '#E2445C', '#1FB5B8', '#FF7575', '#784BD1']
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const corta = (s: string | null) => s ? new Date(s + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : ''
+const hoy = iso(new Date())
+
+/** Actividades del equipo (supervisores y administradores): tablero por grupos, calendario y kanban. */
+export default function Actividades() {
+  const { puedeEditar, perfil } = useAuth()
+  const [sp, setSp] = useSearchParams()
+  const vista = (sp.get('vista') ?? 'tablero') as 'tablero' | 'calendario' | 'kanban'
+  const [acts, setActs] = useState<Act[] | null>(null)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const empresas = useLista('empresas', 'id,nombre,nombre_corto')
+  const [editar, setEditar] = useState<Partial<Act> | null>(null)
+  const [q, setQ] = useState('')
+  const [mias, setMias] = useState(false)
+  const [error, setError] = useState('')
+
+  const cargar = () => supabase.from('actividades').select('*').order('orden').order('created_at').then(({ data, error }) => { if (error) setError(mensajeError(error)); setActs((data as Act[]) ?? []) })
+  useEffect(() => { cargar(); supabase.rpc('usuarios_para_asignar').then(({ data }) => setUsuarios((data as Usuario[]) ?? [])) }, [])
+
+  const visibles = useMemo(() => (acts ?? []).filter(a => (!mias || a.responsable_id === perfil?.id) && (!q.trim() || `${a.titulo} ${a.descripcion ?? ''} ${a.grupo}`.toLowerCase().includes(q.trim().toLowerCase()))), [acts, mias, q, perfil?.id])
+  const grupos = useMemo(() => [...new Set((acts ?? []).map(a => a.grupo))].sort((a, b) => a === 'General' ? -1 : b === 'General' ? 1 : a.localeCompare(b)), [acts])
+
+  async function actualizar(id: string, c: Partial<Act>) {
+    setActs(xs => xs?.map(a => a.id === id ? { ...a, ...c, ...(c.estatus === 'listo' ? { avance: 100 } : {}) } : a) ?? null)
+    const { error } = await supabase.from('actividades').update({ ...c, ...(c.estatus === 'listo' ? { avance: 100 } : {}) }).eq('id', id)
+    if (error) { setError(mensajeError(error)); cargar() }
+  }
+  async function crearRapido(grupo: string, titulo: string) {
+    if (!titulo.trim()) return
+    const { error } = await supabase.from('actividades').insert({ titulo: titulo.trim(), grupo, responsable_id: perfil?.id ?? null, orden: (acts?.length ?? 0) + 1 })
+    if (error) return setError(mensajeError(error))
+    cargar()
+  }
+
+  if (!puedeEditar) return <Navigate to="/" replace />
+  if (!acts) return <Cargando />
+  const usuario = (id: string | null) => usuarios.find(u => u.id === id)
+  const resumen = (Object.keys(ESTATUS) as Estatus[]).map(k => ({ k, n: visibles.filter(a => a.estatus === k).length }))
+
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Actividades</h1>
+          <p className="mt-1 text-sm text-stone-500">Pendientes del equipo de TI y supervisores: quién, qué y para cuándo.</p>
+        </div>
+        <button className="btn-primario" onClick={() => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: hoy })}><Plus size={16} />Nueva actividad</button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex rounded-xl border border-stone-200 p-1">
+          {([['tablero', 'Tablero', Table2], ['calendario', 'Calendario', CalendarDays], ['kanban', 'Kanban', KanbanSquare]] as const).map(([k, t, I]) => (
+            <button key={k} onClick={() => setSp({ vista: k }, { replace: true })} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm ${vista === k ? 'bg-marca/15 text-tinta' : 'text-stone-500 hover:text-tinta'}`}><I size={15} />{t}</button>
+          ))}
+        </div>
+        <span className="relative min-w-[180px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo !py-2 pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar actividad…" /></span>
+        <label className="flex items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-sm"><input type="checkbox" checked={mias} onChange={e => setMias(e.target.checked)} />Solo las mías</label>
+      </div>
+      <div className="mb-5 flex h-2 overflow-hidden rounded-full bg-stone-100" title="Avance por estatus">
+        {resumen.map(r => r.n > 0 && <div key={r.k} style={{ width: `${(r.n / Math.max(1, visibles.length)) * 100}%`, background: ESTATUS[r.k].c }} />)}
+      </div>
+      {error && <div className="mb-4"><Aviso>{error}</Aviso></div>}
+
+      {vista === 'tablero' && <Tablero grupos={grupos} acts={visibles} usuario={usuario} usuarios={usuarios} actualizar={actualizar} abrir={setEditar} crear={crearRapido} />}
+      {vista === 'calendario' && <Calendario acts={visibles} abrir={setEditar} nueva={f => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: f, fecha_fin: f })} />}
+      {vista === 'kanban' && <Kanban acts={visibles} usuario={usuario} actualizar={actualizar} abrir={setEditar} />}
+
+      {editar && <EditarAct act={editar} grupos={grupos} usuarios={usuarios} empresas={empresas.items as { id: string; nombre: string; nombre_corto?: string }[]} onCerrar={() => setEditar(null)} onListo={() => { setEditar(null); cargar() }} />}
+    </div>
+  )
+}
+
+function Pastilla({ texto, color, opciones, onElegir }: { texto: string; color: string; opciones: { k: string; t: string; c: string }[]; onElegir: (k: string) => void }) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <span className="relative block">
+      <button onClick={() => setAbierto(a => !a)} className="w-full rounded-md px-2 py-1.5 text-center text-xs font-medium text-[#fff] transition hover:brightness-110" style={{ background: color }}>{texto}</button>
+      {abierto && <>
+        <span className="fixed inset-0 z-40" onClick={() => setAbierto(false)} />
+        <span className="absolute left-1/2 top-full z-50 mt-1 grid w-36 -translate-x-1/2 gap-1 rounded-xl border border-stone-300 bg-panel p-1.5 shadow-2xl">
+          {opciones.map(o => <button key={o.k} onClick={() => { onElegir(o.k); setAbierto(false) }} className="rounded-md px-2 py-1.5 text-xs font-medium text-[#fff]" style={{ background: o.c }}>{o.t}</button>)}
+        </span>
+      </>}
+    </span>
+  )
+}
+
+function Tablero({ grupos, acts, usuario, usuarios, actualizar, abrir, crear }: {
+  grupos: string[]; acts: Act[]; usuario: (id: string | null) => Usuario | undefined; usuarios: Usuario[]
+  actualizar: (id: string, c: Partial<Act>) => void; abrir: (a: Partial<Act>) => void; crear: (grupo: string, titulo: string) => void
+}) {
+  const [cerrados, setCerrados] = useState<Set<string>>(new Set())
+  const [nuevos, setNuevos] = useState<Record<string, string>>({})
+  const [grupoNuevo, setGrupoNuevo] = useState<string | null>(null)
+  const lista = grupos.length ? grupos : ['General']
+  return (
+    <div className="space-y-6">
+      {lista.map((g, gi) => {
+        const color = COLORES_GRUPO[gi % COLORES_GRUPO.length]
+        const items = acts.filter(a => a.grupo === g)
+        const cerrado = cerrados.has(g)
+        return (
+          <section key={g}>
+            <button onClick={() => setCerrados(s => { const n = new Set(s); if (n.has(g)) n.delete(g); else n.add(g); return n })} className="mb-2 flex items-center gap-2 font-semibold" style={{ color }}>
+              <ChevronDown size={16} className={`transition ${cerrado ? '-rotate-90' : ''}`} />{g}<span className="text-xs font-normal text-stone-500">{items.length} actividad(es)</span>
+            </button>
+            {!cerrado && (
+              <div className="tarjeta overflow-x-auto" style={{ borderLeft: `4px solid ${color}` }}>
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="text-left text-stone-500"><tr>
+                    <th className="px-3 py-2 font-medium">Actividad</th><th className="w-28 px-2 py-2 text-center font-medium">Responsable</th><th className="w-32 px-2 py-2 text-center font-medium">Estatus</th>
+                    <th className="w-28 px-2 py-2 text-center font-medium">Prioridad</th><th className="w-36 px-2 py-2 text-center font-medium">Fechas</th><th className="w-28 px-2 py-2 font-medium">Avance</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {items.map(a => {
+                      const u = usuario(a.responsable_id), vencida = a.fecha_fin && a.fecha_fin < hoy && a.estatus !== 'listo'
+                      return (
+                        <tr key={a.id} className="hover:bg-stone-50">
+                          <td className="px-3 py-1.5"><button onClick={() => abrir(a)} className={`text-left hover:text-marca ${a.estatus === 'listo' ? 'text-stone-500 line-through' : ''}`}>{a.titulo}</button>{a.descripcion && <span className="block truncate text-xs text-stone-500">{a.descripcion}</span>}</td>
+                          <td className="px-2 py-1.5">
+                            <select className="w-full rounded-md bg-transparent px-1 py-1 text-xs outline-none hover:bg-stone-100" value={a.responsable_id ?? ''} onChange={e => actualizar(a.id, { responsable_id: e.target.value || null })} title={u?.nombre}>
+                              <option value="">—</option>{usuarios.map(x => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1.5"><Pastilla texto={ESTATUS[a.estatus].t} color={ESTATUS[a.estatus].c} opciones={Object.entries(ESTATUS).map(([k, v]) => ({ k, ...v }))} onElegir={k => actualizar(a.id, { estatus: k as Estatus })} /></td>
+                          <td className="px-2 py-1.5"><Pastilla texto={PRIORIDAD[a.prioridad].t} color={PRIORIDAD[a.prioridad].c} opciones={Object.entries(PRIORIDAD).map(([k, v]) => ({ k, ...v }))} onElegir={k => actualizar(a.id, { prioridad: k as Prioridad })} /></td>
+                          <td className={`px-2 py-1.5 text-center text-xs ${vencida ? 'font-medium text-red-700' : 'text-stone-600'}`}>{a.fecha_inicio || a.fecha_fin ? `${corta(a.fecha_inicio)}${a.fecha_fin && a.fecha_fin !== a.fecha_inicio ? ` – ${corta(a.fecha_fin)}` : ''}` : '—'}</td>
+                          <td className="px-2 py-1.5"><div className="flex items-center gap-2"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full" style={{ width: `${a.avance}%`, background: ESTATUS.listo.c }} /></div><span className="cifra w-8 text-right text-[11px] text-stone-500">{a.avance}%</span></div></td>
+                        </tr>
+                      )
+                    })}
+                    <tr><td colSpan={6} className="px-3 py-1.5">
+                      <form onSubmit={e => { e.preventDefault(); crear(g, nuevos[g] ?? ''); setNuevos(n => ({ ...n, [g]: '' })) }} className="flex items-center gap-2">
+                        <Plus size={14} className="text-stone-400" /><input className="min-w-0 flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-stone-400" value={nuevos[g] ?? ''} onChange={e => setNuevos(n => ({ ...n, [g]: e.target.value }))} placeholder="Agregar actividad y Enter…" />
+                      </form>
+                    </td></tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )
+      })}
+      {grupoNuevo === null
+        ? <button className="btn-sec" onClick={() => setGrupoNuevo('')}><Plus size={15} />Nuevo grupo</button>
+        : <form className="flex flex-wrap gap-2" onSubmit={e => { e.preventDefault(); if (grupoNuevo.trim()) crear(grupoNuevo.trim(), 'Primera actividad'); setGrupoNuevo(null) }}>
+            <input className="campo max-w-xs" autoFocus value={grupoNuevo} onChange={e => setGrupoNuevo(e.target.value)} placeholder="Nombre del grupo (ej. Proyecto red Costa Palmas)" />
+            <button className="btn-primario"><Check size={15} />Crear</button><button type="button" className="btn-sec" onClick={() => setGrupoNuevo(null)}><X size={15} /></button>
+          </form>}
+    </div>
+  )
+}
+
+function Calendario({ acts, abrir, nueva }: { acts: Act[]; abrir: (a: Partial<Act>) => void; nueva: (fecha: string) => void }) {
+  const [mes, setMes] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  const ini = new Date(mes); ini.setDate(1 - ((mes.getDay() + 6) % 7))   // semana empieza en lunes
+  const dias = Array.from({ length: 42 }, (_, i) => { const d = new Date(ini); d.setDate(ini.getDate() + i); return d })
+  const enDia = (f: string) => acts.filter(a => { const s = a.fecha_inicio ?? a.fecha_fin, e = a.fecha_fin ?? a.fecha_inicio; return s && e && s <= f && f <= e })
+  return (
+    <div className="tarjeta overflow-hidden">
+      <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
+        <button className="btn-sec !px-2 !py-1.5" onClick={() => setMes(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))} aria-label="Mes anterior"><ChevronLeft size={16} /></button>
+        <h2 className="font-semibold capitalize">{mes.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</h2>
+        <button className="btn-sec !px-2 !py-1.5" onClick={() => setMes(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))} aria-label="Mes siguiente"><ChevronRight size={16} /></button>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="grid min-w-[700px] grid-cols-7">
+          {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => <div key={d} className="border-b border-stone-200 px-2 py-1.5 text-center text-[11px] uppercase tracking-wider text-stone-500">{d}</div>)}
+          {dias.map(d => {
+            const f = iso(d), fuera = d.getMonth() !== mes.getMonth(), items = enDia(f)
+            return (
+              <div key={f} onDoubleClick={() => nueva(f)} className={`min-h-24 border-b border-r border-stone-100 p-1.5 ${fuera ? 'opacity-40' : ''}`}>
+                <div className="mb-1 flex items-center justify-between"><span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${f === hoy ? 'bg-marca font-bold text-[#120D04]' : 'text-stone-500'}`}>{d.getDate()}</span>
+                  <button onClick={() => nueva(f)} className="text-stone-300 hover:text-marca" aria-label="Agregar"><Plus size={13} /></button></div>
+                <div className="space-y-1">
+                  {items.slice(0, 3).map(a => <button key={a.id} onClick={() => abrir(a)} className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] font-medium text-[#fff]" style={{ background: ESTATUS[a.estatus].c }} title={a.titulo}>{a.titulo}</button>)}
+                  {items.length > 3 && <p className="px-1 text-[10px] text-stone-500">+{items.length - 3} más</p>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Kanban({ acts, usuario, actualizar, abrir }: { acts: Act[]; usuario: (id: string | null) => Usuario | undefined; actualizar: (id: string, c: Partial<Act>) => void; abrir: (a: Partial<Act>) => void }) {
+  const [arrastra, setArrastra] = useState<string | null>(null)
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {(Object.keys(ESTATUS) as Estatus[]).map(k => {
+        const items = acts.filter(a => a.estatus === k)
+        return (
+          <div key={k} onDragOver={e => e.preventDefault()} onDrop={() => { if (arrastra) actualizar(arrastra, { estatus: k }); setArrastra(null) }} className="min-h-40 rounded-2xl border border-stone-200 bg-stone-50 p-2">
+            <p className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: ESTATUS[k].c }} />{ESTATUS[k].t}<span className="text-xs font-normal text-stone-500">{items.length}</span></p>
+            <div className="space-y-2">
+              {items.map(a => {
+                const u = usuario(a.responsable_id)
+                return (
+                  <div key={a.id} draggable onDragStart={() => setArrastra(a.id)} onClick={() => abrir(a)} className="tarjeta cursor-grab p-3 active:cursor-grabbing" style={{ borderLeft: `3px solid ${PRIORIDAD[a.prioridad].c}` }}>
+                    <p className="text-sm font-medium">{a.titulo}</p>
+                    <p className="mt-0.5 text-[11px] text-stone-500">{a.grupo}{a.fecha_fin ? ` · ${corta(a.fecha_fin)}` : ''}</p>
+                    {u && <p className="mt-2 flex items-center gap-1.5 text-[11px] text-stone-600"><span className="[&>span]:!h-5 [&>span]:!w-5 [&>span]:!text-[9px]"><Avatar foto={null} iniciales={u.nombre.split(' ').slice(0, 2).map(p => p[0]).join('')} grande /></span>{u.nombre}</p>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function EditarAct({ act, grupos, usuarios, empresas, onCerrar, onListo }: { act: Partial<Act>; grupos: string[]; usuarios: Usuario[]; empresas: { id: string; nombre: string; nombre_corto?: string }[]; onCerrar: () => void; onListo: () => void }) {
+  const [f, setF] = useState({ titulo: act.titulo ?? '', grupo: act.grupo ?? 'General', descripcion: act.descripcion ?? '', estatus: act.estatus ?? 'pendiente', prioridad: act.prioridad ?? 'media',
+    responsable_id: act.responsable_id ?? '', empresa_id: act.empresa_id ?? '', fecha_inicio: act.fecha_inicio ?? '', fecha_fin: act.fecha_fin ?? '', avance: act.avance ?? 0 })
+  const [error, setError] = useState('')
+  async function guardar() {
+    if (!f.titulo.trim()) return setError('Escribe la actividad.')
+    if (f.fecha_inicio && f.fecha_fin && f.fecha_fin < f.fecha_inicio) return setError('La fecha final no puede ser antes del inicio.')
+    const datos = { ...f, titulo: f.titulo.trim(), grupo: f.grupo.trim() || 'General', descripcion: f.descripcion.trim() || null, responsable_id: f.responsable_id || null, empresa_id: f.empresa_id || null,
+      fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null, avance: f.estatus === 'listo' ? 100 : Number(f.avance) }
+    const { error } = act.id ? await supabase.from('actividades').update(datos).eq('id', act.id) : await supabase.from('actividades').insert(datos)
+    if (error) return setError(mensajeError(error))
+    onListo()
+  }
+  async function borrar() { if (!act.id) return; await supabase.from('actividades').delete().eq('id', act.id); onListo() }
+  return (
+    <Modal abierto titulo={act.id ? 'Actividad' : 'Nueva actividad'} onCerrar={onCerrar} ancho="max-w-xl">
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo label="Actividad *" className="sm:col-span-2"><input className="campo" autoFocus value={f.titulo} onChange={e => setF({ ...f, titulo: e.target.value })} placeholder="Instalar access point en obra Entrepiedras" /></Campo>
+          <Campo label="Grupo"><input className="campo" list="grupos-act" value={f.grupo} onChange={e => setF({ ...f, grupo: e.target.value })} /><datalist id="grupos-act">{grupos.map(g => <option key={g} value={g} />)}</datalist></Campo>
+          <Campo label="Responsable"><select className="campo" value={f.responsable_id} onChange={e => setF({ ...f, responsable_id: e.target.value })}><option value="">—</option>{usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></Campo>
+          <Campo label="Estatus"><select className="campo" value={f.estatus} onChange={e => setF({ ...f, estatus: e.target.value as Estatus })}>{Object.entries(ESTATUS).map(([k, v]) => <option key={k} value={k}>{v.t}</option>)}</select></Campo>
+          <Campo label="Prioridad"><select className="campo" value={f.prioridad} onChange={e => setF({ ...f, prioridad: e.target.value as Prioridad })}>{Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.t}</option>)}</select></Campo>
+          <Campo label="Inicio"><input className="campo" type="date" value={f.fecha_inicio} onChange={e => setF({ ...f, fecha_inicio: e.target.value })} /></Campo>
+          <Campo label="Entrega"><input className="campo" type="date" value={f.fecha_fin} onChange={e => setF({ ...f, fecha_fin: e.target.value })} /></Campo>
+          <Campo label={`Avance: ${f.estatus === 'listo' ? 100 : f.avance}%`}><input type="range" min="0" max="100" step="5" className="w-full accent-[var(--color-marca)]" value={f.estatus === 'listo' ? 100 : f.avance} onChange={e => setF({ ...f, avance: Number(e.target.value) })} /></Campo>
+          <Campo label="Empresa (opcional)"><select className="campo" value={f.empresa_id} onChange={e => setF({ ...f, empresa_id: e.target.value })}><option value="">—</option>{empresas.map(e => <option key={e.id} value={e.id}>{e.nombre_corto || e.nombre}</option>)}</select></Campo>
+          <Campo label="Detalle" className="sm:col-span-2"><textarea className="campo" rows={3} value={f.descripcion} onChange={e => setF({ ...f, descripcion: e.target.value })} /></Campo>
+        </div>
+        {error && <Aviso>{error}</Aviso>}
+        <div className="flex flex-wrap justify-between gap-2">
+          {act.id ? <button className="btn-peligro" onClick={borrar}><Trash2 size={15} />Borrar</button> : <span />}
+          <div className="flex gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className="btn-primario" onClick={guardar}><Check size={15} />Guardar</button></div>
+        </div>
+      </div>
+    </Modal>
+  )
+}

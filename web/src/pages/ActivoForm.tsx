@@ -12,9 +12,10 @@ type Activo = {
   estatus: Estatus; valor_referencia: number | string | null; fecha_alta: string; notas: string | null; foto_principal?: string | null
 }
 type Vehiculo = { placa: string | null; anio: number | string | null; color: string | null; cilindros: number | string | null; combustible: string | null
-  transmision: string | null; capacidad_tanque: number | string | null; pasajeros: number | string | null; kilometraje: number | string | null }
+  transmision: string | null; capacidad_tanque: number | string | null; pasajeros: number | string | null; kilometraje: number | string | null
+  numero_motor?: string | null; version?: string | null; tipo_licencia?: string | null; tarjeta_circulacion?: string | null; poliza?: string | null }
 
-const VEH_VACIO: Vehiculo = { placa: '', anio: '', color: '', cilindros: '', combustible: '', transmision: '', capacidad_tanque: '', pasajeros: '', kilometraje: '' }
+const VEH_VACIO: Vehiculo = { placa: '', anio: '', color: '', cilindros: '', combustible: '', transmision: '', capacidad_tanque: '', pasajeros: '', kilometraje: '', numero_motor: '', version: '', tipo_licencia: '', tarjeta_circulacion: '', poliza: '' }
 
 export default function ActivoForm() {
   const { id } = useParams()
@@ -109,6 +110,7 @@ export default function ActivoForm() {
           activo_id: activoId, placa: limpio(v.placa), anio: num(v.anio), color: limpio(v.color), cilindros: num(v.cilindros),
           combustible: limpio(v.combustible), transmision: limpio(v.transmision), capacidad_tanque: num(v.capacidad_tanque),
           pasajeros: num(v.pasajeros), kilometraje: num(v.kilometraje),
+          numero_motor: limpio(v.numero_motor ?? null), version: limpio(v.version ?? null), tipo_licencia: limpio(v.tipo_licencia ?? null), tarjeta_circulacion: limpio(v.tarjeta_circulacion ?? null), poliza: limpio(v.poliza ?? null),
         })
         if (error) throw error
       }
@@ -193,6 +195,11 @@ export default function ActivoForm() {
                 <Campo label="Cilindros"><input className="campo" type="number" value={v.cilindros ?? ''} onChange={e => setVeh('cilindros', e.target.value)} /></Campo>
                 <Campo label="Pasajeros"><input className="campo" type="number" value={v.pasajeros ?? ''} onChange={e => setVeh('pasajeros', e.target.value)} /></Campo>
                 <Campo label="Capacidad de tanque (L)"><input className="campo" type="number" step="0.1" value={v.capacidad_tanque ?? ''} onChange={e => setVeh('capacidad_tanque', e.target.value)} /></Campo>
+                <Campo label="Versión"><input className="campo" value={v.version ?? ''} onChange={e => setVeh('version', e.target.value)} placeholder="Doble cabina 4x4" /></Campo>
+                <Campo label="No. de motor"><input className="campo font-mono" value={v.numero_motor ?? ''} onChange={e => setVeh('numero_motor', e.target.value.toUpperCase())} /></Campo>
+                <Campo label="Licencia que pide"><select className="campo" value={v.tipo_licencia ?? ''} onChange={e => setVeh('tipo_licencia', e.target.value)}><option value="">—</option>{['A', 'B', 'C', 'D', 'E', 'Federal'].map(x => <option key={x} value={x}>Tipo {x}</option>)}</select></Campo>
+                <Campo label="Tarjeta de circulación"><input className="campo" value={v.tarjeta_circulacion ?? ''} onChange={e => setVeh('tarjeta_circulacion', e.target.value)} placeholder="No. de tarjeta" /></Campo>
+                <Campo label="Póliza de seguro"><input className="campo" value={v.poliza ?? ''} onChange={e => setVeh('poliza', e.target.value)} placeholder="Aseguradora y no. de póliza" /></Campo>
               </div>
             </section>
           )}

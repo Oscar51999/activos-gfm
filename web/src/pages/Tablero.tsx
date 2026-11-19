@@ -7,6 +7,7 @@ import { useAuth } from '../lib/auth'
 import { Cargando, Vacio } from '../components/ui'
 import { TipoBadge } from './Movimientos'
 import LogoEmpresa from '../components/LogoEmpresa'
+import InicioRapido from '../components/InicioRapido'
 import type { EmpresaLogo } from '../lib/logos'
 
 type Fila = { estatus: Estatus; empresa_id: string; empresa: string; categoria: string; ubicacion: string | null; valor_referencia: number | null; responsable: string | null }
@@ -181,6 +182,8 @@ export default function Tablero() {
           {puedeEditar && <Link to="/alta" className="btn-primario"><Plus size={16} />Alta de activos</Link>}
         </div>
       </div>
+
+      <InicioRapido />
 
       {total === 0 ? (
         <div className="tarjeta">

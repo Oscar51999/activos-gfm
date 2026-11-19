@@ -7,6 +7,8 @@ import { useLista } from '../lib/hooks'
 import { fotoProducto } from '../lib/logos'
 import { coordenadasDe, linkMaps, num } from '../lib/almacen'
 import { Cargando, Vacio, Aviso, Modal, Campo } from '../components/ui'
+import { PagosInmueble, FallasInmueble } from '../components/InmuebleExtras'
+import { registrarReciente } from '../lib/recientes'
 import { DocumentosPanel, TIPOS_DOC, BASICOS_INMUEBLE, estadoDoc, type Documento } from '../components/Documentos'
 
 export type Inmueble = { id: string; codigo: string; empresa_id: string; nombre: string; propietario: string | null; clave_catastral: string | null
@@ -127,7 +129,7 @@ export function InmuebleDetalle() {
   const [i, setI] = useState<Inmueble | null | undefined>(undefined)
   const [docs, setDocs] = useState<Documento[]>([])
   const [editar, setEditar] = useState(false)
-  const cargar = () => { supabase.from('inmuebles').select('*, empresas(nombre,nombre_corto,color)').eq('id', id!).maybeSingle().then(({ data }) => setI(data as unknown as Inmueble | null)) }
+  const cargar = () => { supabase.from('inmuebles').select('*, empresas(nombre,nombre_corto,color)').eq('id', id!).maybeSingle().then(({ data }) => { setI(data as unknown as Inmueble | null); if (data) registrarReciente(`/inmuebles/${id}`, (data as { nombre: string }).nombre, 'Inmueble') }) }
   useEffect(cargar, [id]) // eslint-disable-line react-hooks/exhaustive-deps
   if (i === undefined) return <Cargando />
   if (!i) return <Aviso>No encontré este inmueble.</Aviso>
@@ -162,6 +164,8 @@ export function InmuebleDetalle() {
             {i.servicios.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{SERVICIOS.filter(([k]) => i.servicios.includes(k)).map(([k, t, I]) => <span key={k} className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600"><I size={12} className="text-marca" />{t}</span>)}</div>}
             <div className="mt-5 flex flex-wrap gap-2">
               {i.latitud != null && <a className="btn-sec" href={linkMaps(i.latitud, i.longitud!)} target="_blank" rel="noreferrer"><ExternalLink size={15} />Ver en Google Maps</a>}
+              {i.latitud != null ? <Link className="btn-sec" to="/mapa"><MapPin size={15} />Ver en el mapa de obras</Link>
+                : puedeEditar && <button className="btn-sec" onClick={() => setEditar(true)}><MapPin size={15} />Ubicar en el mapa</button>}
               {i.ubicacion_id && <Link className="btn-sec" to={`/activos?ubicacion=${i.ubicacion_id}`}><MapPin size={15} />Activos en este lugar</Link>}
               {puedeEditar && <button className="btn-sec" onClick={() => setEditar(true)}><Pencil size={15} />Editar</button>}
             </div>
@@ -195,6 +199,10 @@ export function InmuebleDetalle() {
             </section>
           )}
         </aside>
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <PagosInmueble inmuebleId={i.id} empresaId={i.empresa_id} />
+        <FallasInmueble inmuebleId={i.id} empresaId={i.empresa_id} />
       </div>
       {editar && <InmuebleModal inmueble={i} onCerrar={() => setEditar(false)} onListo={() => { setEditar(false); cargar() }} />}
     </div>

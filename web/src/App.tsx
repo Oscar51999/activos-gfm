@@ -45,6 +45,8 @@ import Perfil from './pages/Perfil'
 import Admin from './pages/Admin'
 import Bitacoras from './pages/Bitacoras'
 import AltaInteligente from './pages/AltaInteligente'
+import MarcasMenu from './pages/MarcasMenu'
+import Actividades from './pages/Actividades'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -165,7 +167,8 @@ function Rutas() {
         <Route path="sucursales" element={<Sucursales />} />
         <Route path="empresas" element={<Empresas />} />
         <Route path="categorias" element={<Categorias />} />
-        <Route path="marcas" element={<Marcas />} />
+        <Route path="marcas" element={<MarcasMenu />} />
+        <Route path="marcas/lista" element={<Marcas />} />
         <Route path="modelos" element={<Modelos />} />
         <Route path="proveedores" element={<Proveedores />} />
         <Route path="centros-costo" element={<CentrosCosto />} />
@@ -174,6 +177,7 @@ function Rutas() {
         <Route path="bitacoras" element={<Bitacoras />} />
         <Route path="bitacoras/:id" element={<Bitacoras />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="actividades" element={<Actividades />} />
         {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

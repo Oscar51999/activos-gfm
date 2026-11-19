@@ -25,7 +25,8 @@ export default function Bitacoras() {
 
 function Indice() {
   const [filas, setFilas] = useState<Pick<Fila, 'categoria_id' | 'categoria' | 'estatus' | 'empresa_id'>[] | null>(null)
-  const categorias = useLista('categorias')
+  const categorias = useLista('categorias', 'id,nombre,padre_id')
+  const raiz = (id: string) => (categorias.items.find(c => c.id === id)?.padre_id as string | null) || id
   const empresas = useLista('empresas', 'id,nombre,nombre_corto')
   const [empresa, setEmpresa] = useState('')
   useEffect(() => {
@@ -35,10 +36,10 @@ function Indice() {
     const m = new Map<string, { total: number; e: Partial<Record<Estatus, number>> }>()
     for (const f of filas ?? []) {
       if (empresa && f.empresa_id !== empresa) continue
-      const x = m.get(f.categoria_id) ?? { total: 0, e: {} }; x.total++; x.e[f.estatus] = (x.e[f.estatus] ?? 0) + 1; m.set(f.categoria_id, x)
+      const k = raiz(f.categoria_id), x = m.get(k) ?? { total: 0, e: {} }; x.total++; x.e[f.estatus] = (x.e[f.estatus] ?? 0) + 1; m.set(k, x)
     }
     return m
-  }, [filas, empresa])
+  }, [filas, empresa, categorias.items]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!filas) return <Cargando />
   const total = [...porCat.values()].reduce((s, x) => s + x.total, 0)
   return (
@@ -59,7 +60,7 @@ function Indice() {
           <span className="min-w-0 flex-1"><span className="block font-semibold">Todo el equipo</span><span className="text-xs text-stone-500">Bitácora general</span></span>
           <span className="cifra text-2xl font-semibold">{total}</span>
         </Link>
-        {categorias.items.map(c => {
+        {categorias.items.filter(c => !c.padre_id).map(c => {
           const x = porCat.get(c.id); const I = iconoCategoria(c.nombre)
           return (
             <Link key={c.id} to={`/bitacoras/${c.id}${empresa ? `?empresa=${empresa}` : ''}`} className="tarjeta viva flex items-center gap-4 p-5">
@@ -86,15 +87,15 @@ function BitacoraCategoria({ id }: { id: string }) {
   const [estatus, setEstatus] = useState('')
   const [q, setQ] = useState('')
   const empresas = useLista('empresas', 'id,nombre,nombre_corto')
-  const categorias = useLista('categorias')
+  const categorias = useLista('categorias', 'id,nombre,padre_id')
   const todas = id === 'todas'
   const nombreCat = todas ? 'Todo el equipo' : String(categorias.items.find(c => c.id === id)?.nombre ?? 'Bitácora')
 
   useEffect(() => {
     let c = supabase.from('v_activos').select(SELECT).order('codigo').limit(20000)
-    if (!todas) c = c.eq('categoria_id', id)
+    if (!todas) c = c.in('categoria_id', [id, ...categorias.items.filter(x => x.padre_id === id).map(x => x.id)])
     c.then(({ data }) => setFilas((data as Fila[]) ?? []))
-  }, [id, todas])
+  }, [id, todas, categorias.items])
 
   const visibles = useMemo(() => {
     const t = q.trim().toLowerCase()

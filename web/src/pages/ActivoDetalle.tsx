@@ -8,6 +8,8 @@ import { DocumentosPanel } from '../components/Documentos'
 import LineaTiempo from '../components/LineaTiempo'
 import UsoPanel from '../components/UsoPanel'
 import Componentes from '../components/Componentes'
+import MantenimientoActivo from '../components/MantenimientoActivo'
+import { registrarReciente } from '../lib/recientes'
 import { PiezasCriticas } from '../components/Refacciones'
 import { tipoEquipo } from '../lib/mantenimiento'
 import { supabase, mensajeError, ESTATUS, BUCKET } from '../lib/supabase'
@@ -21,7 +23,8 @@ import { TipoBadge } from './Movimientos'
 import type { TipoMov } from '../lib/supabase'
 
 type Detalle = ActivoFila & { valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; posicion?: string | null; clase_abc?: string | null }
-type Veh = { placa: string | null; anio: number | null; color: string | null; combustible: string | null; transmision: string | null; kilometraje: number | null; cilindros: number | null; pasajeros: number | null; capacidad_tanque: number | null }
+type Veh = { placa: string | null; anio: number | null; color: string | null; combustible: string | null; transmision: string | null; kilometraje: number | null; cilindros: number | null; pasajeros: number | null; capacidad_tanque: number | null
+  numero_motor?: string | null; version?: string | null; tipo_licencia?: string | null; tarjeta_circulacion?: string | null; poliza?: string | null }
 type Foto = { id: string; path: string; url?: string }
 type Resg = { movimiento_id: string; estado_fisico: string | null; movimientos: { folio: string; tipo: TipoMov; fecha: string; recibe_nombre: string | null; entrega_nombre: string | null; cancelado: boolean; ubicacion: { nombre: string } | null } | null }
 type Mov = { id: number; accion: string; fecha: string; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
@@ -69,6 +72,7 @@ export default function ActivoDetalle() {
     ])
     if (ra.error) { setError(mensajeError(ra.error)); return }
     setA(ra.data as Detalle); setVeh(rv.data as Veh | null); setNotas(rn.data?.notas ?? null)
+    if (ra.data) { const d = ra.data as Detalle; registrarReciente(`/activos/${d.id}`, `${d.codigo} · ${d.descripcion}`, 'Activo') }
     const fs = await Promise.all(((rf.data as Foto[]) ?? []).map(async f => ({ ...f, url: await urlFirmada(f.path) })))
     setFotos(fs)
     if (esAdmin) {
@@ -179,11 +183,16 @@ export default function ActivoDetalle() {
                 <Dato k="Kilometraje / horas" v={veh.kilometraje?.toLocaleString('es-MX')} />
                 <Dato k="Combustible" v={veh.combustible} /><Dato k="Transmisión" v={veh.transmision} />
                 <Dato k="Cilindros" v={veh.cilindros} /><Dato k="Pasajeros" v={veh.pasajeros} />
+                <Dato k="Versión" v={veh.version} /><Dato k="No. de motor" v={veh.numero_motor} />
+                <Dato k="Licencia que pide" v={veh.tipo_licencia ? `Tipo ${veh.tipo_licencia}` : null} /><Dato k="Tarjeta de circulación" v={veh.tarjeta_circulacion} />
+                <Dato k="Póliza de seguro" v={veh.poliza} />
               </dl>
             </section>
           )}
 
           {tipoEquipo(a.categoria, a.es_vehiculo) !== 'otro' && <UsoPanel activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} qr={(a as unknown as { qr: string }).qr} tipo={tipoEquipo(a.categoria, a.es_vehiculo)} nombreUsuario={perfilRep?.nombre} />}
+
+          <MantenimientoActivo activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} modeloId={(a as unknown as { modelo_id: string | null }).modelo_id} categoria={a.categoria} esVehiculo={!!a.es_vehiculo} />
 
           <Componentes activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} />
 
