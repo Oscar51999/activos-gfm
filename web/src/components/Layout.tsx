@@ -151,6 +151,7 @@ export default function Layout() {
   const destinos = useMemo<Destino[]>(() => [
     ...todos.flatMap(g => g.items.map(i => ({ to: i.to, texto: i.texto, icono: i.icono, grupo: g.titulo }))),
     { to: '/alta', texto: 'Alta de activos', icono: PackagePlus, grupo: 'Acción' },
+    { to: '/alta/inteligente', texto: 'Alta inteligente (factura o foto)', icono: Sparkles, grupo: 'Acción' },
     { to: '/resguardos/nuevo', texto: 'Nuevo resguardo', icono: ClipboardSignature, grupo: 'Acción' },
     { to: '/etiquetas', texto: 'Imprimir etiquetas QR', icono: Tags, grupo: 'Acción' },
     { to: '/inventarios', texto: 'Nuevo conteo de inventario', icono: ClipboardCheck, grupo: 'Acción' },
@@ -272,7 +273,7 @@ export default function Layout() {
       </div>
 
       <Comandos abierto={buscar} onCerrar={() => setBuscar(false)} destinos={destinos} />
-      {!loc.pathname.startsWith('/preguntar') && <AsistenteFlotante />}
+      {!loc.pathname.startsWith('/preguntar') && !loc.pathname.startsWith('/alta') && <AsistenteFlotante />}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Check, ChevronLeft, ChevronRight, Plus, Search, Trash2, PackagePlus, Tags, PenLine, Sparkles, ClipboardPaste, UserRound, MapPin, Camera, Loader2, ScanText } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, Search, Trash2, PackagePlus, Tags, PenLine, Sparkles, ClipboardPaste, UserRound, MapPin, Camera, Loader2, ScanText, FileUp } from 'lucide-react'
 import { leerEtiqueta, buscarProducto, type Lectura } from '../lib/ia'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -200,6 +200,11 @@ export default function Alta() {
 
       {paso === 0 && (
         <section className="animate-entrar">
+          <Link to="/alta/inteligente" className="viva group mb-3 flex w-full items-center gap-4 rounded-2xl border border-marca/60 bg-gradient-to-r from-marca/20 via-marca/5 to-transparent p-4 text-left transition hover:border-marca">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-[#EBB866] to-[#CF9336] text-[#120D04]"><FileUp size={24} /></span>
+            <span className="min-w-0 flex-1"><span className="block font-semibold">Alta inteligente: sube la factura, bitácora o una foto</span><span className="block text-sm text-stone-500">La IA arma todo el alta (varios equipos a la vez) y solo te pregunta a quién se entrega.</span></span>
+            <Sparkles size={18} className="shrink-0 text-marca transition group-hover:rotate-12" />
+          </Link>
           <button onClick={() => camara.current?.click()} disabled={leyendo} className="viva group mb-5 flex w-full items-center gap-4 rounded-2xl border border-marca/40 bg-gradient-to-r from-marca/15 via-marca/5 to-transparent p-4 text-left transition hover:border-marca">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-[#EBB866] to-[#CF9336] text-[#120D04] shadow-[0_8px_30px_-8px_rgb(226_166_75/.8)]"><ScanText size={24} /></span>
             <span className="min-w-0 flex-1"><span className="block font-semibold">Tomar foto de la etiqueta</span><span className="block text-sm text-stone-500">La IA lee marca, modelo y número de serie, y busca el producto en el catálogo.</span></span>

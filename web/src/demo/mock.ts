@@ -853,6 +853,17 @@ export function instalarDemo(base: string) {
         ? { marca: 'Bosch', modelo: 'GBH 2-28', serie: 'BH-' + Math.floor(100000 + Math.random() * 899999), categoria: 'Herramienta', descripcion: 'Rotomartillo SDS Plus', confianza: 'alta' }
         : { marca: 'Milwaukee', modelo: 'M18 FUEL 2804', serie: 'J' + Math.floor(10000000 + Math.random() * 89999999), categoria: 'Herramienta', descripcion: 'Taladro percutor inalámbrico', confianza: 'media' })
     }
+    if (path.startsWith('/functions/v1/leer-documento')) {
+      // En la vista previa no hay IA: simula una factura típica de TI
+      await new Promise(r => setTimeout(r, 1400))
+      return json({ tipo_documento: 'factura', empresa: { razon_social: 'CONSTRUCCIONES Y TERRACERIAS VANGUARDIA SA DE CV', rfc: null }, proveedor: { nombre: 'Compucentro de La Paz', rfc: 'CLP010101AB1' },
+        folio: 'A-4821', fecha: new Date().toISOString().slice(0, 10), confianza: 'alta', observaciones: null, equipos: [
+          { descripcion: 'Laptop 14 pulgadas', marca: 'Lenovo', modelo: 'ThinkPad E14', serie: 'PF5' + Math.floor(10000 + Math.random() * 89999), numero_economico: null, placa: null, categoria: 'Equipo de cómputo', cantidad: 1, notas: null },
+          { descripcion: 'Laptop 14 pulgadas', marca: 'Lenovo', modelo: 'ThinkPad E14', serie: 'PF5' + Math.floor(10000 + Math.random() * 89999), numero_economico: null, placa: null, categoria: 'Equipo de cómputo', cantidad: 1, notas: null },
+          { descripcion: 'Monitor 24 pulgadas', marca: 'Dell', modelo: 'P2422H', serie: null, numero_economico: null, placa: null, categoria: 'Equipo de cómputo', cantidad: 2, notas: null },
+          { descripcion: 'Radio portátil', marca: 'Motorola', modelo: 'DEP450', serie: '871TT' + Math.floor(1000 + Math.random() * 8999), numero_economico: null, placa: null, categoria: 'Telefonía', cantidad: 1, notas: null },
+        ] })
+    }
     if (path.startsWith('/functions/v1/preguntar')) return json({ error: 'En la vista previa no hay IA conectada.' }, 503)
     if (path.startsWith('/functions/v1/alertas-vigencias')) {
       const v = vista(db, 'v_vigencias'), hoy0 = new Date().toISOString().slice(0, 10)

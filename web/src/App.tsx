@@ -44,6 +44,7 @@ import ConteoCiclico from './pages/ConteoCiclico'
 import Perfil from './pages/Perfil'
 import Admin from './pages/Admin'
 import Bitacoras from './pages/Bitacoras'
+import AltaInteligente from './pages/AltaInteligente'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -136,6 +137,7 @@ function Rutas() {
         <Route path="catalogo" element={<Productos />} />
         <Route path="catalogo/:id" element={<ProductoDetalle />} />
         <Route path="alta" element={<Alta />} />
+        <Route path="alta/inteligente" element={<AltaInteligente />} />
         <Route path="prestamos" element={<Prestamos />} />
         <Route path="vigencias" element={<Vigencias />} />
         <Route path="kits" element={<Kits />} />
