@@ -26,7 +26,7 @@ const CATS: [RegExp, string][] = [
   [/\b(silla|escritorio|archivero|mesa|librero|locker|anaquel|estante)/i, 'Mobiliario'],
 ]
 const SERVICIO = /\b(flete|env[ií]o|servicio|instalaci[oó]n|mano de obra|garant[ií]a|licencia|suscripci[oó]n|mantenimiento|renta|arrendamiento|capacitaci[oó]n|anticipo|descuento|seguro|maniobra|cable|t[oó]ner|cartucho|papel)\b/i
-const RE_SERIE = /(?:S\/N|S\.N\.|\bSN\b|N[º°o]?\.?\s*(?:DE\s*)?SERIE|\bSERIE\b|\bSERIAL\b|IMEI|\bVIN\b|\bNIV\b)\s*[:#.\-]?\s*([A-Z0-9][A-Z0-9\-]{3,24})/gi
+const RE_SERIE = /(?:\bS\s?[/I1l|]\s?N\b|S\.N\.|\bSN\b|N[º°o]?\.?\s*(?:DE\s*)?SERIE|\bSERIE\b|\bSERIAL\b|IMEI|\bVIN\b|\bNIV\b)\s*[:#.\-]?\s*([A-Z0-9][A-Z0-9\-]{3,24})/gi
 const RE_VIN = /\b([A-HJ-NPR-Z0-9]{17})\b/g
 const RE_PLACA = /\bPLACAS?\s*[:#.\-]?\s*([A-Z0-9]{2,4}[\- ]?[A-Z0-9]{2,4}(?:[\- ]?[A-Z0-9]{1,3})?)/i
 const RE_MODELO = /\bMOD(?:ELO)?\.?\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\- /.]{1,24})/i
