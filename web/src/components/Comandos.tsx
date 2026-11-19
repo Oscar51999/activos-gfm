@@ -62,7 +62,7 @@ export default function Comandos({ abierto, onCerrar, destinos }: { abierto: boo
   let grupoPrevio = ''
   return (
     <div className="no-print fixed inset-0 z-[70] flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm" onMouseDown={onCerrar}>
-      <div className="tarjeta w-full max-w-xl animate-entrar overflow-hidden !bg-[#0E1015]/95 shadow-[0_0_80px_-20px_rgb(249_178_52/.45)]" onMouseDown={e => e.stopPropagation()} role="dialog" aria-label="Buscar">
+      <div className="tarjeta w-full max-w-xl animate-entrar overflow-hidden !bg-panel/95 shadow-[0_0_80px_-20px_rgb(226_166_75/.45)]" onMouseDown={e => e.stopPropagation()} role="dialog" aria-label="Buscar">
         <div className="flex items-center gap-3 border-b border-stone-200 px-4">
           <Search size={18} className="text-marca" />
           <input ref={input} autoFocus value={q} onChange={e => { setQ(e.target.value); setSel(0) }} onKeyDown={tecla}

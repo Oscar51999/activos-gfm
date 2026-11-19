@@ -125,7 +125,7 @@ function MontarModal({ activoId, empresaId, onCerrar, onListo }: { activoId: str
           {vis.length === 0 && <p className="py-6 text-center text-sm text-stone-500">No hay activos libres que coincidan en esta empresa.</p>}
           {vis.map(a => (
             <label key={a.id} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border p-2 transition ${sel.includes(a.id) ? 'border-marca bg-marca/10' : 'border-stone-200'}`}>
-              <input type="checkbox" className="accent-[#F9B234]" checked={sel.includes(a.id)} onChange={e => setSel(s => e.target.checked ? [...s, a.id] : s.filter(x => x !== a.id))} />
+              <input type="checkbox" className="accent-[#E2A64B]" checked={sel.includes(a.id)} onChange={e => setSel(s => e.target.checked ? [...s, a.id] : s.filter(x => x !== a.id))} />
               <FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} className="h-9 w-11 shrink-0 rounded-lg" icono={14} />
               <span className="min-w-0"><span className="block font-mono text-[11px] text-marca">{a.codigo}</span><span className="block truncate text-sm">{nombre(a)}</span><span className="block truncate text-[11px] text-stone-500">{[a.serie, a.ubicacion].filter(Boolean).join(' · ')}</span></span>
             </label>

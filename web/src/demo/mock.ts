@@ -60,7 +60,7 @@ export function crearDatos() {
   const modelos = [
     P('mo0', 'Nissan', 'NP300 Doble Cabina', 'c1', 'Camioneta pick-up doble cabina', 'pickup', '#e7e5e4'),
     P('mo1', 'Toyota', 'Hilux 4x4', 'c1', 'Camioneta pick-up 4x4', 'pickup', '#94a3b8'),
-    P('mo2', 'Caterpillar', '416F', 'c2', 'Retroexcavadora', 'retro', '#F9B234'),
+    P('mo2', 'Caterpillar', '416F', 'c2', 'Retroexcavadora', 'retro', '#E2A64B'),
     P('mo3', 'John Deere', '310L', 'c2', 'Retroexcavadora', 'retro', '#facc15'),
     P('mo4', 'Lenovo', 'ThinkPad E14', 'c4', 'Laptop 14” i5 16 GB', 'laptop', '#cbd5e1'),
     P('mo5', 'Leica', 'TS07', 'c5', 'Estación total', 'estacion', '#fbbf24'),
@@ -72,7 +72,7 @@ export function crearDatos() {
     P('mo11', 'HP', 'LaserJet M428', 'c4', 'Impresora multifuncional', 'impresora', '#e2e8f0'),
     P('mo12', '3M', 'H-700', 'c8', 'Casco de seguridad', 'casco', '#fde047'),
     P('mo13', 'DeWalt', 'DCD771', 'c3', 'Taladro atornillador inalámbrico', 'taladro', '#facc15'),
-    P('mo14', 'Caterpillar', 'H65E', 'c2', 'Martillo hidráulico para retro', 'martillo', '#F9B234'),
+    P('mo14', 'Caterpillar', 'H65E', 'c2', 'Martillo hidráulico para retro', 'martillo', '#E2A64B'),
     P('mo15', 'John Deere', 'Cucharón 24"', 'c2', 'Cucharón de excavación 24 pulgadas', 'cucharon', '#facc15'),
   ]
   const MOD = (id: string) => modelos.find(m => m.id === id)!
@@ -154,7 +154,7 @@ export function crearDatos() {
     { activo_id: 'a3', placa: null, anio: 2019, color: 'Amarillo', combustible: 'Diésel', transmision: null, kilometraje: 6120, cilindros: 4, pasajeros: 1, capacidad_tanque: 160 },
     { activo_id: 'a4', placa: null, anio: 2021, color: 'Amarillo', combustible: 'Diésel', transmision: null, kilometraje: 3380, cilindros: 4, pasajeros: 1, capacidad_tanque: 150 },
   ]
-  const urls: Record<string, string> = { f1: ilustracion('pickup', '#f5f5f4', '#2a2622'), f2: ilustracion('pickup', '#cbd5e1', '#1f2430'), f3: ilustracion('retro', '#F9B234', '#2b2112') }
+  const urls: Record<string, string> = { f1: ilustracion('pickup', '#f5f5f4', '#2a2622'), f2: ilustracion('pickup', '#cbd5e1', '#1f2430'), f3: ilustracion('retro', '#E2A64B', '#2b2112') }
   const activo_fotos = [{ id: uid(), activo_id: 'a1', path: 'f1', created_at: hace(100) }, { id: uid(), activo_id: 'a2', path: 'f2', created_at: hace(90) }, { id: uid(), activo_id: 'a3', path: 'f3', created_at: hace(80) }]
   const movimientos = [
     { id: 'mv1', folio: 'RES-000001', tipo: 'asignacion', empresa_id: 'e1', fecha: hace(30), a_empleado_id: 'em1', a_ubicacion_id: 'u2', entrega_nombre: 'Oscar Cota', recibe_nombre: 'Janani Aguilar Patrón', notas: 'Incluye llanta de refacción, gato y extintor.', firma_recibe: null, firma_entrega: null, documento: null, cancelado: false, created_by: 'u-demo' },
@@ -210,7 +210,7 @@ export function crearDatos() {
     D2('doc11', 'e1', 'factura', null, { activo_id: 'a8', numero: 'A-10422', emisor: 'Distribuidora de cómputo' }),
     D2('doc12', 'e5', 'tarjeta_circulacion', 18, { activo_id: 'a22', numero: 'CZ-9911-C', emisor: 'Gobierno de B.C.S.' }),
   ]
-  urls['doc-demo'] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><rect width="600" height="800" fill="#fff"/><rect x="50" y="50" width="200" height="30" fill="#F9B234"/><g fill="#d6d3d1">' + Array.from({ length: 14 }, (_, i) => `<rect x="50" y="${130 + i * 40}" width="${300 + (i * 37) % 200}" height="14"/>`).join('') + '</g><text x="50" y="760" font-family="Arial" font-size="18" fill="#78716c">Documento de ejemplo</text></svg>')
+  urls['doc-demo'] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800"><rect width="600" height="800" fill="#fff"/><rect x="50" y="50" width="200" height="30" fill="#E2A64B"/><g fill="#d6d3d1">' + Array.from({ length: 14 }, (_, i) => `<rect x="50" y="${130 + i * 40}" width="${300 + (i * 37) % 200}" height="14"/>`).join('') + '</g><text x="50" y="760" font-family="Arial" font-size="18" fill="#78716c">Documento de ejemplo</text></svg>')
 
   const kits = [
     { id: 'k1', nombre: 'Kit residente de obra', puesto: 'Residente de obra', descripcion: 'Lo básico para dirigir una obra', activo: true, created_at: hace(40) },
@@ -252,7 +252,7 @@ export function crearDatos() {
     proveedor_id: null, responsable: null, fecha_programada: null, fecha_inicio: null, fecha_fin: null, lectura: null, checklist: [], fotos_antes: [], fotos_despues: [], refacciones: null, notas_cierre: null, created_by: 'u-demo', created_at: hace(10), updated_at: hace(10), ...o })
   const lista = (p: string, hechos = 99) => planes_mantenimiento.find(x => x.id === p)!.tareas.map((t, i) => ({ tarea: t, hecho: i < hechos }))
   const ordenes_trabajo = [
-    OTx('ot1', 'OT-00001', 'a3', { plan_id: 'pm4', titulo: 'Servicio de 500 horas', estatus: 'en_proceso', proveedor_id: 'p1', responsable: 'Ing. Morales', fecha_programada: dia(-2), fecha_inicio: hace(2), checklist: lista('pm4', 2), created_at: hace(3), fotos_antes: [ilustracion('retro', '#F9B234', '#2b2112')] }),
+    OTx('ot1', 'OT-00001', 'a3', { plan_id: 'pm4', titulo: 'Servicio de 500 horas', estatus: 'en_proceso', proveedor_id: 'p1', responsable: 'Ing. Morales', fecha_programada: dia(-2), fecha_inicio: hace(2), checklist: lista('pm4', 2), created_at: hace(3), fotos_antes: [ilustracion('retro', '#E2A64B', '#2b2112')] }),
     OTx('ot2', 'OT-00002', 'a3', { tipo: 'correctivo', reporte_id: 'r1', titulo: 'Fuga de aceite hidráulico en brazo trasero', prioridad: 'alta', estatus: 'espera_refaccion', proveedor_id: 'p1', responsable: 'Ing. Morales', fecha_programada: dia(-1), fecha_inicio: hace(2), checklist: [{ tarea: 'Diagnóstico de la fuga', hecho: true }, { tarea: 'Cambio de sello del cilindro', hecho: false }, { tarea: 'Prueba de presión', hecho: false }], refacciones: null, created_at: hace(3) }),
     OTx('ot3', 'OT-00003', 'a1', { plan_id: 'pm1', titulo: 'Servicio de 10,000 km', fecha_fin: hace(60), fecha_inicio: hace(60), lectura: 40000, checklist: lista('pm1'), proveedor_id: 'p3', refacciones: 'Aceite 5W30, filtro de aceite y aire', created_at: hace(61) }),
     OTx('ot4', 'OT-00004', 'a2', { plan_id: 'pm2', titulo: 'Servicio de 10,000 km', fecha_fin: hace(200), fecha_inicio: hace(200), lectura: 10000, checklist: lista('pm2'), created_at: hace(201) }),
@@ -401,19 +401,20 @@ export function crearDatos() {
     id: uid(), activo_id: a.id, empresa_id: a.empresa_id, ubicacion_esperada_id: a.ubicacion_id, encontrado: i !== 5, ubicacion_ok: i === 9 ? false : i === 5 ? null : true,
     metodo: i % 3 === 0 ? 'rfid' : i % 3 === 1 ? 'qr' : 'manual', notas: null, contado_por: 'u-demo', created_at: hace(i < 6 ? 40 - i * 3 : 100 + i * 4) }))
 
-  const CCX = (e: string, clave: string, nombre: string) => ({ id: 'cc-' + e + clave, empresa_id: e, clave, nombre, activo: true, created_at: hace(30) })
+  const LUG: Record<string, [number, number, string, boolean]> = { '101': [23.5937, -109.588, 'La Ribera, B.C.S.', false], '103': [24.1426, -110.3128, 'La Paz, B.C.S.', true], '127': [24.1426, -110.3128, 'La Paz, B.C.S.', true], '501': [23.6215, -109.586, 'Costa Palmas, La Ribera, B.C.S.', false], '518': [23.6215, -109.586, 'Costa Palmas, La Ribera, B.C.S.', false], '406': [24.1426, -110.3128, 'La Paz, B.C.S.', false], '705': [23.5937, -109.588, 'La Ribera, B.C.S.', false], '301': [23.5937, -109.588, 'La Ribera, B.C.S.', true], '135-1': [32.5149, -117.0382, 'Tijuana, B.C.', false], '138': [19.6013, -99.0506, 'Ecatepec, Edo. Méx.', false], '132': [20.5083, -86.9458, 'Cozumel, Q. Roo', false] }
+  const CCX = (e: string, clave: string, nombre: string) => { const l = LUG[clave]; return ({ id: 'cc-' + e + clave, empresa_id: e, clave, nombre, activo: true, created_at: hace(30), es_obra: !!l, latitud: l?.[0] ?? null, longitud: l?.[1] ?? null, lugar: l?.[2] ?? null, ubicacion_aprox: l?.[3] ?? false }) }
   const centros_costo = [
-    CCX('e1', '101', 'CAMPAMENTO TRABAJADORES LA RIBERA'), CCX('e1', '103', 'PROPIO CENTRO FIRME'), CCX('e1', '127', 'ENTREPIEDRAS'), CCX('e1', 'ADM', 'AREA ADMINISTRATIVA'), CCX('e1', 'CI8', 'COSTOS INDIRECTOS LA PAZ'),
+    CCX('e1', '101', 'CAMPAMENTO TRABAJADORES LA RIBERA'), CCX('e1', '103', 'PROPIO CENTRO FIRME'), CCX('e1', '127', 'ENTREPIEDRAS'), CCX('e1', 'ADM', 'AREA ADMINISTRATIVA'), CCX('e1', 'CI8', 'COSTOS INDIRECTOS LA PAZ'), CCX('e1', '135-1', 'GAP VIALIDADES TIJUANA'), CCX('e1', '138', 'ECATEPEC ACADEMIA DE PROTECCIÓN FEDERAL'), CCX('e1', '132', 'PAVIMENTACIÓN CALLES COZUMEL'),
     CCX('e2', '501', 'CP AMAN BOH EDIFICIO 3'), CCX('e2', '518', 'YACHT CLUB'), CCX('e2', 'ADM', 'AREA ADMINISTRATIVA'),
     CCX('e3', '406', 'SERVICIOS ZONA LA PAZ'), CCX('e4', '601', 'VENTAS Y COMERCIALIZACION'), CCX('e5', '705', 'SANTA CRUZ STORAGE'), CCX('e6', '301', 'CASA CLUB'), CCX('e8', '201', 'VENTA Y COMERCIALIZACIÓN INMOBILIARIA'),
   ]
   const perfiles = [
-    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60) },
+    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60), es_super: true, puesto: 'Departamento de TICS', telefono: null, foto_path: null, preferencias: {} },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
-    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [] }
+    movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
   return { db, urls }
 }
 
@@ -824,6 +825,18 @@ export function instalarDemo(base: string) {
       const u = String(body?.p_usuario ?? '').trim().toUpperCase()
       return json(db.perfiles.find(p => String(p.usuario ?? '').toUpperCase() === u && p.activo)?.email ?? null)
     }
+    if (path.startsWith('/rest/v1/rpc/admin_crear_usuario')) {
+      const correo = String(body?.p_correo ?? '').trim().toLowerCase()
+      if (db.perfiles.some(p => String(p.email).toLowerCase() === correo)) return json({ message: 'Ya existe un usuario con ese correo', code: 'P0001' }, 400)
+      if (String(body?.p_contrasena ?? '').length < 8) return json({ message: 'La contraseña debe tener al menos 8 caracteres', code: 'P0001' }, 400)
+      const id = uid()
+      db.perfiles.push({ id, nombre: String(body.p_nombre).trim(), usuario: String(body.p_usuario ?? '').trim().toUpperCase() || null, email: correo, rol: body.p_rol ?? 'consulta', activo: true, todas_empresas: !!body.p_todas_empresas, empleado_id: null, created_at: new Date().toISOString() })
+      for (const e of (body.p_empresas ?? []) as string[]) db.perfil_empresas.push({ perfil_id: id, empresa_id: e })
+      return json(id)
+    }
+    if (path.startsWith('/rest/v1/rpc/admin_contrasena')) return json(null)
+    if (path.startsWith('/rest/v1/rpc/admin_eliminar_usuario')) { db.perfiles = db.perfiles.filter(p => p.id !== body?.p_id); return json(null) }
+    if (path.startsWith('/rest/v1/rpc/admin_eliminar_activo')) { db.movimiento_activos = db.movimiento_activos.filter(m => m.activo_id !== body?.p_id); db.activos = db.activos.filter(a => a.id !== body?.p_id); return json(null) }
     if (path.startsWith('/rest/v1/rpc/resolver_merma')) {
       const m = db.mermas.find(x => x.id === body?.p_id)
       if (!m) return json({ message: 'Merma no encontrada', code: 'P0001' }, 400)

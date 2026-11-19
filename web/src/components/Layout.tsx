@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
+  X, Factory, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
 } from 'lucide-react'
-import { useAuth } from '../lib/auth'
+import { useAuth, fotoPerfil } from '../lib/auth'
+import { aplicarTema, temaActual, type Tema } from '../lib/tema'
+import AsistenteFlotante from './AsistenteFlotante'
 import { ROLES, supabase } from '../lib/supabase'
 import { LogoFirme, MonogramaFirme } from './Logo'
 import Comandos, { type Destino } from './Comandos'
@@ -23,6 +25,7 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/solicitudes', icono: Inbox, texto: 'Solicitudes', alerta: 'solicitudes' },
     { to: '/almacen', icono: Warehouse, texto: 'Almacén', alerta: 'almacen' },
     { to: '/mapa', icono: MapaIcono, texto: 'Mapa de obras' },
+    { to: '/bitacoras', icono: BookOpenText, texto: 'Bitácoras' },
     { to: '/escanear', icono: ScanLine, texto: 'Escanear QR' },
   ] },
   { titulo: 'Control', items: [
@@ -123,7 +126,7 @@ function useReflejo() {
 }
 
 export default function Layout() {
-  const { perfil, esAdmin, salir } = useAuth()
+  const { esAdmin, esSuper } = useAuth()
   const [abierto, setAbierto] = useState(false)
   const [compacto, setCompacto] = useState(() => leer('gfm.menu') === 'compacto')
   const [buscar, setBuscar] = useState(false)
@@ -141,7 +144,10 @@ export default function Layout() {
     ]).then(([p, r, v, m, a]) => setAlertas({ prestamos: p.data?.length ?? 0, reportes: r.data?.length ?? 0, vigencias: v.data?.length ?? 0, mantenimiento: m.data?.length ?? 0, solicitudes: a.pendientes, almacen: a.bajo }))
   }, [loc.pathname])
 
-  const todos = useMemo(() => [...grupos, ...(esAdmin ? [{ titulo: 'Administración', items: [{ to: '/usuarios', icono: UserCog, texto: 'Usuarios' }] }] : [])], [esAdmin])
+  const todos = useMemo(() => [...grupos, ...(esAdmin ? [{ titulo: 'Administración', items: [
+    { to: '/usuarios', icono: UserCog, texto: 'Usuarios' },
+    ...(esSuper ? [{ to: '/admin', icono: ShieldAlert, texto: 'Panel de administrador' }] : []),
+  ] }] : [])], [esAdmin, esSuper])
   const destinos = useMemo<Destino[]>(() => [
     ...todos.flatMap(g => g.items.map(i => ({ to: i.to, texto: i.texto, icono: i.icono, grupo: g.titulo }))),
     { to: '/alta', texto: 'Alta de activos', icono: PackagePlus, grupo: 'Acción' },
@@ -149,6 +155,8 @@ export default function Layout() {
     { to: '/etiquetas', texto: 'Imprimir etiquetas QR', icono: Tags, grupo: 'Acción' },
     { to: '/inventarios', texto: 'Nuevo conteo de inventario', icono: ClipboardCheck, grupo: 'Acción' },
     { to: '/solicitudes', texto: 'Pedir equipo o material', icono: Inbox, grupo: 'Acción' },
+    { to: '/perfil', texto: 'Mi perfil', icono: UserRound, grupo: 'Cuenta' },
+    { to: '/cambiar-contrasena', texto: 'Cambiar contraseña', icono: KeyRound, grupo: 'Cuenta' },
   ], [todos])
   const actual = destinos.find(d => d.to !== '/' && loc.pathname.startsWith(d.to)) ?? destinos[0]
 
@@ -159,7 +167,6 @@ export default function Layout() {
   useEffect(() => { setAbierto(false) }, [loc.pathname])
 
   const alternar = () => setCompacto(c => { guardar('gfm.menu', c ? 'amplio' : 'compacto'); return !c })
-  const iniciales = (perfil?.nombre ?? '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase()
 
   const nav = (mini: boolean) => (
     <nav className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-2">
@@ -171,8 +178,8 @@ export default function Layout() {
               <NavLink key={i.to} to={i.to} end={i.fin} title={mini ? i.texto : undefined}
                 className={({ isActive }) => `group relative flex items-center gap-3 rounded-xl py-2 text-sm transition ${mini ? 'justify-center px-0' : 'px-3'} ${isActive ? 'bg-gradient-to-r from-marca/20 to-marca/0 text-tinta' : 'text-stone-500 hover:bg-stone-100 hover:text-tinta'}`}>
                 {({ isActive }) => <>
-                  {isActive && <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-marca shadow-[0_0_14px_2px_rgb(249_178_52/.7)]" />}
-                  <i.icono size={18} className={`shrink-0 transition ${isActive ? 'text-marca drop-shadow-[0_0_6px_rgb(249_178_52/.8)]' : 'group-hover:text-marca'}`} />
+                  {isActive && <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-marca shadow-[0_0_14px_2px_rgb(226_166_75/.7)]" />}
+                  <i.icono size={18} className={`shrink-0 transition ${isActive ? 'text-marca drop-shadow-[0_0_6px_rgb(226_166_75/.8)]' : 'group-hover:text-marca'}`} />
                   {!mini && <span className="truncate">{i.texto}</span>}
                   {i.alerta && alertas[i.alerta] > 0 && (mini
                     ? <span className="absolute right-3 top-1.5 h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
@@ -189,16 +196,7 @@ export default function Layout() {
   const pie = (mini: boolean) => (
     <div className="border-t border-stone-200 p-3">
       <Instalar mini={mini} />
-      <div className={`flex items-center gap-3 rounded-xl p-2 ${mini ? 'justify-center' : ''}`}>
-        <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-marca to-[#B87708] text-xs font-bold text-[#120D04]">
-          {iniciales}<span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0B0D11] bg-emerald-400 animate-pulso" />
-        </span>
-        {!mini && <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm">{perfil?.nombre}</p><p className="text-[11px] text-marca/90">{perfil && ROLES[perfil.rol]}</p></div>}
-      </div>
-      <div className={`mt-1 flex ${mini ? 'flex-col items-center' : ''} gap-1`}>
-        <Link to="/cambiar-contrasena" title="Cambiar contraseña" className="flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs text-stone-500 hover:bg-stone-100 hover:text-tinta"><KeyRound size={15} />{!mini && 'Contraseña'}</Link>
-        <button onClick={salir} title="Cerrar sesión" className="flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs text-stone-500 hover:bg-red-50 hover:text-red-700"><LogOut size={15} />{!mini && 'Salir'}</button>
-      </div>
+      <MenuPerfil mini={mini} />
     </div>
   )
 
@@ -212,15 +210,15 @@ export default function Layout() {
   return (
     <div className="flex h-full">
       {/* Menú lateral escritorio */}
-      <aside className={`no-print relative hidden shrink-0 flex-col border-r border-stone-200 bg-[#0A0C10]/80 backdrop-blur-xl transition-[width] duration-300 lg:flex ${compacto ? 'w-[76px]' : 'w-64'}`}>
+      <aside className={`no-print relative hidden shrink-0 flex-col border-r border-stone-200 bg-barra/80 backdrop-blur-xl transition-[width] duration-300 lg:flex ${compacto ? 'w-[76px]' : 'w-64'}`}>
         <div className={`flex h-20 items-center ${compacto ? 'justify-center' : 'px-6'}`}>
-          {compacto ? <MonogramaFirme className="h-8 w-auto text-[#fff]" /> : <LogoFirme className="h-9 w-auto text-[#fff]" />}
+          {compacto ? <MonogramaFirme className="h-8 w-auto text-tinta" /> : <LogoFirme className="h-9 w-auto text-tinta" />}
         </div>
         {!compacto && <p className="-mt-3 mb-3 px-6 text-[10px] font-medium uppercase tracking-[.22em] text-marca">Control de activos</p>}
         {nav(compacto)}
         {pie(compacto)}
         <button onClick={alternar} aria-label={compacto ? 'Expandir menú' : 'Compactar menú'}
-          className="absolute -right-3 top-24 grid h-6 w-6 place-items-center rounded-full border border-stone-300 bg-[#12151B] text-stone-500 transition hover:border-marca hover:text-marca">
+          className="absolute -right-3 top-24 grid h-6 w-6 place-items-center rounded-full border border-stone-300 bg-panel text-stone-500 transition hover:border-marca hover:text-marca">
           {compacto ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
         </button>
       </aside>
@@ -228,9 +226,9 @@ export default function Layout() {
       {/* Menú deslizable en móvil */}
       <div className={`no-print fixed inset-0 z-50 lg:hidden ${abierto ? '' : 'pointer-events-none'}`}>
         <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${abierto ? 'opacity-100' : 'opacity-0'}`} onClick={() => setAbierto(false)} />
-        <aside className={`relative flex h-full w-72 flex-col border-r border-stone-200 bg-[#0A0C10] transition-transform duration-300 ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`relative flex h-full w-72 flex-col border-r border-stone-200 bg-barra transition-transform duration-300 ${abierto ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex h-20 items-center justify-between px-6">
-            <LogoFirme className="h-8 w-auto text-[#fff]" />
+            <LogoFirme className="h-8 w-auto text-tinta" />
             <button className="text-stone-500" onClick={() => setAbierto(false)} aria-label="Cerrar menú"><X size={20} /></button>
           </div>
           {nav(false)}{pie(false)}
@@ -238,9 +236,9 @@ export default function Layout() {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-stone-200 bg-[#06070A]/70 px-4 backdrop-blur-xl sm:px-6">
+        <header className="no-print sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-stone-200 bg-fondo/70 px-4 backdrop-blur-xl sm:px-6">
           <button className="lg:hidden" onClick={() => setAbierto(true)} aria-label="Abrir menú"><Menu size={22} /></button>
-          <MonogramaFirme className="h-6 w-auto text-[#fff] lg:hidden" />
+          <MonogramaFirme className="h-6 w-auto text-tinta lg:hidden" />
           <div className="hidden min-w-0 items-center gap-2 text-sm sm:flex">
             <span className="text-stone-400">{actual.grupo}</span><span className="text-stone-300">/</span>
             <span className="truncate font-medium">{actual.texto}</span>
@@ -260,11 +258,11 @@ export default function Layout() {
         </main>
 
         {/* Barra inferior en móvil con botón central de escaneo */}
-        <nav className="no-print fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 items-end rounded-2xl border border-stone-300 bg-[#0D0F14]/90 px-2 pb-[calc(.5rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl lg:hidden">
+        <nav className="no-print fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 items-end rounded-2xl border border-stone-300 bg-panel/90 px-2 pb-[calc(.5rem+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl lg:hidden">
           {movil.map(m => (
             <NavLink key={m.to} to={m.to} end={m.fin} className={({ isActive }) => `flex flex-col items-center gap-1 text-[10px] ${isActive ? 'text-marca' : 'text-stone-500'}`}>
               {m.centro
-                ? <span className="-mt-7 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-b from-[#FFC95A] to-[#E9A11E] text-[#120D04] shadow-[0_8px_30px_-6px_rgb(249_178_52/.8)] ring-4 ring-[#06070A]"><m.icono size={24} /></span>
+                ? <span className="-mt-7 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-b from-[#EBB866] to-[#CF9336] text-[#120D04] shadow-[0_8px_30px_-6px_rgb(226_166_75/.8)] ring-4 ring-fondo"><m.icono size={24} /></span>
                 : <m.icono size={20} />}
               {m.texto}
             </NavLink>
@@ -274,6 +272,69 @@ export default function Layout() {
       </div>
 
       <Comandos abierto={buscar} onCerrar={() => setBuscar(false)} destinos={destinos} />
+      {!loc.pathname.startsWith('/preguntar') && <AsistenteFlotante />}
     </div>
+  )
+}
+
+/** Avatar con menú: ver perfil, tema, contraseña, administración (solo el administrador principal) y salir. */
+export function MenuPerfil({ mini }: { mini: boolean }) {
+  const { perfil, esSuper, salir } = useAuth()
+  const [abierto, setAbierto] = useState(false)
+  const [tema, setTema] = useState<Tema>(temaActual())
+  const caja = useRef<HTMLDivElement>(null)
+  const loc = useLocation()
+  useEffect(() => { setAbierto(false) }, [loc.pathname])
+  useEffect(() => {
+    if (!abierto) return
+    const f = (e: MouseEvent) => { if (!caja.current?.contains(e.target as Node)) setAbierto(false) }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setAbierto(false) }
+    document.addEventListener('mousedown', f); document.addEventListener('keydown', k)
+    return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k) }
+  }, [abierto])
+  async function cambiarTema() {
+    const t: Tema = tema === 'claro' ? 'oscuro' : 'claro'
+    aplicarTema(t); setTema(t)
+    if (perfil) await supabase.from('perfiles').update({ preferencias: { ...(perfil.preferencias ?? {}), tema: t } }).eq('id', perfil.id)
+  }
+  const iniciales = (perfil?.nombre ?? '?').split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase()
+  const foto = fotoPerfil(perfil)
+  const item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-stone-600 hover:bg-stone-100 hover:text-tinta'
+  return (
+    <div ref={caja} className="relative">
+      <button onClick={() => setAbierto(a => !a)} aria-expanded={abierto} aria-haspopup="menu" title={mini ? perfil?.nombre : undefined}
+        className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-stone-100 ${mini ? 'justify-center' : ''} ${abierto ? 'bg-stone-100' : ''}`}>
+        <Avatar foto={foto} iniciales={iniciales} />
+        {!mini && <>
+          <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm">{perfil?.nombre}</p><p className="truncate text-[11px] text-marca">{perfil?.es_super ? 'Administrador principal' : perfil && ROLES[perfil.rol]}</p></div>
+          <ChevronUp size={15} className={`shrink-0 text-stone-400 transition ${abierto ? '' : 'rotate-180'}`} />
+        </>}
+      </button>
+      {abierto && (
+        <div role="menu" className={`absolute bottom-full z-50 mb-2 w-64 rounded-2xl border border-stone-300 bg-panel p-1.5 shadow-2xl ${mini ? 'left-0' : 'inset-x-0 w-auto'}`}>
+          <div className="mb-1 flex items-center gap-3 border-b border-stone-200 px-3 pb-3 pt-2">
+            <Avatar foto={foto} iniciales={iniciales} grande />
+            <div className="min-w-0 leading-tight"><p className="truncate text-sm font-medium">{perfil?.nombre}</p><p className="truncate font-mono text-[10px] text-stone-500">{perfil?.usuario || perfil?.email}</p></div>
+          </div>
+          <Link role="menuitem" to="/perfil" className={item}><UserRound size={15} />Ver mi perfil</Link>
+          <button role="menuitem" onClick={cambiarTema} className={item}>{tema === 'claro' ? <Moon size={15} /> : <Sun size={15} />}{tema === 'claro' ? 'Modo oscuro' : 'Modo claro'}</button>
+          <Link role="menuitem" to="/cambiar-contrasena" className={item}><KeyRound size={15} />Cambiar contraseña</Link>
+          <Link role="menuitem" to="/bitacoras" className={item}><BookOpenText size={15} />Bitácoras</Link>
+          {esSuper && <Link role="menuitem" to="/admin" className={`${item} !text-marca`}><ShieldAlert size={15} />Administración</Link>}
+          <div className="my-1 h-px bg-stone-200" />
+          <button role="menuitem" onClick={salir} className={`${item} hover:!bg-red-50 hover:!text-red-700`}><LogOut size={15} />Cerrar sesión</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function Avatar({ foto, iniciales, grande }: { foto: string | null; iniciales: string; grande?: boolean }) {
+  const t = grande ? 'h-11 w-11 text-sm' : 'h-9 w-9 text-xs'
+  return (
+    <span className={`relative grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-marca to-[#9C6B24] font-bold text-[#120D04] ${t}`}>
+      {foto ? <img src={foto} alt="" className="h-full w-full rounded-full object-cover" /> : iniciales}
+      {!grande && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-barra bg-emerald-400" />}
+    </span>
   )
 }

@@ -12,7 +12,7 @@ export type Empleado = { id: string; empresa_id: string; codigo: string | null; 
   departamento_id: string | null; email: string | null; telefono: string | null; activo: boolean; departamentos?: { nombre: string } | null; empresas?: { nombre: string; nombre_corto?: string | null } | null }
 type ActMini = ActAsignado & { responsable_id: string | null }
 
-const PALETA = ['#F9B234', '#38BDF8', '#34D399', '#A78BFA', '#FB7185', '#F472B6', '#2DD4BF', '#FACC15']
+const PALETA = ['#E2A64B', '#38BDF8', '#34D399', '#A78BFA', '#FB7185', '#F472B6', '#2DD4BF', '#FACC15']
 export function colorPersona(id: string) { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PALETA[h % PALETA.length] }
 export function Avatar({ e, tam = 40 }: { e: { id: string; nombres: string; apellidos?: string | null }; tam?: number }) {
   const ini = nombreEmpleado(e).split(' ').filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase()
@@ -91,8 +91,8 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
                 </Link>
                 <div className="mt-3 flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    {suyos.slice(0, 5).map(a => <FotoActivo key={a.id} foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} icono={14} className="h-8 w-8 rounded-lg ring-2 ring-[#0D0F14]" />)}
-                    {suyos.length > 5 && <span className="grid h-8 w-8 place-items-center rounded-lg bg-stone-100 text-[10px] text-stone-600 ring-2 ring-[#0D0F14]">+{suyos.length - 5}</span>}
+                    {suyos.slice(0, 5).map(a => <FotoActivo key={a.id} foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} icono={14} className="h-8 w-8 rounded-lg ring-2 ring-panel" />)}
+                    {suyos.length > 5 && <span className="grid h-8 w-8 place-items-center rounded-lg bg-stone-100 text-[10px] text-stone-600 ring-2 ring-panel">+{suyos.length - 5}</span>}
                   </div>
                   <div className="ml-auto flex gap-1.5">
                     {puedeResguardar && <Link to={`/resguardos/nuevo?tipo=asignacion&empresa=${e.empresa_id}&empleado=${e.id}`} title="Asignar activos" className="grid h-8 w-8 place-items-center rounded-lg border border-stone-300 text-stone-500 transition hover:border-marca hover:text-marca"><ClipboardSignature size={15} /></Link>}
@@ -112,7 +112,7 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
                       <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200">
                         {suyos.map(a => (
                           <li key={a.id} className="flex items-center gap-2 p-2">
-                            {puedeResguardar && <input type="checkbox" className="accent-[#F9B234]" checked={marcados.has(a.id)} disabled={a.estatus !== 'asignado'} aria-label={`Seleccionar ${a.codigo}`}
+                            {puedeResguardar && <input type="checkbox" className="accent-[#E2A64B]" checked={marcados.has(a.id)} disabled={a.estatus !== 'asignado'} aria-label={`Seleccionar ${a.codigo}`}
                               onChange={() => setMarcados(s => { const x = new Set(s); if (x.has(a.id)) x.delete(a.id); else x.add(a.id); return x })} />}
                             <FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} icono={13} className="h-9 w-10 shrink-0 rounded-md" />
                             <Link to={`/activos/${a.id}`} className="min-w-0 flex-1 hover:text-marca">
@@ -259,7 +259,7 @@ export function ImportarEmpleados({ abierto, onCerrar, onListo, empresaId }: { a
           {renglones.length > 0 && (
             <div className="max-h-64 overflow-auto rounded-xl border border-stone-200">
               <table className="w-full min-w-[640px] text-xs">
-                <thead className="sticky top-0 bg-[#12151B]"><tr className="text-left text-stone-500"><th className="px-3 py-2">#</th>{COLS.map(c => <th key={c} className="px-3 py-2">{c}</th>)}</tr></thead>
+                <thead className="sticky top-0 bg-panel"><tr className="text-left text-stone-500"><th className="px-3 py-2">#</th>{COLS.map(c => <th key={c} className="px-3 py-2">{c}</th>)}</tr></thead>
                 <tbody className="divide-y divide-stone-100">{renglones.map((r, i) => (
                   <tr key={i}><td className="px-3 py-1.5 text-stone-400">{i + 1}</td><td className="px-3 py-1.5 font-medium">{r.nombres}</td><td className="px-3 py-1.5">{r.apellidos}</td><td className="px-3 py-1.5">{r.puesto}</td><td className="px-3 py-1.5">{r.depto}</td><td className="px-3 py-1.5">{r.codigo}</td><td className="px-3 py-1.5">{r.email}</td><td className="px-3 py-1.5">{r.telefono}</td></tr>
                 ))}</tbody>

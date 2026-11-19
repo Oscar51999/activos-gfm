@@ -171,7 +171,7 @@ export default function Alta() {
         {PASOS.map((n, i) => (
           <li key={n}>
             <button disabled={i > paso && !(i === 1 && prod) && !(i === 2 && prod && empresa)} onClick={() => setPaso(i)}
-              className={`w-full rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed ${i === paso ? 'border-marca bg-marca/10 shadow-[0_0_24px_-10px_rgb(249_178_52/.8)]' : i < paso ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200'}`}>
+              className={`w-full rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed ${i === paso ? 'border-marca bg-marca/10 shadow-[0_0_24px_-10px_rgb(226_166_75/.8)]' : i < paso ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200'}`}>
               <span className={`mb-1 grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${i === paso ? 'bg-marca text-[#120D04]' : i < paso ? 'bg-emerald-400 text-[#06281b]' : 'bg-stone-100 text-stone-500'}`}>{i < paso ? <Check size={13} /> : i + 1}</span>
               <span className="block text-sm font-medium">{n}</span>
               <span className="hidden truncate text-[11px] text-stone-500 sm:block">{i === 0 ? (prod ? `${prod.marcas?.nombre} ${prod.nombre}` : '¿Qué vas a dar de alta?') : i === 1 ? (emp ? `${cantidad} en ${emp.nombre_corto || emp.nombre}` : '¿Cuántas y de qué empresa?') : '¿Dónde o a quién?'}</span>
@@ -201,7 +201,7 @@ export default function Alta() {
       {paso === 0 && (
         <section className="animate-entrar">
           <button onClick={() => camara.current?.click()} disabled={leyendo} className="viva group mb-5 flex w-full items-center gap-4 rounded-2xl border border-marca/40 bg-gradient-to-r from-marca/15 via-marca/5 to-transparent p-4 text-left transition hover:border-marca">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-[#FFC95A] to-[#E9A11E] text-[#120D04] shadow-[0_8px_30px_-8px_rgb(249_178_52/.8)]"><ScanText size={24} /></span>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-b from-[#EBB866] to-[#CF9336] text-[#120D04] shadow-[0_8px_30px_-8px_rgb(226_166_75/.8)]"><ScanText size={24} /></span>
             <span className="min-w-0 flex-1"><span className="block font-semibold">Tomar foto de la etiqueta</span><span className="block text-sm text-stone-500">La IA lee marca, modelo y número de serie, y busca el producto en el catálogo.</span></span>
             <Sparkles size={18} className="shrink-0 text-marca transition group-hover:rotate-12" />
           </button>

@@ -11,7 +11,7 @@ const SUGERENCIAS = [
 ]
 
 /** Texto con [enlace](#/ruta), **negritas** y listas "- ". */
-function Formato({ texto }: { texto: string }) {
+export function Formato({ texto }: { texto: string }) {
   const enLinea = (s: string, k: number): ReactNode[] => s.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g).filter(Boolean).map((t, i) => {
     const l = t.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
     if (l) return l[2].startsWith('#/') ? <Link key={`${k}-${i}`} to={l[2].slice(1)} className="font-medium text-marca hover:underline">{l[1]}</Link> : <a key={`${k}-${i}`} href={l[2]} target="_blank" rel="noreferrer" className="text-marca underline">{l[1]}</a>
@@ -85,7 +85,7 @@ export default function Preguntar() {
         )}
         {msgs.map((m, i) => (
           <div key={i} className={`flex animate-entrar gap-3 ${m.rol === 'usuario' ? 'flex-row-reverse' : ''}`}>
-            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${m.rol === 'usuario' ? 'bg-stone-100 text-stone-500' : 'bg-gradient-to-b from-[#FFC95A] to-[#E9A11E] text-[#120D04]'}`}>{m.rol === 'usuario' ? <User size={15} /> : <Bot size={16} />}</span>
+            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${m.rol === 'usuario' ? 'bg-stone-100 text-stone-500' : 'bg-gradient-to-b from-[#EBB866] to-[#CF9336] text-[#120D04]'}`}>{m.rol === 'usuario' ? <User size={15} /> : <Bot size={16} />}</span>
             <div className={`min-w-0 max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.rol === 'usuario' ? 'bg-marca/15 text-tinta' : 'tarjeta !rounded-2xl text-stone-600'}`}>
               {m.rol === 'usuario' ? m.texto : <Formato texto={m.texto} />}
               {m.fuente === 'local' && <p className="mt-2 flex items-center gap-1 border-t border-stone-200 pt-1.5 text-[10px] uppercase tracking-wider text-stone-400"><Zap size={10} />Respuesta rápida (sin IA)</p>}
@@ -96,7 +96,7 @@ export default function Preguntar() {
         <div ref={fin} />
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); enviar() }} className="sticky bottom-24 mt-6 flex items-center gap-2 rounded-2xl border border-stone-300 bg-[#0E1015]/95 p-2 shadow-[0_0_40px_-16px_rgb(249_178_52/.5)] backdrop-blur lg:bottom-4">
+      <form onSubmit={e => { e.preventDefault(); enviar() }} className="sticky bottom-24 mt-6 flex items-center gap-2 rounded-2xl border border-stone-300 bg-panel/95 p-2 shadow-[0_0_40px_-16px_rgb(226_166_75/.5)] backdrop-blur lg:bottom-4">
         <input className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-stone-400" value={texto} onChange={e => setTexto(e.target.value)} placeholder="¿Qué tiene asignado Luis Adrián?" autoFocus />
         {Voz && <button type="button" onClick={dictar} className={`grid h-10 w-10 place-items-center rounded-xl border transition ${oyendo ? 'border-red-400 text-red-500 animate-pulso' : 'border-stone-300 text-stone-500 hover:text-marca'}`} aria-label="Dictar">{oyendo ? <MicOff size={17} /> : <Mic size={17} />}</button>}
         <button className="btn-primario !h-10 !px-4" disabled={!texto.trim() || pensando} aria-label="Preguntar"><SendHorizontal size={17} /></button>

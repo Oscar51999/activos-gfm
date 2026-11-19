@@ -92,7 +92,7 @@ export default function Solicitudes() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-stone-500">{s.folio}</span>
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${EST[s.estatus].clase}`}>{EST[s.estatus].texto}</span>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500"><span className="h-2 w-2 rounded-full" style={{ background: s.empresas?.color ?? '#F9B234' }} />{s.empresas?.nombre_corto || s.empresas?.nombre}</span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500"><span className="h-2 w-2 rounded-full" style={{ background: s.empresas?.color ?? '#E2A64B' }} />{s.empresas?.nombre_corto || s.empresas?.nombre}</span>
                   <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-stone-400"><Clock size={11} />{new Date(s.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
@@ -319,7 +319,7 @@ function Entregar({ s, modelos, consumibles, disp, ex, nombreItem, entrega, onCe
                 <div className="grid gap-1.5 sm:grid-cols-2">
                   {op.map(d => (
                     <label key={d.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-2 text-sm transition ${sel.includes(d.id) ? 'border-marca bg-marca/10' : 'border-stone-200'}`}>
-                      <input type="checkbox" className="accent-[#F9B234]" checked={sel.includes(d.id)} onChange={e => setSel(xs => e.target.checked ? [...xs, d.id] : xs.filter(x => x !== d.id))} />
+                      <input type="checkbox" className="accent-[#E2A64B]" checked={sel.includes(d.id)} onChange={e => setSel(xs => e.target.checked ? [...xs, d.id] : xs.filter(x => x !== d.id))} />
                       <span className="min-w-0"><span className="block font-mono text-xs text-marca">{d.codigo}</span><span className="block truncate text-[11px] text-stone-500">{[d.serie, d.ubicacion].filter(Boolean).join(' · ')}</span></span>
                     </label>
                   ))}

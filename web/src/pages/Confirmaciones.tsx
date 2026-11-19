@@ -85,7 +85,7 @@ export function PedirConfirmacion({ abierto, onCerrar, onHecho, empleadoId }: { 
               <ul className="max-h-[45vh] space-y-1.5 overflow-y-auto">
                 {vis.map(c => (
                   <li key={c.id}><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-stone-200 px-3 py-2 hover:bg-stone-50">
-                    <input type="checkbox" className="accent-[#F9B234]" checked={sel.has(c.id)} onChange={() => setSel(s => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })} />
+                    <input type="checkbox" className="accent-[#E2A64B]" checked={sel.has(c.id)} onChange={() => setSel(s => { const n = new Set(s); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n })} />
                     <Avatar e={{ id: c.id, nombres: c.nombre }} tam={30} /><span className="min-w-0 flex-1 truncate text-sm">{c.nombre}</span><span className="text-xs text-stone-500">{c.acts.length} activo(s)</span>
                   </label></li>
                 ))}

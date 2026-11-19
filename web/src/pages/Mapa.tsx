@@ -1,3 +1,4 @@
+import MapaMexico from '../components/MapaMexico'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MapPin, Plus, Minus, Crosshair, X, ExternalLink, Siren, Boxes, HardHat, Link2, LocateFixed, Search, Building2, Warehouse, Briefcase, Truck } from 'lucide-react'
@@ -101,8 +102,12 @@ export default function Mapa() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold sm:text-3xl">Mapa de obras</h1>
-          <p className="mt-1 text-sm text-stone-500">Cada punto es una obra, almacén u oficina. El tamaño indica cuántos activos tiene; el color, la empresa.</p>
+          <p className="mt-1 text-sm text-stone-500">Arriba, la República con cada obra según su centro de costo; abajo, el detalle de obras, almacenes y oficinas con sus activos.</p>
         </div>
+      </div>
+      <div className="mb-8"><MapaMexico /></div>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-lg font-semibold">Detalle por ubicación</h2>
         <div className="flex flex-wrap gap-2">
           <select className="campo !w-auto" value={empresa} onChange={e => setEmpresa(e.target.value)} aria-label="Empresa"><option value="">Todas las empresas</option>{empresasUsadas.map(([id, e]) => <option key={id} value={id}>{e?.nombre_corto || e?.nombre}</option>)}</select>
           <select className="campo !w-auto" value={tipo} onChange={e => setTipo(e.target.value)} aria-label="Tipo"><option value="">Todos los tipos</option>{Object.entries(TIPOS).map(([k, t]) => <option key={k} value={k}>{t.texto}</option>)}</select>
@@ -113,7 +118,7 @@ export default function Mapa() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="tarjeta relative h-fit min-w-0 self-start overflow-hidden p-0">
           {colocando && (
-            <div className="absolute inset-x-3 top-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-marca/50 bg-[#0E1015]/95 p-2 pl-3 text-sm backdrop-blur">
+            <div className="absolute inset-x-3 top-3 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-marca/50 bg-panel/95 p-2 pl-3 text-sm backdrop-blur">
               <Crosshair size={16} className="text-marca" />
               <span className="min-w-0 flex-1">Toca el mapa donde está <b>{colocando.nombre}</b>, o pega el enlace de Google Maps:</span>
               <form className="flex w-full gap-2 sm:w-auto" onSubmit={e => { e.preventDefault(); const c = coordenadasDe(enlace); if (c) guardarCoord(colocando.id, c.lat, c.lng); else setError('No encontré coordenadas en ese enlace. En Google Maps, mantén presionado el punto y copia los números que aparecen (ej. 24.1426, -110.3128).') }}>
@@ -138,16 +143,16 @@ export default function Mapa() {
               if (colocar) { const p = aSvg(e); const c = desproy(p.x, p.y); guardarCoord(colocar, c.lat, c.lng) }
             }}>
             <defs>
-              <radialGradient id="fondo-mapa" cx="50%" cy="45%" r="75%"><stop offset="0" stopColor="#14171E" /><stop offset="1" stopColor="#07080B" /></radialGradient>
-              <linearGradient id="barrido" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#F9B234" stopOpacity="0" /><stop offset="1" stopColor="#F9B234" stopOpacity=".22" /></linearGradient>
+              <radialGradient id="fondo-mapa" cx="50%" cy="45%" r="75%"><stop offset="0" style={{ stopColor: 'var(--color-mapa)' }} /><stop offset="1" style={{ stopColor: 'var(--color-lienzo)' }} /></radialGradient>
+              <linearGradient id="barrido" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#E2A64B" stopOpacity="0" /><stop offset="1" stopColor="#E2A64B" stopOpacity=".22" /></linearGradient>
               <filter id="brillo-pin" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6" /></filter>
             </defs>
             <rect width={W} height={H} fill="url(#fondo-mapa)" />
             <g transform={`translate(${vista.x} ${vista.y}) scale(${vista.k})`}>
               {/* retícula de coordenadas reales */}
-              {lineas(caja.minLng, caja.maxLng).map(l => { const x = proy(caja.minLat, l).x; return <g key={'x' + l}><line x1={x} x2={x} y1={0} y2={H} stroke="#F9B234" strokeOpacity=".07" strokeWidth={1 / vista.k} /><text x={x + 4 / vista.k} y={H - 8 / vista.k} fontSize={10 / vista.k} fill="#6b6f78" fontFamily="ui-monospace,monospace">{Math.abs(l).toFixed(2)}°O</text></g> })}
-              {lineas(caja.minLat, caja.maxLat).map(l => { const y = proy(l, caja.minLng).y; return <g key={'y' + l}><line x1={0} x2={W} y1={y} y2={y} stroke="#F9B234" strokeOpacity=".07" strokeWidth={1 / vista.k} /><text x={6 / vista.k} y={y - 4 / vista.k} fontSize={10 / vista.k} fill="#6b6f78" fontFamily="ui-monospace,monospace">{l.toFixed(2)}°N</text></g> })}
-              {[120, 220, 320].map(r => <circle key={r} cx={W / 2} cy={H / 2} r={r} fill="none" stroke="#F9B234" strokeOpacity=".08" strokeWidth={1 / vista.k} strokeDasharray={`${4 / vista.k} ${6 / vista.k}`} />)}
+              {lineas(caja.minLng, caja.maxLng).map(l => { const x = proy(caja.minLat, l).x; return <g key={'x' + l}><line x1={x} x2={x} y1={0} y2={H} stroke="#E2A64B" strokeOpacity=".07" strokeWidth={1 / vista.k} /><text x={x + 4 / vista.k} y={H - 8 / vista.k} fontSize={10 / vista.k} fill="#6b6f78" fontFamily="ui-monospace,monospace">{Math.abs(l).toFixed(2)}°O</text></g> })}
+              {lineas(caja.minLat, caja.maxLat).map(l => { const y = proy(l, caja.minLng).y; return <g key={'y' + l}><line x1={0} x2={W} y1={y} y2={y} stroke="#E2A64B" strokeOpacity=".07" strokeWidth={1 / vista.k} /><text x={6 / vista.k} y={y - 4 / vista.k} fontSize={10 / vista.k} fill="#6b6f78" fontFamily="ui-monospace,monospace">{l.toFixed(2)}°N</text></g> })}
+              {[120, 220, 320].map(r => <circle key={r} cx={W / 2} cy={H / 2} r={r} fill="none" stroke="#E2A64B" strokeOpacity=".08" strokeWidth={1 / vista.k} strokeDasharray={`${4 / vista.k} ${6 / vista.k}`} />)}
               <g>
                 <animateTransform attributeName="transform" type="rotate" from={`0 ${W / 2} ${H / 2}`} to={`360 ${W / 2} ${H / 2}`} dur="9s" repeatCount="indefinite" />
                 <path d={`M${W / 2} ${H / 2} L${W / 2 + 340} ${H / 2 - 60} A345 345 0 0 1 ${W / 2 + 340} ${H / 2 + 60} Z`} fill="url(#barrido)" opacity=".5" />
@@ -156,8 +161,8 @@ export default function Mapa() {
               {verInm && inms.filter(x => x.latitud != null && (!empresa || x.empresa_id === empresa)).map(x => { const p = proy(Number(x.latitud), Number(x.longitud)); const t = 7 / Math.sqrt(vista.k); return (
                 <g key={x.id} transform={`translate(${p.x} ${p.y})`} className="cursor-pointer" onPointerUp={e => { if (!colocar && !arrastre.current?.movio) { e.stopPropagation(); arrastre.current = null; navegar(`/inmuebles/${x.id}`) } }}>
                   <title>{`${x.codigo} · ${x.nombre}`}</title>
-                  <rect x={-t} y={-t} width={t * 2} height={t * 2} transform="rotate(45)" fill="#07080B" stroke={x.empresas?.color ?? '#F9B234'} strokeWidth={2 / vista.k} />
-                  <rect x={-t / 2.4} y={-t / 2.4} width={t / 1.2} height={t / 1.2} transform="rotate(45)" fill={x.empresas?.color ?? '#F9B234'} />
+                  <rect x={-t} y={-t} width={t * 2} height={t * 2} transform="rotate(45)" style={{ fill: 'var(--color-lienzo)' }} stroke={x.empresas?.color ?? '#E2A64B'} strokeWidth={2 / vista.k} />
+                  <rect x={-t / 2.4} y={-t / 2.4} width={t / 1.2} height={t / 1.2} transform="rotate(45)" fill={x.empresas?.color ?? '#E2A64B'} />
                 </g>
               ) })}
               {/* pines */}
@@ -165,18 +170,18 @@ export default function Mapa() {
                 const p = proy(x.latitud!, x.longitud!)
                 const n = enLugar(x.id).length
                 const r = (7 + Math.sqrt(n / maxN) * 16) / Math.sqrt(vista.k)
-                const color = x.empresas?.color || '#F9B234'
+                const color = x.empresas?.color || '#E2A64B'
                 const alerta = enLugar(x.id).some(a => conReporte.has(a.id))
                 const activo = sel === x.id || hover === x.id
                 return (
                   <g key={x.id} transform={`translate(${p.x} ${p.y})`} className="cursor-pointer" onPointerUp={e => { if (!colocar && !arrastre.current?.movio) { e.stopPropagation(); arrastre.current = null; setSel(x.id) } }} onPointerEnter={() => setHover(x.id)} onPointerLeave={() => setHover(null)}>
                     <circle r={r * 1.8} fill={color} opacity={activo ? .35 : .18} filter="url(#brillo-pin)" />
                     {alerta && <circle r={r + 5 / vista.k} fill="none" stroke="#ef4444" strokeWidth={2 / vista.k}><animate attributeName="r" values={`${r};${r + 14 / vista.k}`} dur="1.6s" repeatCount="indefinite" /><animate attributeName="opacity" values="1;0" dur="1.6s" repeatCount="indefinite" /></circle>}
-                    <circle r={r} fill={color} fillOpacity=".9" stroke={activo ? '#fff' : '#07080B'} strokeWidth={(activo ? 2.5 : 2) / vista.k} />
+                    <circle r={r} fill={color} fillOpacity=".9" style={{ stroke: activo ? 'var(--color-tinta)' : 'var(--color-lienzo)' }} strokeWidth={(activo ? 2.5 : 2) / vista.k} />
                     {n > 0 && <text textAnchor="middle" dy=".35em" fontSize={Math.max(9, r * 0.9)} fontWeight={700} fill="#0b0d11" fontFamily="system-ui">{n}</text>}
                     {(activo || vista.k >= 2 || n >= maxN * 0.6) && (
                       <g transform={`translate(${r + 6 / vista.k} 0)`}>
-                        <text dy=".35em" fontSize={12 / vista.k} fill="#e7e5e4" stroke="#07080B" strokeWidth={3 / vista.k} paintOrder="stroke" fontFamily="system-ui" fontWeight={600}>{x.codigo || x.nombre}</text>
+                        <text dy=".35em" fontSize={12 / vista.k} style={{ fill: 'var(--color-tinta)', stroke: 'var(--color-lienzo)' }} strokeWidth={3 / vista.k} paintOrder="stroke" fontFamily="system-ui" fontWeight={600}>{x.codigo || x.nombre}</text>
                       </g>
                     )}
                   </g>
@@ -186,11 +191,11 @@ export default function Mapa() {
           </svg>
           <div className="absolute right-3 top-3 flex flex-col gap-1 sm:bottom-3 sm:top-auto">
             {([[Plus, () => zoom(1.4), 'Acercar'], [Minus, () => zoom(1 / 1.4), 'Alejar'], [LocateFixed, () => setVista({ x: 0, y: 0, k: 1 }), 'Ver todo']] as const).map(([I, f, t]) => (
-              <button key={t} onClick={f} title={t} aria-label={t} className="grid h-8 w-8 place-items-center rounded-xl border sm:h-9 sm:w-9 border-stone-300 bg-[#0E1015]/90 text-stone-500 backdrop-blur transition hover:border-marca hover:text-marca"><I size={16} /></button>
+              <button key={t} onClick={f} title={t} aria-label={t} className="grid h-8 w-8 place-items-center rounded-xl border sm:h-9 sm:w-9 border-stone-300 bg-panel/90 text-stone-500 backdrop-blur transition hover:border-marca hover:text-marca"><I size={16} /></button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-stone-200 px-3 py-2 text-[10px] text-stone-500 sm:absolute sm:bottom-3 sm:left-3 sm:max-w-[70%] sm:rounded-xl sm:border-0 sm:bg-[#07080B]/80 sm:backdrop-blur">
-            {empresasUsadas.filter(([id]) => conCoord.some(x => x.empresa_id === id)).map(([id, e]) => <span key={id} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: e?.color ?? '#F9B234' }} />{e?.nombre_corto || e?.nombre}</span>)}
+          <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-stone-200 px-3 py-2 text-[10px] text-stone-500 sm:absolute sm:bottom-3 sm:left-3 sm:max-w-[70%] sm:rounded-xl sm:border-0 sm:bg-lienzo/80 sm:backdrop-blur">
+            {empresasUsadas.filter(([id]) => conCoord.some(x => x.empresa_id === id)).map(([id, e]) => <span key={id} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: e?.color ?? '#E2A64B' }} />{e?.nombre_corto || e?.nombre}</span>)}
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-red-500" />con reporte abierto</span>
             {inms.length > 0 && <button onClick={() => setVerInm(v => !v)} className={`inline-flex items-center gap-1 ${verInm ? '' : 'line-through opacity-60'}`}><span className="h-2 w-2 rotate-45 border border-marca" />inmuebles</button>}
           </div>
@@ -200,7 +205,7 @@ export default function Mapa() {
           {u ? (
             <div className="tarjeta animate-entrar p-4">
               <div className="flex items-start gap-3">
-                <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: u.empresas?.color ?? '#F9B234', boxShadow: `0 0 12px ${u.empresas?.color ?? '#F9B234'}` }} />
+                <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: u.empresas?.color ?? '#E2A64B', boxShadow: `0 0 12px ${u.empresas?.color ?? '#E2A64B'}` }} />
                 <div className="min-w-0 flex-1">
                   <p className="font-mono text-[11px] text-marca">{u.codigo}</p>
                   <h2 className="font-semibold leading-tight">{u.nombre}</h2>
@@ -240,7 +245,7 @@ export default function Mapa() {
               <ul className="space-y-1.5">
                 {sinCoord.map(x => (
                   <li key={x.id} className="flex items-center gap-2 text-sm">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: x.empresas?.color ?? '#F9B234' }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: x.empresas?.color ?? '#E2A64B' }} />
                     <span className="min-w-0 flex-1 truncate">{x.nombre}</span>
                     {puedeEditar && <button className={`btn-sec !px-2.5 !py-1 text-xs ${colocar === x.id ? '!border-marca text-marca' : ''}`} onClick={() => { setColocar(x.id); setSel(null) }}><Crosshair size={12} />Ubicar</button>}
                   </li>
@@ -263,7 +268,7 @@ function Lista({ ubis, n, onSel }: { ubis: Ubi[]; n: (id: string) => number; onS
       <ul className="max-h-[420px] space-y-1 overflow-y-auto">
         {vis.map(u => { const T = TIPOS[u.tipo ?? '']?.icono ?? MapPin; return (
           <li key={u.id}><button onClick={() => onSel(u.id)} className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition hover:bg-stone-100">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ background: `${u.empresas?.color ?? '#F9B234'}22`, color: u.empresas?.color ?? '#F9B234' }}><T size={15} /></span>
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ background: `${u.empresas?.color ?? '#E2A64B'}22`, color: u.empresas?.color ?? '#E2A64B' }}><T size={15} /></span>
             <span className="min-w-0 flex-1"><span className="block truncate text-sm">{u.nombre}</span><span className="block text-[11px] text-stone-500">{u.empresas?.nombre_corto || u.empresas?.nombre}</span></span>
             <span className="cifra text-sm font-semibold">{n(u.id)}</span>
           </button></li>

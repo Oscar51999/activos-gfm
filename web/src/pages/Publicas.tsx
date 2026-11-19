@@ -15,7 +15,7 @@ function Marco({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full px-4 py-8">
       <div className="mx-auto max-w-xl">
-        <div className="mb-6 flex items-center justify-between"><LogoFirme className="h-8 w-auto text-[#fff]" /><span className="text-[10px] uppercase tracking-[.2em] text-marca">Control de activos</span></div>
+        <div className="mb-6 flex items-center justify-between"><LogoFirme className="h-8 w-auto text-tinta" /><span className="text-[10px] uppercase tracking-[.2em] text-marca">Control de activos</span></div>
         {children}
         <p className="mt-6 text-center text-[11px] text-stone-400">Grupo Empresarial Firme · Este enlace es personal y sirve una sola vez.</p>
       </div>
@@ -96,7 +96,7 @@ export function FirmaRemota() {
           {r.notas && <p className="rounded-lg border border-stone-200 px-3 py-2 text-xs text-stone-500">Notas: {r.notas}</p>}
           <label className="block"><span className="etiqueta">Tu nombre completo</span><input className="campo" value={nombre} onChange={e => setNombre(e.target.value)} /></label>
           <FirmaPad ref={pad} titulo="Tu firma" />
-          <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 accent-[#F9B234]" checked={acepto} onChange={e => setAcepto(e.target.checked)} />Recibí los activos descritos y acepto el resguardo.</label>
+          <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 accent-[#E2A64B]" checked={acepto} onChange={e => setAcepto(e.target.checked)} />Recibí los activos descritos y acepto el resguardo.</label>
           {error && <Aviso>{error}</Aviso>}
           <button className="btn-primario w-full py-3" onClick={firmar} disabled={enviando}>{enviando ? 'Enviando…' : 'Firmar y aceptar'}</button>
         </div>

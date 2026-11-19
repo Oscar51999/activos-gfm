@@ -99,7 +99,7 @@ export default function Vigencias() {
             return (
               <button key={i} onClick={() => { setMes(mes === i ? null : i); setFiltro('todos') }} className="group flex h-full flex-col items-center justify-end gap-1.5">
                 <span className="cifra text-xs text-stone-500 group-hover:text-tinta">{l.length || ''}</span>
-                <span className={`w-full max-w-14 rounded-t-lg transition ${mes === i ? 'bg-marca shadow-[0_0_20px_-4px_rgb(249_178_52/.8)]' : rojos ? 'bg-red-500/70' : 'bg-marca/40 group-hover:bg-marca/70'}`}
+                <span className={`w-full max-w-14 rounded-t-lg transition ${mes === i ? 'bg-marca shadow-[0_0_20px_-4px_rgb(226_166_75/.8)]' : rojos ? 'bg-red-500/70' : 'bg-marca/40 group-hover:bg-marca/70'}`}
                   style={{ height: `${Math.max(4, (l.length / maxMes) * 90)}px`, animation: 'crecer .8s cubic-bezier(.2,.8,.2,1) both', transformOrigin: 'bottom' }} />
                 <span className={`text-[11px] uppercase tracking-wider ${mes === i ? 'text-marca' : 'text-stone-500'}`}>{meses[i].etiqueta}</span>
               </button>

@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { urlLogo, iniciales, type EmpresaLogo, type Variante } from '../lib/logos'
 import { LogoFirme } from './Logo'
+import { useTema } from '../lib/tema'
 
 /**
  * Logo de empresa con tamaño óptico parejo: un logo horizontal y uno cuadrado ocupan
  * la misma "área visual", para que todas las tarjetas se vean iguales.
  */
-export default function LogoEmpresa({ empresa, alto = 48, ancho = 220, variante = 'oscuro', className = '' }: {
+export default function LogoEmpresa({ empresa, alto = 48, ancho = 220, variante: varianteFija, className = '' }: {
   empresa: EmpresaLogo; alto?: number; ancho?: number; variante?: Variante; className?: string
 }) {
+  // En modo claro se usa el logo para fondo claro, salvo que se pida uno en particular
+  const tema = useTema()
+  const variante: Variante = varianteFija ?? (tema === 'claro' ? 'claro' : 'oscuro')
   const url = urlLogo(empresa, variante)
   const [ratio, setRatio] = useState<number | null>(null)
 
@@ -16,7 +20,7 @@ export default function LogoEmpresa({ empresa, alto = 48, ancho = 220, variante 
     const h = Math.min(alto * 0.78, ancho / 3.34)
     return (
       <span className={`inline-flex items-center justify-center ${className}`} style={{ height: alto * 1.25, width: '100%', maxWidth: ancho }}>
-        <span style={{ height: h, width: h * 3.34 }} className="block"><LogoFirme className={`h-full w-full ${variante === 'oscuro' ? 'text-[#fff]' : 'text-black'}`} title={empresa.nombre} /></span>
+        <span style={{ height: h, width: h * 3.34 }} className="block"><LogoFirme className={`h-full w-full ${variante === 'oscuro' ? 'text-tinta' : 'text-black'}`} title={empresa.nombre} /></span>
       </span>
     )
   }

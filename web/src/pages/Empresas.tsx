@@ -16,7 +16,7 @@ export type Empresa = EmpresaLogo & { id: string; razon_social: string | null; r
 type Act = { id: string; codigo: string; descripcion: string; serie: string | null; estatus: Estatus; empresa_id: string; categoria: string; marca: string | null; modelo: string | null
   ubicacion: string | null; ubicacion_id: string | null; responsable: string | null; responsable_id: string | null; valor_referencia: number | null; foto_principal: string | null; modelo_foto: string | null }
 
-const COLOR: Record<Estatus, string> = { disponible: '#34D399', asignado: '#38BDF8', mantenimiento: '#F9B234', siniestrado: '#FF5A5F', baja: '#6B7280' }
+const COLOR: Record<Estatus, string> = { disponible: '#34D399', asignado: '#38BDF8', mantenimiento: '#E2A64B', siniestrado: '#FF5A5F', baja: '#6B7280' }
 
 function BarraEstatus({ acts }: { acts: { estatus: Estatus }[] }) {
   const vivos = acts.filter(a => a.estatus !== 'baja'), total = vivos.length || 1
@@ -76,8 +76,8 @@ export default function Empresas() {
         {vis.map(({ e, a, activos, asignados, empleados, sinFirma }, i) => (
           <div key={e.id} className="tarjeta viva group flex min-w-0 animate-entrar flex-col overflow-hidden" style={{ animationDelay: `${i * 60}ms` }}>
             <Link to={`/empresas/${e.id}`} className="relative grid h-36 place-items-center overflow-hidden border-b border-stone-200 px-8">
-              <span aria-hidden className="pointer-events-none absolute inset-0 opacity-60 transition duration-500 group-hover:opacity-100" style={{ background: `radial-gradient(18rem 9rem at 50% 110%, ${e.color || '#F9B234'}33, transparent 70%)` }} />
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${e.color || '#F9B234'}, transparent)` }} />
+              <span aria-hidden className="pointer-events-none absolute inset-0 opacity-60 transition duration-500 group-hover:opacity-100" style={{ background: `radial-gradient(18rem 9rem at 50% 110%, ${e.color || '#E2A64B'}33, transparent 70%)` }} />
+              <span aria-hidden className="absolute inset-x-0 bottom-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${e.color || '#E2A64B'}, transparent)` }} />
               <LogoEmpresa empresa={e} alto={52} ancho={240} className="relative transition duration-500 group-hover:scale-105" />
             </Link>
             <div className="flex flex-1 flex-col p-5">
@@ -111,7 +111,7 @@ export default function Empresas() {
 
 /** Alta o edición de empresa, con su logo (se limpia el fondo y se genera la versión para fondo oscuro). */
 export function EmpresaModal({ abierto, onCerrar, onGuardado, empresa }: { abierto: boolean; onCerrar: () => void; onGuardado: () => void; empresa?: Empresa | null }) {
-  const [f, setF] = useState({ nombre: '', nombre_corto: '', razon_social: '', rfc: '', color: '#F9B234' })
+  const [f, setF] = useState({ nombre: '', nombre_corto: '', razon_social: '', rfc: '', color: '#E2A64B' })
   const [logo, setLogo] = useState<{ claro: string; oscuro: string } | null>(null)
   const [error, setError] = useState('')
   const [procesando, setProcesando] = useState(false)
@@ -120,7 +120,7 @@ export function EmpresaModal({ abierto, onCerrar, onGuardado, empresa }: { abier
   useEffect(() => {
     if (!abierto) return
     setError(''); setLogo(null)
-    setF({ nombre: empresa?.nombre ?? '', nombre_corto: empresa?.nombre_corto ?? '', razon_social: empresa?.razon_social ?? '', rfc: empresa?.rfc ?? '', color: empresa?.color ?? '#F9B234' })
+    setF({ nombre: empresa?.nombre ?? '', nombre_corto: empresa?.nombre_corto ?? '', razon_social: empresa?.razon_social ?? '', rfc: empresa?.rfc ?? '', color: empresa?.color ?? '#E2A64B' })
   }, [abierto, empresa])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF(x => ({ ...x, [k]: e.target.value }))
   async function tomar(file?: File | null) {
@@ -193,7 +193,7 @@ export function EmpresaDetalle() {
   useEffect(cargar, [id])
 
   if (!e) return <Cargando />
-  const color = e.color || '#F9B234'
+  const color = e.color || '#E2A64B'
   const vivos = acts.filter(a => a.estatus !== 'baja')
   const k = (s: Estatus) => vivos.filter(a => a.estatus === s).length
   const top = [...vivos.reduce((m, a) => { if (a.responsable_id) m.set(a.responsable_id, { n: (m.get(a.responsable_id)?.n ?? 0) + 1, nombre: a.responsable ?? '' }); return m }, new Map<string, { n: number; nombre: string }>())]
@@ -231,7 +231,7 @@ export function EmpresaDetalle() {
       <nav className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-stone-200 bg-stone-50 p-1">
         {TABS.map(([kk, txt]) => (
           <button key={kk} onClick={() => setSp(kk === 'resumen' ? {} : { tab: kk }, { replace: true })}
-            className={`relative flex-1 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${tab === kk ? 'bg-marca text-[#120D04] shadow-[0_0_20px_-6px_rgb(249_178_52/.8)]' : 'text-stone-500 hover:text-tinta'}`}>
+            className={`relative flex-1 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition ${tab === kk ? 'bg-marca text-[#120D04] shadow-[0_0_20px_-6px_rgb(226_166_75/.8)]' : 'text-stone-500 hover:text-tinta'}`}>
             {txt}{kk === 'empleados' ? ` · ${nEmp}` : kk === 'activos' ? ` · ${vivos.length}` : kk === 'ubicaciones' ? ` · ${ubis.length}` : ''}
           </button>
         ))}

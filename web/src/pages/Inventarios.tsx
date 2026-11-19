@@ -277,7 +277,7 @@ export function InventarioConteo() {
           </div>
           {inv.ubicacion_id && fuera.length > 0 && puedeEditar && (
             <label className="flex items-start gap-3 rounded-xl border border-stone-200 p-3 text-sm">
-              <input type="checkbox" className="mt-1 accent-[#F9B234]" checked={mover} onChange={e => setMover(e.target.checked)} />
+              <input type="checkbox" className="mt-1 accent-[#E2A64B]" checked={mover} onChange={e => setMover(e.target.checked)} />
               <span>Actualizar la ubicación de los {fuera.length} activo(s) fuera de lugar a <b>{inv.ubicaciones?.nombre}</b>, porque ahí se encontraron.</span>
             </label>
           )}

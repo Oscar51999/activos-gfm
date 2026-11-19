@@ -41,6 +41,9 @@ import Confiabilidad from './pages/Confiabilidad'
 import Vales, { ValePublico } from './pages/Vales'
 import Posiciones from './pages/Posiciones'
 import ConteoCiclico from './pages/ConteoCiclico'
+import Perfil from './pages/Perfil'
+import Admin from './pages/Admin'
+import Bitacoras from './pages/Bitacoras'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -48,7 +51,7 @@ function Pendiente() {
   return (
     <div className="flex min-h-full items-center justify-center p-6">
       <div className="tarjeta max-w-md p-8 text-center">
-        <LogoFirme className="mx-auto mb-6 h-12 w-auto text-[#fff]" />
+        <LogoFirme className="mx-auto mb-6 h-12 w-auto text-tinta" />
         <h1 className="text-xl font-semibold">Tu cuenta está pendiente de activación</h1>
         <p className="mt-2 text-sm text-stone-600">Hola {perfil?.nombre}. Un administrador del Departamento de TI debe activar tu acceso y asignarte las empresas que verás.</p>
         <div className="mt-6 flex justify-center gap-2">
@@ -165,6 +168,10 @@ function Rutas() {
         <Route path="proveedores" element={<Proveedores />} />
         <Route path="centros-costo" element={<CentrosCosto />} />
         <Route path="cambiar-contrasena" element={<CambiarContrasena />} />
+        <Route path="perfil" element={<Perfil />} />
+        <Route path="bitacoras" element={<Bitacoras />} />
+        <Route path="bitacoras/:id" element={<Bitacoras />} />
+        <Route path="admin" element={<Admin />} />
         {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

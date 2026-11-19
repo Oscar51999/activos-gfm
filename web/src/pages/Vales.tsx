@@ -147,7 +147,7 @@ function NuevoVale({ onCerrar, onListo }: { onCerrar: () => void; onListo: (v: V
             {origen && vis.length === 0 && <p className="py-4 text-sm text-stone-500 sm:col-span-2">No hay equipo registrado en ese lugar.</p>}
             {origen && vis.map(a => (
               <label key={a.id} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-1.5 text-sm transition ${sel.includes(a.id) ? 'border-marca bg-marca/10' : 'border-stone-200'}`}>
-                <input type="checkbox" className="accent-[#F9B234]" checked={sel.includes(a.id)} onChange={e => setSel(s => e.target.checked ? [...s, a.id] : s.filter(x => x !== a.id))} />
+                <input type="checkbox" className="accent-[#E2A64B]" checked={sel.includes(a.id)} onChange={e => setSel(s => e.target.checked ? [...s, a.id] : s.filter(x => x !== a.id))} />
                 <FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} className="h-8 w-10 shrink-0 rounded-md" icono={13} />
                 <span className="min-w-0"><span className="block font-mono text-[10px] text-marca">{a.codigo}</span><span className="block truncate text-xs">{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</span></span>
               </label>
@@ -252,7 +252,7 @@ export function ValePublico() {
   return (
     <div className="min-h-full px-4 py-8">
       <div className="mx-auto max-w-lg space-y-4">
-        <LogoFirme className="h-8 w-auto text-[#fff]" />
+        <LogoFirme className="h-8 w-auto text-tinta" />
         {!v ? <Aviso>Este vale no existe. No dejes salir el equipo.</Aviso> : <>
           <div className={`tarjeta p-5 ${v.estatus === 'cancelado' || vencido ? '!border-red-200' : ''}`}>
             <div className="flex items-center justify-between gap-2"><p className="font-mono text-lg font-bold">{v.folio}</p><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${EST_VALE[v.estatus].clase}`}>{EST_VALE[v.estatus].texto}</span></div>

@@ -144,7 +144,7 @@ function NuevoTraspaso({ empresas, activoInicial, onCerrar, onListo }: { empresa
               <div className="relative w-56"><Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo !py-1.5 pl-8 text-xs" placeholder="Buscar…" value={q} onChange={e => setQ(e.target.value)} /></div></div>
             <ul className="max-h-64 space-y-1 overflow-y-auto">{acts.filter(x => !t || [x.codigo, x.descripcion, x.marca, x.modelo, x.serie].some(y => y?.toLowerCase().includes(t))).map(x => (
               <li key={x.id}><label className={`flex items-center gap-3 rounded-lg border px-2 py-1.5 ${x.estatus === 'asignado' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-stone-50'} ${sel.has(x.id) ? 'border-marca/60' : 'border-stone-200'}`}>
-                <input type="checkbox" className="accent-[#F9B234]" disabled={x.estatus === 'asignado'} checked={sel.has(x.id)} onChange={() => setSel(s => { const n = new Set(s); if (n.has(x.id)) n.delete(x.id); else n.add(x.id); return n })} />
+                <input type="checkbox" className="accent-[#E2A64B]" disabled={x.estatus === 'asignado'} checked={sel.has(x.id)} onChange={() => setSel(s => { const n = new Set(s); if (n.has(x.id)) n.delete(x.id); else n.add(x.id); return n })} />
                 <span className="font-mono text-[11px] text-marca">{x.codigo}</span><span className="min-w-0 flex-1 truncate text-sm">{[x.marca, x.modelo].filter(Boolean).join(' ') || x.descripcion}</span><EstatusBadge estatus={x.estatus} />
               </label></li>
             ))}</ul>

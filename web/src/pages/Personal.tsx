@@ -129,8 +129,8 @@ export function EmpleadoDetalle() {
                   <Link to={`/activos/${a.id}`} className="block">
                     <div className="relative"><FotoActivo foto={a.foto_principal} fotoModelo={a.modelo_foto} categoria={a.categoria} className="aspect-[16/10] w-full" icono={36} />
                       <span className="absolute left-2 top-2"><EstatusBadge estatus={a.estatus} /></span>
-                      {puedeResguardar && a.estatus === 'asignado' && <label className="absolute right-2 top-2 grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-[#0E1015]/80" onClick={ev => ev.stopPropagation()}>
-                        <input type="checkbox" className="accent-[#F9B234]" aria-label={`Seleccionar ${a.codigo}`} checked={marcados.has(a.id)} onChange={() => setMarcados(m => { const x = new Set(m); if (x.has(a.id)) x.delete(a.id); else x.add(a.id); return x })} />
+                      {puedeResguardar && a.estatus === 'asignado' && <label className="absolute right-2 top-2 grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-panel/80" onClick={ev => ev.stopPropagation()}>
+                        <input type="checkbox" className="accent-[#E2A64B]" aria-label={`Seleccionar ${a.codigo}`} checked={marcados.has(a.id)} onChange={() => setMarcados(m => { const x = new Set(m); if (x.has(a.id)) x.delete(a.id); else x.add(a.id); return x })} />
                       </label>}</div>
                     <div className="p-4 pb-2">
                       <p className="font-mono text-[11px] text-marca">{a.codigo}</p>
@@ -158,7 +158,7 @@ export function EmpleadoDetalle() {
             <ol className="relative space-y-4 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-stone-300">
               {movs.map(m => (
                 <li key={m.id} className="relative pl-6">
-                  <span className="absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-[#0B0D11]" style={{ background: { asignacion: '#38BDF8', devolucion: '#34D399', traspaso: '#A78BFA' }[m.tipo] }} />
+                  <span className="absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-barra" style={{ background: { asignacion: '#38BDF8', devolucion: '#34D399', traspaso: '#A78BFA' }[m.tipo] }} />
                   <Link to={`/resguardos/${m.id}`} className="group block">
                     <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-stone-500 group-hover:text-marca">{m.folio}</span><TipoBadge tipo={m.tipo} /></div>
                     <p className="text-sm">{m.num_activos} activo(s){m.a_ubicacion ? ` · ${m.a_ubicacion}` : ''}</p>
@@ -186,7 +186,7 @@ export function EmpleadoDetalle() {
             <Campo label="Fecha de baja"><input type="date" className="campo" value={fb.fecha} onChange={x => setFb({ ...fb, fecha: x.target.value })} /></Campo>
             <Campo label="Motivo"><select className="campo" value={fb.motivo} onChange={x => setFb({ ...fb, motivo: x.target.value })}><option value="">—</option><option>Renuncia</option><option>Término de obra</option><option>Despido</option><option>Cambio de empresa del grupo</option><option>Otro</option></select></Campo>
           </div>
-          {acts.length > 0 && esAdmin && <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 accent-[#F9B234]" checked={fb.forzar} onChange={x => setFb({ ...fb, forzar: x.target.checked })} />Dar de baja aunque tenga activos (quedan a su nombre como pendientes).</label>}
+          {acts.length > 0 && esAdmin && <label className="flex items-start gap-3 text-sm"><input type="checkbox" className="mt-1 accent-[#E2A64B]" checked={fb.forzar} onChange={x => setFb({ ...fb, forzar: x.target.checked })} />Dar de baja aunque tenga activos (quedan a su nombre como pendientes).</label>}
           {errBaja && <Aviso>{errBaja}</Aviso>}
           <div className="flex justify-end gap-2"><button className="btn-sec" onClick={() => setBaja(false)}>Cancelar</button>
             <button className="btn-peligro" disabled={acts.length > 0 && !fb.forzar} onClick={darDeBaja}><UserMinus size={16} />Dar de baja</button></div>

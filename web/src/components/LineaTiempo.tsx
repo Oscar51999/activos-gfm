@@ -19,7 +19,7 @@ export default function LineaTiempo({ activoId, alta }: { activoId: string; alta
       supabase.from('inventario_lecturas').select('created_at, inventarios(id,folio,nombre)').eq('activo_id', activoId),
       supabase.from('bitacora').select('id,accion,fecha,antes,despues').eq('tabla', 'activos').eq('registro_id', activoId).eq('accion', 'UPDATE').order('fecha', { ascending: false }).limit(30),
     ]).then(([m, r, d, i, b]) => {
-      const out: Evento[] = [{ fecha: alta, icono: Sparkles, color: '#F9B234', titulo: 'Alta en el sistema' }]
+      const out: Evento[] = [{ fecha: alta, icono: Sparkles, color: '#E2A64B', titulo: 'Alta en el sistema' }]
       for (const x of (m.data ?? []) as unknown as { estado_fisico: string | null; movimientos: { id: string; folio: string; tipo: string; fecha: string; recibe_nombre: string | null; entrega_nombre: string | null; cancelado: boolean; fecha_devolucion: string | null } | null }[]) {
         const mv = x.movimientos; if (!mv || mv.cancelado) continue
         const [I, c, t] = MOV[mv.tipo] ?? MOV.traspaso
@@ -56,7 +56,7 @@ export default function LineaTiempo({ activoId, alta }: { activoId: string; alta
           </>
           return (
             <li key={k} className="relative pl-10">
-              <span className="absolute left-0 top-0 grid h-7 w-7 place-items-center rounded-full border-2 border-[#0B0D11]" style={{ background: `${e.color}26`, color: e.color, boxShadow: `0 0 12px -2px ${e.color}88` }}><e.icono size={13} /></span>
+              <span className="absolute left-0 top-0 grid h-7 w-7 place-items-center rounded-full border-2 border-barra" style={{ background: `${e.color}26`, color: e.color, boxShadow: `0 0 12px -2px ${e.color}88` }}><e.icono size={13} /></span>
               {e.to ? <Link to={e.to} className="group block">{contenido}</Link> : <div>{contenido}</div>}
             </li>
           )

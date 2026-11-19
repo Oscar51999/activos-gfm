@@ -26,7 +26,7 @@ export default function QRPublico({ onEntrar }: { onEntrar: () => void }) {
     <div className="min-h-full px-4 py-8">
       <div className="mx-auto max-w-lg">
         <div className="mb-6 flex items-center justify-between">
-          <LogoFirme className="h-8 w-auto text-[#fff]" />
+          <LogoFirme className="h-8 w-auto text-tinta" />
           <button onClick={onEntrar} className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-marca"><LogIn size={15} />Soy del equipo</button>
         </div>
         {info === undefined ? <Cargando /> : info === null ? <Aviso>Esta etiqueta no está registrada o el activo ya fue dado de baja.</Aviso> : (

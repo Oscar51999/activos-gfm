@@ -33,7 +33,7 @@ export function expediente(docs: DocMin[]) {
 
 function Anillo({ pct, rojo, tam = 56 }: { pct: number; rojo?: boolean; tam?: number }) {
   const r = tam / 2 - 5, c = 2 * Math.PI * r
-  const color = rojo ? '#ef4444' : pct === 100 ? '#34d399' : '#F9B234'
+  const color = rojo ? '#ef4444' : pct === 100 ? '#34d399' : '#E2A64B'
   return (
     <svg width={tam} height={tam} viewBox={`0 0 ${tam} ${tam}`} className="shrink-0" role="img" aria-label={`Expediente ${pct}%`}>
       <circle cx={tam / 2} cy={tam / 2} r={r} fill="none" stroke="currentColor" strokeOpacity=".12" strokeWidth="5" />
@@ -99,8 +99,8 @@ export default function Inmuebles() {
               <Link key={i.id} to={`/inmuebles/${i.id}`} className={`tarjeta viva group min-w-0 animate-entrar overflow-hidden ${e.vencidos ? '!border-red-200' : ''}`} style={{ animationDelay: `${k * 30}ms` }}>
                 <div className="relative h-32 overflow-hidden bg-gradient-to-br from-stone-100 to-transparent">
                   {i.foto ? <img src={i.foto} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-stone-300"><Building2 size={40} strokeWidth={1.2} /></div>}
-                  <span className="absolute left-3 top-3 rounded-full bg-[#07080B]/80 px-2.5 py-0.5 text-[11px] font-medium text-tinta backdrop-blur">{TIPOS_INM[i.tipo]}</span>
-                  <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: i.empresas?.color ?? '#F9B234' }} />
+                  <span className="absolute left-3 top-3 rounded-full bg-lienzo/80 px-2.5 py-0.5 text-[11px] font-medium text-tinta backdrop-blur">{TIPOS_INM[i.tipo]}</span>
+                  <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: i.empresas?.color ?? '#E2A64B' }} />
                 </div>
                 <div className="flex items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
@@ -144,7 +144,7 @@ export function InmuebleDetalle() {
         <div className="grid md:grid-cols-[300px_minmax(0,1fr)]">
           <div className="relative h-48 bg-gradient-to-br from-stone-100 to-transparent md:h-full">
             {i.foto ? <img src={i.foto} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-stone-300"><Building2 size={56} strokeWidth={1.1} /></div>}
-            <span aria-hidden className="absolute inset-x-0 bottom-0 h-1 md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-1" style={{ background: i.empresas?.color ?? '#F9B234' }} />
+            <span aria-hidden className="absolute inset-x-0 bottom-0 h-1 md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-1" style={{ background: i.empresas?.color ?? '#E2A64B' }} />
           </div>
           <div className="min-w-0 p-5 sm:p-6">
             <div className="flex flex-wrap items-start gap-4">

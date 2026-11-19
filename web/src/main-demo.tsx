@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import { aplicarTema, temaGuardado } from './lib/tema'
+
+// El tema se pone antes de pintar para que no parpadee
+aplicarTema(temaGuardado() ?? 'oscuro', false)
 import { instalarDemo } from './demo/mock'
 
 // La vista previa corre en un marco que no muestra diálogos del navegador.

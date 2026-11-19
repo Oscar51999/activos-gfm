@@ -9,7 +9,22 @@ import { MX, ESTADOS_MX, proyectarMx, desproyectarMx } from '../lib/mapaMexico'
 import { Modal, Campo, Aviso } from './ui'
 
 type Ubi = { id: string; nombre: string; tipo: string | null; codigo: string | null; empresa_id: string; latitud: number | null; longitud: number | null
-  empresas: { nombre: string; nombre_corto: string | null; color: string | null } | null; empleados: { nombres: string; apellidos: string | null } | null }
+  empresas: { nombre: string; nombre_corto: string | null; color: string | null } | null; empleados: { nombres: string; apellidos: string | null } | null
+  cc_id?: string | null; cc?: { lugar: string | null; aprox: boolean; ccId: string } }
+type CC = { id: string; clave: string; nombre: string; empresa_id: string; latitud: number | null; longitud: number | null; lugar: string | null; ubicacion_aprox: boolean
+  empresas: { nombre: string; nombre_corto: string | null; color: string | null } | null }
+
+/** Varios CC en el mismo pueblo: se acomodan en espiral (unos cientos de metros) para que al acercarte se distingan. */
+function separar<T extends { latitud: number | null; longitud: number | null }>(xs: T[]): T[] {
+  const grupos = new Map<string, number>()
+  return xs.map(x => {
+    const k = `${Number(x.latitud).toFixed(3)},${Number(x.longitud).toFixed(3)}`, n = grupos.get(k) ?? 0
+    grupos.set(k, n + 1)
+    if (!n) return x
+    const ang = n * 2.399, r = 0.0045 * Math.sqrt(n)
+    return { ...x, latitud: Number(x.latitud) + r * Math.sin(ang), longitud: Number(x.longitud) + r * Math.cos(ang) }
+  })
+}
 type Caja = { x: number; y: number; w: number; h: number }
 type Lugar = Ubi & { x: number; y: number; estado: string | null; equipos: number; reportes: number }
 
@@ -58,8 +73,19 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
   const anim = useRef(0)
 
   const cargar = () => {
-    supabase.from('ubicaciones').select('id,nombre,tipo,codigo,empresa_id,latitud,longitud,empresas(nombre,nombre_corto,color),empleados(nombres,apellidos)').eq('activo', true).order('nombre')
-      .then(({ data }) => setUbis((data as unknown as Ubi[]) ?? []))
+    Promise.all([
+      supabase.from('ubicaciones').select('id,nombre,tipo,codigo,empresa_id,latitud,longitud,cc_id,empresas(nombre,nombre_corto,color),empleados(nombres,apellidos)').eq('activo', true).order('nombre'),
+      supabase.from('centros_costo').select('id,clave,nombre,empresa_id,latitud,longitud,lugar,ubicacion_aprox,empresas(nombre,nombre_corto,color)').eq('activo', true).eq('es_obra', true).not('latitud', 'is', null).order('clave'),
+    ]).then(([u, c]) => {
+      const ubs = (u.data as unknown as Ubi[]) ?? []
+      // Los centros de costo de obra también son lugares del mapa (salvo los que ya tienen una ubicación propia con coordenadas)
+      const conUbi = new Set(ubs.filter(x => x.cc_id && x.latitud != null).map(x => x.cc_id))
+      const ccs = separar(((c.data as unknown as CC[]) ?? []).filter(x => !conUbi.has(x.id))).map<Ubi>(x => ({
+        id: 'cc:' + x.id, nombre: x.nombre, tipo: 'obra', codigo: x.clave, empresa_id: x.empresa_id, latitud: x.latitud, longitud: x.longitud,
+        empresas: x.empresas, empleados: null, cc: { lugar: x.lugar, aprox: x.ubicacion_aprox, ccId: x.id },
+      }))
+      setUbis([...ubs, ...ccs])
+    })
   }
   useEffect(() => {
     cargar()
@@ -103,9 +129,11 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
 
   const lugares: Lugar[] = useMemo(() => (ubis ?? []).filter(u => u.latitud != null && u.longitud != null && (!empresa || u.empresa_id === empresa) && (!tipo || u.tipo === tipo)).map(u => {
     const p = proyectarMx(Number(u.latitud), Number(u.longitud))
-    return { ...u, ...p, estado: estadoDe(p.x, p.y), equipos: equipos.get(u.id) ?? 0, reportes: reportes.get(u.id) ?? 0 }
+    const deCC = u.cc ? (ubis ?? []).filter(x => x.cc_id === u.cc!.ccId).map(x => x.id) : [u.id]
+    const suma = (m: Map<string, number>) => deCC.reduce((t, id) => t + (m.get(id) ?? 0), 0)
+    return { ...u, ...p, estado: estadoDe(p.x, p.y), equipos: suma(equipos), reportes: suma(reportes) }
   }), [ubis, empresa, tipo, equipos, reportes])
-  const sinUbicar = (ubis ?? []).filter(u => (u.latitud == null || u.longitud == null) && (!empresa || u.empresa_id === empresa))
+  const sinUbicar = (ubis ?? []).filter(u => (u.latitud == null || u.longitud == null) && !u.cc_id && (!empresa || u.empresa_id === empresa))
   const porEstado = useMemo(() => {
     const m = new Map<string, Lugar[]>()
     for (const l of lugares) if (l.estado) m.set(l.estado, [...(m.get(l.estado) ?? []), l])
@@ -144,26 +172,25 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
           <button onClick={() => setEmpresa('')} className={`shrink-0 rounded-full px-3 py-1 text-xs ring-1 ring-inset ${!empresa ? 'bg-stone-100 text-tinta ring-stone-300' : 'text-stone-500 ring-stone-200'}`}>Todas las empresas</button>
           {empresas.map(([id, e]) => (
             <button key={id} onClick={() => setEmpresa(empresa === id ? '' : id)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs ring-1 ring-inset ${empresa === id ? 'bg-stone-100 text-tinta ring-stone-300' : 'text-stone-500 ring-stone-200'}`}>
-              <span className="h-2 w-2 rounded-full" style={{ background: e?.color || '#F9B234' }} />{e?.nombre_corto || e?.nombre}
+              <span className="h-2 w-2 rounded-full" style={{ background: e?.color || '#E2A64B' }} />{e?.nombre_corto || e?.nombre}
             </button>
           ))}
         </div>
       )}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="relative min-w-0 bg-[#07080B]">
+        <div className="relative min-w-0 bg-lienzo">
           <svg ref={svg} viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`} className={`block h-auto w-full select-none ${marcar ? 'cursor-crosshair' : ''}`} role="img" aria-label="Mapa de México con las obras" onClick={clicMapa}>
             <defs>
-              <radialGradient id="mx-brillo"><stop offset="0" stopColor="#F9B234" stopOpacity=".55" /><stop offset="1" stopColor="#F9B234" stopOpacity="0" /></radialGradient>
+              <radialGradient id="mx-brillo"><stop offset="0" stopColor="#E2A64B" stopOpacity=".55" /><stop offset="1" stopColor="#E2A64B" stopOpacity="0" /></radialGradient>
             </defs>
-            <rect x={-500} y={-500} width={MX.W + 1000} height={MX.H + 1000} fill="#07080B" />
+            <rect x={-500} y={-500} width={MX.W + 1000} height={MX.H + 1000} style={{ fill: 'var(--color-lienzo)' }} />
             {ESTADOS_MX.map(e => {
               const n = porEstado.get(e.n)?.length ?? 0, activo = estado === e.n, h = hover === e.n
               return (
                 <path key={e.n} d={e.d} fillRule="evenodd"
-                  fill={n ? `rgb(249 178 52 / ${0.12 + 0.38 * (n / maxEstado)})` : h ? '#1F232C' : '#14171D'}
-                  stroke={activo ? '#F9B234' : n ? 'rgb(249 178 52 / .65)' : '#2B303A'} strokeWidth={(activo ? 2 : 0.8) * escala} strokeLinejoin="round"
-                  className={marcar ? '' : 'cursor-pointer'} style={{ transition: 'fill .2s' }}
+                  strokeWidth={(activo ? 2 : 0.8) * escala} strokeLinejoin="round"
+                  className={marcar ? '' : 'cursor-pointer'} style={{ transition: 'fill .2s', fill: n ? `rgb(226 166 75 / ${0.12 + 0.38 * (n / maxEstado)})` : h ? 'var(--color-stone-300)' : 'var(--color-mapa)', stroke: activo ? '#E2A64B' : n ? 'rgb(226 166 75 / .65)' : 'var(--color-mapa-borde)' }}
                   onPointerEnter={ev => { if (ev.pointerType === 'mouse') setHover(e.n) }} onPointerLeave={() => setHover(null)}
                   onClick={ev => { if (marcar) return; ev.stopPropagation(); verEstado(estado === e.n ? null : e.n) }}>
                   <title>{e.n}{n ? ` · ${n} ${n === 1 ? 'lugar' : 'lugares'}` : ''}</title>
@@ -171,28 +198,28 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
               )
             })}
             {vb.w > 500 && ESTADOS_MX.filter(e => porEstado.has(e.n)).map(e => (
-              <text key={e.n} x={e.c[0]} y={e.c[1] - 10 * escala} textAnchor="middle" fontSize={11 * escala} fill="#F5E6C8" style={{ pointerEvents: 'none', paintOrder: 'stroke' }} stroke="#07080B" strokeWidth={3 * escala}>{e.p}</text>
+              <text key={e.n} x={e.c[0]} y={e.c[1] - 10 * escala} textAnchor="middle" fontSize={11 * escala} style={{ pointerEvents: 'none', paintOrder: 'stroke', fill: 'var(--color-tinta)', stroke: 'var(--color-lienzo)' }} strokeWidth={3 * escala}>{e.p}</text>
             ))}
             {lugares.map(l => {
-              const r = (4 + Math.min(7, Math.sqrt(l.equipos) * 1.6)) * escala, color = l.empresas?.color || '#F9B234', s = sel === l.id
+              const r = (4 + Math.min(7, Math.sqrt(l.equipos) * 1.6)) * escala, color = l.empresas?.color || '#E2A64B', s = sel === l.id
               return (
                 <g key={l.id} className={marcar ? '' : 'cursor-pointer'} onClick={ev => { if (marcar) return; ev.stopPropagation(); setSel(l.id); if (l.estado && l.estado !== estado) { setEstado(l.estado) } }}>
                   {(s || l.reportes > 0) && <circle cx={l.x} cy={l.y} r={r * 2.6} fill={l.reportes ? 'rgb(239 68 68 / .25)' : 'url(#mx-brillo)'} />}
-                  <circle cx={l.x} cy={l.y} r={r} fill={color} stroke={s ? '#fff' : '#07080B'} strokeWidth={(s ? 2 : 1.2) * escala} />
-                  {vb.w < 260 && <text x={l.x + r + 3 * escala} y={l.y + 3.5 * escala} fontSize={10 * escala} fill="#E7E5E4" stroke="#07080B" strokeWidth={2.5 * escala} style={{ paintOrder: 'stroke', pointerEvents: 'none' }}>{l.codigo || l.nombre}</text>}
+                  <circle cx={l.x} cy={l.y} r={r} fill={color} style={{ stroke: s ? 'var(--color-tinta)' : 'var(--color-lienzo)' }} strokeWidth={(s ? 2 : 1.2) * escala} />
+                  {vb.w < 260 && <text x={l.x + r + 3 * escala} y={l.y + 3.5 * escala} fontSize={10 * escala} strokeWidth={2.5 * escala} style={{ paintOrder: 'stroke', pointerEvents: 'none', fill: 'var(--color-tinta)', stroke: 'var(--color-lienzo)' }}>{l.codigo || l.nombre}</text>}
                   <title>{l.nombre} · {l.equipos} equipo(s)</title>
                 </g>
               )
             })}
-            {punto && (() => { const p = proyectarMx(punto.lat, punto.lng); return <g style={{ pointerEvents: 'none' }}><circle cx={p.x} cy={p.y} r={9 * escala} fill="none" stroke="#F9B234" strokeWidth={2 * escala} /><circle cx={p.x} cy={p.y} r={2.5 * escala} fill="#F9B234" /></g> })()}
+            {punto && (() => { const p = proyectarMx(punto.lat, punto.lng); return <g style={{ pointerEvents: 'none' }}><circle cx={p.x} cy={p.y} r={9 * escala} fill="none" stroke="#E2A64B" strokeWidth={2 * escala} /><circle cx={p.x} cy={p.y} r={2.5 * escala} fill="#E2A64B" /></g> })()}
           </svg>
           <div className="absolute bottom-3 left-3 flex flex-col gap-1.5">
-            <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-[#0E1015]/90 text-stone-500 hover:text-tinta" onClick={() => zoom(1.8)} aria-label="Acercar"><Plus size={15} /></button>
-            <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-[#0E1015]/90 text-stone-500 hover:text-tinta" onClick={() => zoom(1 / 1.8)} aria-label="Alejar"><Minus size={15} /></button>
-            {vb.w < MX.W - 1 && <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-[#0E1015]/90 text-stone-500 hover:text-tinta" onClick={() => verEstado(null)} aria-label="Ver todo México"><Maximize2 size={14} /></button>}
+            <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-panel/90 text-stone-500 hover:text-tinta" onClick={() => zoom(1.8)} aria-label="Acercar"><Plus size={15} /></button>
+            <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-panel/90 text-stone-500 hover:text-tinta" onClick={() => zoom(1 / 1.8)} aria-label="Alejar"><Minus size={15} /></button>
+            {vb.w < MX.W - 1 && <button className="grid h-8 w-8 place-items-center rounded-lg border border-stone-200 bg-panel/90 text-stone-500 hover:text-tinta" onClick={() => verEstado(null)} aria-label="Ver todo México"><Maximize2 size={14} /></button>}
           </div>
-          {hover && !marcar && <div className="pointer-events-none absolute right-3 top-3 rounded-lg bg-[#0E1015]/90 px-2.5 py-1 text-xs text-stone-500 ring-1 ring-stone-200">{hover}{porEstado.get(hover) ? ` · ${porEstado.get(hover)!.length}` : ''}</div>}
-          {marcar && <div className="pointer-events-none absolute inset-x-3 top-3 rounded-lg bg-[#0E1015]/90 px-3 py-2 text-xs text-stone-500 ring-1 ring-marca/40">Toca el lugar de la obra. Para más precisión, acércate al estado primero o pega después el enlace de Google Maps.</div>}
+          {hover && !marcar && <div className="pointer-events-none absolute right-3 top-3 rounded-lg bg-panel/90 px-2.5 py-1 text-xs text-stone-500 ring-1 ring-stone-200">{hover}{porEstado.get(hover) ? ` · ${porEstado.get(hover)!.length}` : ''}</div>}
+          {marcar && <div className="pointer-events-none absolute inset-x-3 top-3 rounded-lg bg-panel/90 px-3 py-2 text-xs text-stone-500 ring-1 ring-marca/40">Toca el lugar de la obra. Para más precisión, acércate al estado primero o pega después el enlace de Google Maps.</div>}
         </div>
 
         <aside className="min-w-0 border-t border-stone-200 p-4 lg:border-l lg:border-t-0">
@@ -200,9 +227,10 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
             <div className="space-y-3">
               <button className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-tinta" onClick={() => setSel(null)}><ChevronLeft size={14} />{estado ?? 'Estados'}</button>
               <div>
-                <p className="flex items-center gap-2 text-xs text-stone-500"><span className="h-2 w-2 rounded-full" style={{ background: lugarSel.empresas?.color || '#F9B234' }} />{lugarSel.empresas?.nombre_corto || lugarSel.empresas?.nombre} · {TIPO1[lugarSel.tipo ?? ''] ?? lugarSel.tipo}</p>
+                <p className="flex items-center gap-2 text-xs text-stone-500"><span className="h-2 w-2 rounded-full" style={{ background: lugarSel.empresas?.color || '#E2A64B' }} />{lugarSel.empresas?.nombre_corto || lugarSel.empresas?.nombre} · {TIPO1[lugarSel.tipo ?? ''] ?? lugarSel.tipo}</p>
                 <h3 className="mt-1 text-lg font-semibold leading-tight">{lugarSel.nombre}</h3>
-                <p className="text-xs text-stone-500">{[lugarSel.codigo, lugarSel.estado].filter(Boolean).join(' · ')}</p>
+                <p className="text-xs text-stone-500">{lugarSel.cc ? `CC ${lugarSel.codigo} · ${lugarSel.cc.lugar ?? lugarSel.estado ?? ''}` : [lugarSel.codigo, lugarSel.estado].filter(Boolean).join(' · ')}</p>
+                {lugarSel.cc?.aprox && <p className="mt-1.5 rounded-lg bg-amber-50 px-2 py-1 text-[11px] text-amber-800">Ubicación aproximada (sede de la empresa): el nombre del CC no dice el lugar.</p>}
               </div>
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-xl border border-stone-200 bg-stone-50 py-2.5"><Boxes size={14} className="mx-auto mb-1 text-marca" /><p className="cifra text-xl font-semibold">{lugarSel.equipos}</p><p className="text-[10px] uppercase tracking-wider text-stone-500">Equipos</p></div>
@@ -210,7 +238,10 @@ export default function MapaMexico({ empresaId }: { empresaId?: string }) {
               </div>
               {lugarSel.empleados && <p className="text-sm"><span className="text-stone-500">Responsable: </span>{nombreEmpleado(lugarSel.empleados)}</p>}
               <div className="flex flex-col gap-2">
-                <Link className="btn-primario" to={`/activos?ubicacion=${lugarSel.id}`}><Boxes size={15} />Ver el equipo de esta obra</Link>
+                {lugarSel.cc
+                  ? <Link className="btn-primario" to="/centros-costo"><Boxes size={15} />Ver centros de costo</Link>
+                  : <Link className="btn-primario" to={`/activos?ubicacion=${lugarSel.id}`}><Boxes size={15} />Ver el equipo de esta obra</Link>}
+                {lugarSel.cc && puedeEditar && <CorregirCC ccId={lugarSel.cc.ccId} onListo={cargar} />}
                 <a className="btn-sec" href={linkMaps(Number(lugarSel.latitud), Number(lugarSel.longitud))} target="_blank" rel="noreferrer"><ExternalLink size={14} />Abrir en Google Maps</a>
               </div>
             </div>
@@ -257,7 +288,7 @@ function LugarFila({ l, onClick }: { l: Lugar; onClick: () => void }) {
   return (
     <li>
       <button onClick={onClick} className="flex w-full items-center gap-2.5 rounded-xl border border-stone-200 px-3 py-2 text-left text-sm transition hover:border-marca/50">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg" style={{ background: `${l.empresas?.color || '#F9B234'}22`, color: l.empresas?.color || '#F9B234' }}><T size={14} /></span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg" style={{ background: `${l.empresas?.color || '#E2A64B'}22`, color: l.empresas?.color || '#E2A64B' }}><T size={14} /></span>
         <span className="min-w-0 flex-1"><span className="block truncate font-medium">{l.nombre}</span><span className="block truncate text-[11px] text-stone-500">{l.empresas?.nombre_corto || l.empresas?.nombre}{l.codigo ? ` · ${l.codigo}` : ''}</span></span>
         <span className="text-right text-xs text-stone-500"><span className="cifra block font-semibold text-tinta">{l.equipos}</span>equipos</span>
         {l.reportes > 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Fallas abiertas" />}
@@ -327,5 +358,27 @@ function NuevaObra({ punto, empresaFija, sinUbicar, onCerrar, onListo }: {
         <div className="flex justify-end gap-2"><button className="btn-sec" onClick={onCerrar}><X size={15} />Cancelar</button><button className="btn-primario" disabled={guardando} onClick={guardar}><MapPin size={15} />Guardar</button></div>
       </div>
     </Modal>
+  )
+}
+
+/** Corrige el lugar de un centro de costo pegando el enlace de Google Maps o las coordenadas. */
+function CorregirCC({ ccId, onListo }: { ccId: string; onListo: () => void }) {
+  const [txt, setTxt] = useState('')
+  const [abierto, setAbierto] = useState(false)
+  const [error, setError] = useState('')
+  async function guardar() {
+    const c = coordenadasDe(txt)
+    if (!c) return setError('No encontré coordenadas en ese texto.')
+    const { error } = await supabase.from('centros_costo').update({ latitud: Number(c.lat.toFixed(6)), longitud: Number(c.lng.toFixed(6)), ubicacion_aprox: false }).eq('id', ccId)
+    if (error) return setError(mensajeError(error))
+    setAbierto(false); setTxt(''); setError(''); onListo()
+  }
+  if (!abierto) return <button className="btn-sec" onClick={() => setAbierto(true)}><Crosshair size={14} />Corregir ubicación</button>
+  return (
+    <div className="space-y-2 rounded-xl border border-stone-200 p-3">
+      <input className="campo !py-1.5 text-xs" autoFocus value={txt} onChange={e => setTxt(e.target.value)} placeholder="Enlace de Google Maps o 24.14, -110.31" />
+      {error && <p className="text-xs text-red-700">{error}</p>}
+      <div className="flex gap-2"><button className="btn-sec flex-1 !py-1.5 text-xs" onClick={() => setAbierto(false)}>Cancelar</button><button className="btn-primario flex-1 !py-1.5 text-xs" onClick={guardar}>Guardar</button></div>
+    </div>
   )
 }

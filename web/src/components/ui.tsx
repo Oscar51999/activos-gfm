@@ -36,7 +36,7 @@ export function Modal({ abierto, titulo, onCerrar, children, ancho = 'max-w-2xl'
   if (!abierto) return null
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm sm:p-8" onMouseDown={onCerrar}>
-      <div className={`tarjeta w-full ${ancho} animate-entrar !bg-[#0E1015]/95 shadow-[0_0_80px_-24px_rgb(249_178_52/.35)]`} onMouseDown={e => e.stopPropagation()} role="dialog" aria-label={titulo}>
+      <div className={`tarjeta w-full ${ancho} animate-entrar !bg-panel/95 shadow-[0_0_80px_-24px_rgb(226_166_75/.35)]`} onMouseDown={e => e.stopPropagation()} role="dialog" aria-label={titulo}>
         <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
           <h2 className="text-lg font-semibold">{titulo}</h2>
           <button className="rounded p-1 hover:bg-stone-100" onClick={onCerrar} aria-label="Cerrar"><X size={18} /></button>
@@ -60,7 +60,7 @@ export function Cargando({ texto = 'Cargando…' }: { texto?: string }) {
 export function Vacio({ titulo, texto, accion }: { titulo: string; texto?: string; accion?: ReactNode }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-marca/30 bg-marca/10 shadow-[0_0_30px_-8px_rgb(249_178_52/.6)]"><span className="h-2 w-2 rounded-full bg-marca shadow-[0_0_10px_#F9B234]" /></div>
+      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl border border-marca/30 bg-marca/10 shadow-[0_0_30px_-8px_rgb(226_166_75/.6)]"><span className="h-2 w-2 rounded-full bg-marca shadow-[0_0_10px_#E2A64B]" /></div>
       <p className="font-medium">{titulo}</p>
       {texto && <p className="mt-1 max-w-sm text-sm text-stone-500">{texto}</p>}
       {accion && <div className="mt-4">{accion}</div>}

@@ -62,7 +62,7 @@ export default function UsoPanel({ activoId, empresaId, qr, tipo, nombreUsuario 
           <p className="text-[11px] uppercase tracking-wider text-stone-500">{u === 'km' ? 'Kilometraje' : 'Horómetro'}</p>
           <p className="cifra mt-1 text-3xl font-semibold">{actual ? n(actual.valor) : '—'} <span className="text-sm font-normal text-stone-500">{u}</span></p>
           <p className="text-[11px] text-stone-400">{actual ? `al ${fechaCorta(actual.fecha)} · ${actual.origen}` : 'Sin lecturas todavía'}</p>
-          {serie.length > 1 && <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="mt-2 h-10 w-full"><polyline points={puntos} fill="none" stroke="#F9B234" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>}
+          {serie.length > 1 && <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="mt-2 h-10 w-full"><polyline points={puntos} fill="none" stroke="#E2A64B" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>}
           {puedeResguardar && (
             <form onSubmit={registrar} className="mt-3 flex gap-2">
               <input className="campo !py-1.5 text-sm" type="number" min="0" step="0.1" inputMode="decimal" placeholder={`Nueva lectura (${u})`} value={nueva} onChange={e => setNueva(e.target.value)} />

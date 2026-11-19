@@ -154,7 +154,7 @@ export default function MovimientoNuevo() {
       <div className="mb-6 inline-flex rounded-lg border border-stone-300 bg-white p-1">
         {(Object.keys(TIPOS_MOV) as TipoMov[]).map(t => (
           <button key={t} type="button" onClick={() => setTipo(t)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${tipo === t ? 'bg-marca text-[#120D04] shadow-[0_0_18px_-4px_rgb(249_178_52/.8)]' : 'text-stone-600 hover:bg-stone-100'}`}>
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${tipo === t ? 'bg-marca text-[#120D04] shadow-[0_0_18px_-4px_rgb(226_166_75/.8)]' : 'text-stone-600 hover:bg-stone-100'}`}>
             {TIPOS_MOV[t].verbo}
           </button>
         ))}

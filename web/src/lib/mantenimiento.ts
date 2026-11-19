@@ -1,7 +1,7 @@
 export type EstatusOT = 'abierta' | 'en_proceso' | 'espera_refaccion' | 'terminada' | 'cancelada'
 export const ESTATUS_OT: Record<EstatusOT, { texto: string; clase: string; color: string }> = {
   abierta: { texto: 'Por iniciar', clase: 'bg-sky-50 text-sky-700 ring-sky-200', color: '#38BDF8' },
-  en_proceso: { texto: 'En proceso', clase: 'bg-amber-50 text-amber-800 ring-amber-200', color: '#F9B234' },
+  en_proceso: { texto: 'En proceso', clase: 'bg-amber-50 text-amber-800 ring-amber-200', color: '#E2A64B' },
   espera_refaccion: { texto: 'Espera refacción', clase: 'bg-violet-50 text-violet-700 ring-violet-200', color: '#A78BFA' },
   terminada: { texto: 'Terminada', clase: 'bg-emerald-50 text-emerald-700 ring-emerald-200', color: '#34D399' },
   cancelada: { texto: 'Cancelada', clase: 'bg-stone-100 text-stone-600 ring-stone-200', color: '#6B7280' },

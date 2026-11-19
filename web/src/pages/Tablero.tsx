@@ -12,7 +12,7 @@ import type { EmpresaLogo } from '../lib/logos'
 type Fila = { estatus: Estatus; empresa_id: string; empresa: string; categoria: string; ubicacion: string | null; valor_referencia: number | null; responsable: string | null }
 type Mov = { id: string; folio: string; tipo: TipoMov; fecha: string; a_empleado: string | null; a_ubicacion: string | null; recibe_nombre: string | null; firmado: boolean; num_activos: number }
 
-const COLOR: Record<Estatus, string> = { disponible: '#34D399', asignado: '#38BDF8', mantenimiento: '#F9B234', siniestrado: '#FF5A5F', baja: '#6B7280' }
+const COLOR: Record<Estatus, string> = { disponible: '#34D399', asignado: '#38BDF8', mantenimiento: '#E2A64B', siniestrado: '#FF5A5F', baja: '#6B7280' }
 
 function contar(filas: Fila[], f: (r: Fila) => string | null) {
   const m = new Map<string, number>()
@@ -37,7 +37,7 @@ function Kpi({ to, icono: I, titulo, valor, nota, acento = false, formato, retra
   return (
     <Link to={to} className="tarjeta viva group min-w-0 animate-entrar overflow-hidden p-4 sm:p-5" style={{ animationDelay: `${retraso}ms` }}>
       <div className="flex items-start justify-between">
-        <span className={`grid h-10 w-10 place-items-center rounded-xl ${acento ? 'bg-marca text-[#120D04] shadow-[0_0_24px_-4px_rgb(249_178_52/.8)]' : 'bg-stone-100 text-marca'}`}><I size={19} /></span>
+        <span className={`grid h-10 w-10 place-items-center rounded-xl ${acento ? 'bg-marca text-[#120D04] shadow-[0_0_24px_-4px_rgb(226_166_75/.8)]' : 'bg-stone-100 text-marca'}`}><I size={19} /></span>
         <ArrowUpRight size={16} className="text-stone-400 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-marca" />
       </div>
       <p className="mt-4 text-[10px] font-medium uppercase tracking-wider text-stone-500 sm:mt-5 sm:text-[11px]">{titulo}</p>
@@ -110,7 +110,7 @@ function Barras({ titulo, datos, total, filtro }: { titulo: string; datos: [stri
                 <span className="cifra shrink-0">{n} <span className="text-xs text-stone-400">{Math.round((n / total) * 100)}%</span></span>
               </div>
               <span className="block h-1.5 overflow-hidden rounded-full bg-stone-100">
-                <span className="block h-full origin-left rounded-full bg-gradient-to-r from-marca/40 to-marca shadow-[0_0_12px_rgb(249_178_52/.6)]"
+                <span className="block h-full origin-left rounded-full bg-gradient-to-r from-marca/40 to-marca shadow-[0_0_12px_rgb(226_166_75/.6)]"
                   style={{ width: `${(n / max) * 100}%`, animation: `crecer 1s ${i * 70}ms cubic-bezier(.2,.8,.2,1) both` }} />
               </span>
             </Link>
@@ -224,7 +224,7 @@ export default function Tablero() {
                   const n = filas.filter(f => f.empresa_id === e.id && f.estatus !== 'baja').length
                   return (
                     <Link key={e.id} to={`/empresas/${e.id}`} className="tarjeta viva group relative flex min-w-0 animate-entrar flex-col items-center overflow-hidden px-4 pb-3 pt-4" style={{ animationDelay: `${i * 50}ms` }}>
-                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px opacity-70" style={{ background: `linear-gradient(90deg, transparent, ${e.color || '#F9B234'}, transparent)` }} />
+                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px opacity-70" style={{ background: `linear-gradient(90deg, transparent, ${e.color || '#E2A64B'}, transparent)` }} />
                       <LogoEmpresa empresa={e} alto={34} ancho={150} className="transition duration-500 group-hover:scale-105" />
                       <p className="mt-2 text-[11px] text-stone-500"><span className="cifra text-sm font-semibold text-tinta">{n}</span> activos</p>
                     </Link>
@@ -249,7 +249,7 @@ export default function Tablero() {
                 <ol className="relative flex-1 space-y-4 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-stone-300">
                   {movs.map(m => (
                     <li key={m.id} className="relative pl-6">
-                      <span className="absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-[#0B0D11]" style={{ background: { asignacion: '#38BDF8', devolucion: '#34D399', traspaso: '#A78BFA' }[m.tipo] }} />
+                      <span className="absolute left-0 top-1.5 h-[15px] w-[15px] rounded-full border-2 border-barra" style={{ background: { asignacion: '#38BDF8', devolucion: '#34D399', traspaso: '#A78BFA' }[m.tipo] }} />
                       <Link to={`/resguardos/${m.id}`} className="group block">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs text-stone-500 group-hover:text-marca">{m.folio}</span><TipoBadge tipo={m.tipo} />

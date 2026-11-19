@@ -48,7 +48,7 @@ function FondoRed() {
   return (
     <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
       <defs>
-        <radialGradient id="fondo-luz" cx="50%" cy="45%" r="60%"><stop offset="0" stopColor="#F9B234" stopOpacity=".06" /><stop offset="1" stopColor="#F9B234" stopOpacity="0" /></radialGradient>
+        <radialGradient id="fondo-luz" cx="50%" cy="45%" r="60%"><stop offset="0" stopColor="#E2A64B" stopOpacity=".06" /><stop offset="1" stopColor="#E2A64B" stopOpacity="0" /></radialGradient>
         <radialGradient id="fondo-mascara" cx="50%" cy="48%" r="62%"><stop offset=".25" stopColor="#000" /><stop offset="1" stopColor="#fff" /></radialGradient>
         <mask id="fondo-m"><rect width="1600" height="900" fill="url(#fondo-mascara)" /></mask>
       </defs>
@@ -56,7 +56,7 @@ function FondoRed() {
       <g mask="url(#fondo-m)">
         {lineas.map(([x1, y1, x2, y2], i) => <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#8A8F98" strokeOpacity=".22" strokeWidth="1" />)}
         {nodos.map((n, i) => n.hub
-          ? <g key={i}><circle cx={n.x} cy={n.y} r={7} fill="none" stroke="#F9B234" strokeOpacity=".35" /><circle cx={n.x} cy={n.y} r={2.4} fill="#F9B234" fillOpacity=".7" /></g>
+          ? <g key={i}><circle cx={n.x} cy={n.y} r={7} fill="none" stroke="#E2A64B" strokeOpacity=".35" /><circle cx={n.x} cy={n.y} r={2.4} fill="#E2A64B" fillOpacity=".7" /></g>
           : <circle key={i} cx={n.x} cy={n.y} r={n.r} fill="#A8ADB5" fillOpacity=".45" />)}
       </g>
     </svg>
@@ -102,16 +102,16 @@ export default function Login() {
   const cambiar = (m: Modo) => { setModo(m); setMsg(null) }
 
   return (
-    <div className="relative flex min-h-full flex-col overflow-hidden bg-[#0B0C0F]">
+    <div className="relative flex min-h-full flex-col overflow-hidden bg-fondo">
       <FondoRed />
       <main className="relative flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-[380px]">
           <div className="mb-8 text-center">
-            <LogoFirme className="mx-auto h-11 w-auto text-[#fff]" />
+            <LogoFirme className="mx-auto h-11 w-auto text-tinta" />
             <p className="mt-4 font-mono text-[11px] uppercase tracking-[.22em] text-stone-500">Control de activos</p>
           </div>
 
-          <form onSubmit={enviar} className="rounded-2xl border border-stone-200 bg-[#111317] p-6 sm:p-7">
+          <form onSubmit={enviar} className="rounded-2xl border border-stone-200 bg-panel p-6 sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <h1 className="text-lg font-semibold">{modo === 'entrar' ? 'Iniciar sesión' : modo === 'registro' ? 'Solicitar acceso' : 'Recuperar contraseña'}</h1>
               <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-stone-500"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />en línea</span>
@@ -160,7 +160,7 @@ export default function Login() {
         </div>
       </main>
 
-      <footer className="relative border-t border-stone-200 bg-[#0B0C0F]/80 px-4 py-6 backdrop-blur">
+      <footer className="relative border-t border-stone-200 bg-fondo/80 px-4 py-6 backdrop-blur">
         <ul className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-4 opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0">
           {EMPRESAS.map(e => (
             <li key={e.nombre} title={e.nombre} className="flex h-9 w-28 items-center justify-center">

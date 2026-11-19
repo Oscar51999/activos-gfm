@@ -34,7 +34,7 @@ function avance(p: Prog) {
   if (p.disparo === 'dias') return Math.min(1, Math.max(0, (p.intervalo - p.restante) / p.intervalo))
   return Math.min(1, Math.max(0, ((p.lectura_actual ?? 0) - (p.lectura_ultimo ?? 0)) / p.intervalo))
 }
-const COLOR_EST = { vencido: '#FF5A5F', proximo: '#F9B234', ok: '#34D399' }
+const COLOR_EST = { vencido: '#FF5A5F', proximo: '#E2A64B', ok: '#34D399' }
 
 /** Mantenimiento: programa de preventivos, tablero de órdenes y planes. */
 export default function Mantenimiento() {
@@ -402,7 +402,7 @@ export function OrdenTrabajo() {
               <Campo key={k} label={t}><select className="campo" value={fc[k]} onChange={e => setFc({ ...fc, [k]: e.target.value })}><option value="">—</option>{codigos.filter(c => c.grupo === g).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></Campo>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#F9B234]" checked={fc.paro} onChange={e => setFc({ ...fc, paro: e.target.checked })} />El equipo estuvo parado mientras duró la orden (cuenta para la disponibilidad)</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-[#E2A64B]" checked={fc.paro} onChange={e => setFc({ ...fc, paro: e.target.checked })} />El equipo estuvo parado mientras duró la orden (cuenta para la disponibilidad)</label>
           <Campo label="Refacciones cambiadas"><input className="campo" value={fc.refacciones} onChange={e => setFc({ ...fc, refacciones: e.target.value })} placeholder="Ej. Aceite 15W40, filtro de aceite y aire" /></Campo>
           <Campo label="Notas"><textarea className="campo" rows={2} value={fc.notas} onChange={e => setFc({ ...fc, notas: e.target.value })} /></Campo>
           <p className="text-xs text-stone-500">Al terminar, el equipo regresa a {o.activos?.responsable_id ? '“Asignado”' : '“Disponible”'} (si no tiene otra orden en proceso) y el siguiente preventivo se calcula desde este servicio.</p>

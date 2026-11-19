@@ -97,7 +97,7 @@ export default function Etiquetas() {
         )}
         {modo === 'rfid' && <>
           <label className="text-sm"><span className="etiqueta">Resolución</span><select className="campo w-auto" value={dpi} onChange={e => setDpi(Number(e.target.value) as 203 | 300)}><option value={203}>203 dpi (8 puntos/mm)</option><option value={300}>300 dpi (12 puntos/mm)</option></select></label>
-          {!esPos && <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="accent-[#F9B234]" checked={rfid} onChange={e => setRfid(e.target.checked)} />Grabar el chip RFID</label>}
+          {!esPos && <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" className="accent-[#E2A64B]" checked={rfid} onChange={e => setRfid(e.target.checked)} />Grabar el chip RFID</label>}
         </>}
         <div className="ml-auto flex flex-wrap gap-2">
           {modo !== 'rfid' && <button className="btn-primario" onClick={() => window.print()}><Printer size={16} />Imprimir</button>}

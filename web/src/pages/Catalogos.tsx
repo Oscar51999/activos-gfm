@@ -174,10 +174,15 @@ export function CentrosCosto() {
     campos={[
       { key: 'clave', label: 'Clave', requerido: true },
       { key: 'nombre', label: 'Nombre', requerido: true, completo: true },
+      { key: 'es_obra', label: 'Es obra (sale en el mapa)', tipo: 'bool', defecto: true },
+      { key: 'lugar', label: 'Lugar (ciudad, estado)' },
+      { key: 'latitud', label: 'Latitud', tipo: 'numero' },
+      { key: 'longitud', label: 'Longitud', tipo: 'numero' },
     ]}
     columnas={[
       { key: 'clave', label: 'Clave', render: f => <span className="font-mono text-xs">{String(f.clave)}</span> },
       { key: 'nombre', label: 'Centro de costo' },
+      { key: 'lugar', label: 'Lugar', render: f => f.es_obra ? <span className="text-xs">{String(f.lugar ?? '—')}{f.ubicacion_aprox ? <span className="ml-1 text-amber-700">(aprox.)</span> : null}</span> : <span className="text-xs text-stone-400">No es obra</span> },
       { key: 'empresa', label: 'Empresa', render: emp },
     ]}
     buscarEn={['clave', 'nombre']} />
