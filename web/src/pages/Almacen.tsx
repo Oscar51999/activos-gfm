@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Warehouse, PackagePlus, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, ArrowRightLeft, Search, AlertTriangle, Camera, Pencil, HardHat, History, Package, Trash2, Truck, CalendarX, Check, X } from 'lucide-react'
+import { Warehouse, PackagePlus, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, ArrowRightLeft, Search, AlertTriangle, Camera, Pencil, HardHat, History, Package, Trash2, Truck, CalendarX, Check, X, Upload } from 'lucide-react'
+import { ImportarConsumibles } from '../components/Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado, fecha } from '../lib/hooks'
@@ -37,6 +38,7 @@ export default function Almacen() {
   const [movs, setMovs] = useState<Mov[]>([])
   const [mov, setMov] = useState<{ accion: Accion; consumible?: string; ubicacion?: string | null; empresa?: string } | null>(null)
   const [editar, setEditar] = useState<Consumible | 'nuevo' | null>(null)
+  const [importar, setImportar] = useState(false)
   const [mermas, setMermas] = useState<Merma[]>([])
   const [lotes, setLotes] = useState<LoteFila[]>([])
   const [transito, setTransito] = useState<{ folio: string; consumible_id?: string; descripcion: string; cantidad: number; empresa_id: string }[]>([])
@@ -78,7 +80,9 @@ export default function Almacen() {
           <p className="mt-1 text-sm text-stone-500">Material que se controla por cantidad, sin número de serie: EPP, brocas, discos, consumibles de obra.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
           {puedeEditar && <button className="btn-sec" onClick={() => setEditar('nuevo')}><PackagePlus size={16} />Nuevo artículo</button>}
+          {importar && <ImportarConsumibles abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
           {puedeResguardar && <button className="btn-primario" onClick={() => setMov({ accion: 'entrada', empresa: empresa || undefined })}><ArrowDownToLine size={16} />Registrar entrada</button>}
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ImportarLicencias } from '../components/Importadores'
+import { Upload } from 'lucide-react'
 import { KeyRound, Plus, Search, FileSpreadsheet, Pencil, UserPlus, Undo2, Laptop, AtSign, Check } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -35,6 +37,7 @@ export default function Licencias() {
   const [editar, setEditar] = useState<Licencia | 'nueva' | null>(null)
   const [abrir, setAbrir] = useState<Licencia | null>(null)
   const [n, setN] = useState(0)
+  const [importar, setImportar] = useState(false)
 
   useEffect(() => {
     supabase.from('v_licencias').select('*').eq('activo', true).order('nombre').then(({ data }) => {
@@ -81,8 +84,10 @@ export default function Licencias() {
       <Encabezado titulo="Licencias y cuentas" sub="Software, suscripciones y cuentas: cuántos lugares hay, quién los usa y cuándo vencen."
         acciones={<>
           <button className="btn-sec" onClick={excel} disabled={!vis.length}><FileSpreadsheet size={16} />Excel</button>
+          {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
           {puedeEditar && <button className="btn-primario" onClick={() => setEditar('nueva')}><Plus size={16} />Nueva licencia</button>}
         </>} />
+      {importar && <ImportarLicencias abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); setN(x => x + 1) }} />}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <div className="tarjeta p-4"><p className="text-[11px] uppercase tracking-wider text-stone-500">Licencias</p><p className="cifra text-3xl font-semibold">{lista?.length ?? '—'}</p></div>

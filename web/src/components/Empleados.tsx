@@ -7,6 +7,7 @@ import { nombreEmpleado } from '../lib/hooks'
 import { Modal, Campo, Aviso, Cargando, Vacio } from './ui'
 import FotoActivo from './FotoActivo'
 import { DesasignarModal, type ActAsignado } from './Desasignar'
+import { ImportarEmpleadosExcel } from './Importadores'
 
 export type Empleado = { id: string; empresa_id: string; codigo: string | null; nombres: string; apellidos: string | null; puesto: string | null
   departamento_id: string | null; email: string | null; telefono: string | null; activo: boolean; departamentos?: { nombre: string } | null; empresas?: { nombre: string; nombre_corto?: string | null } | null }
@@ -68,7 +69,7 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
         {deptos.length > 0 && <select className="campo w-auto" value={depto} onChange={e => setDepto(e.target.value)}><option value="">Todos los departamentos</option>{deptos.map(d => <option key={d}>{d}</option>)}</select>}
         <button onClick={() => setSoloCon(s => !s)} className={`rounded-xl border px-3 py-2.5 text-sm transition ${soloCon ? 'border-marca bg-marca/10 text-marca' : 'border-stone-300 text-stone-600'}`}>Con activos ({conActivos})</button>
         {puedeEditar && <>
-          <button className="btn-sec" onClick={() => setImportar(true)}><FileSpreadsheet size={16} />Importar de Excel</button>
+          <button className="btn-sec" onClick={() => setImportar(true)}><FileSpreadsheet size={16} />Importar Excel</button>
           <button className="btn-primario" onClick={() => setNuevo(true)}><UserPlus size={16} />Nuevo empleado</button>
         </>}
       </div>
@@ -142,7 +143,7 @@ export function ListaEmpleados({ empresaId, recargarFuera }: { empresaId?: strin
       {quitar && <DesasignarModal empleado={quitar.e} activos={quitar.acts} onCerrar={() => setQuitar(null)}
         onListo={() => { setQuitar(null); setMarcados(new Set()); setN(x => x + 1) }} />}
       <EmpleadoModal abierto={nuevo} empresaId={empresaId} onCerrar={() => setNuevo(false)} onGuardado={() => { setNuevo(false); setN(x => x + 1) }} />
-      <ImportarEmpleados abierto={importar} empresaId={empresaId} onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); setN(x => x + 1) }} />
+      {importar && <ImportarEmpleadosExcel abierto empresaId={empresaId} onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); setN(x => x + 1) }} />}
     </div>
   )
 }

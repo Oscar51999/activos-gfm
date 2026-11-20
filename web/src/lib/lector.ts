@@ -270,3 +270,12 @@ export async function leerArchivo(f: File, avance: Avance = () => {}): Promise<L
   }
   throw new Error('Formato no soportado. Sube XML, PDF, foto, Excel (.xlsx), CSV o TXT.')
 }
+
+/** Lee la primera hoja de un .xlsx (o un .csv/.txt) como tabla de texto, para importar catálogos. */
+export async function leerTabla(f: File): Promise<string[][]> {
+  const nombre = f.name.toLowerCase()
+  if (nombre.endsWith('.xlsx') || f.type.includes('spreadsheetml')) return xlsx(await f.arrayBuffer())
+  if (nombre.endsWith('.xls')) throw new Error('Guarda el Excel como .xlsx (Archivo → Guardar como) y vuelve a subirlo.')
+  if (nombre.endsWith('.csv') || nombre.endsWith('.txt') || f.type.startsWith('text/')) return csv(await f.text())
+  throw new Error('Sube un Excel (.xlsx) o CSV.')
+}

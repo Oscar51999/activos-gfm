@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2 } from 'lucide-react'
+import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2, Upload } from 'lucide-react'
+import { ImportarInmuebles } from '../components/Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista } from '../lib/hooks'
@@ -54,6 +55,7 @@ export default function Inmuebles() {
   const [empresa, setEmpresa] = useState('')
   const [tipo, setTipo] = useState('')
   const [nuevo, setNuevo] = useState(false)
+  const [importar, setImportar] = useState(false)
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
   const nav = useNavigate()
 
@@ -78,7 +80,9 @@ export default function Inmuebles() {
           <h1 className="text-2xl font-semibold sm:text-3xl">Inmuebles</h1>
           <p className="mt-1 text-sm text-stone-500">Terrenos, oficinas, bodegas, talleres, campamentos y casas del personal, con su expediente de documentos.</p>
         </div>
+        {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
         {puedeEditar && <button className="btn-primario" onClick={() => setNuevo(true)}><Plus size={16} />Nuevo inmueble</button>}
+        {importar && <ImportarInmuebles abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

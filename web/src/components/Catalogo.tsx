@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Plus, Search, Pencil } from 'lucide-react'
+import { Plus, Search, Pencil, FileSpreadsheet } from 'lucide-react'
+import { ImportarCatalogo } from './Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista } from '../lib/hooks'
@@ -56,6 +57,7 @@ export default function Catalogo(p: Props) {
   const [edit, setEdit] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [importar, setImportar] = useState(false)
 
   const cargar = useCallback(async () => {
     let qy = supabase.from(p.tabla).select(p.select ?? '*').order(p.orden ?? 'nombre').limit(1000)
@@ -108,7 +110,8 @@ export default function Catalogo(p: Props) {
   return (
     <div>
       <Encabezado titulo={p.titulo} sub={p.sub}
-        acciones={editable && <button className="btn-primario" onClick={nuevo}><Plus size={16} />Agregar</button>} />
+        acciones={editable && <><button className="btn-sec" onClick={() => setImportar(true)}><FileSpreadsheet size={16} />Importar Excel</button><button className="btn-primario" onClick={nuevo}><Plus size={16} />Agregar</button></>} />
+      {importar && <ImportarCatalogo abierto tabla={p.tabla} titulo={p.titulo} campos={p.campos} porEmpresa={p.porEmpresa} onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
 
       <div className="tarjeta">
         <div className="flex flex-wrap items-center gap-3 border-b border-stone-200 p-3">

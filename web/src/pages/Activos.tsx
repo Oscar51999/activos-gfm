@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, FileText, X, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, FileText, X, SlidersHorizontal, Upload } from 'lucide-react'
+import { ImportarActivos } from '../components/Importadores'
 import { supabase, ESTATUS, mensajeError, type Estatus } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista } from '../lib/hooks'
@@ -26,6 +27,7 @@ export default function Activos() {
   const categorias = useLista('categorias', 'id,nombre,padre_id')
   const marcas = useLista('marcas')
   const [masFiltros, setMasFiltros] = useState(false)
+  const [importar, setImportar] = useState(false)
   const ubicaciones = useLista('ubicaciones', 'id,nombre,empresa_id')
   const [filas, setFilas] = useState<ActivoFila[] | null>(null)
   const [total, setTotal] = useState(0)
@@ -128,8 +130,10 @@ export default function Activos() {
           <button className="btn-sec" onClick={exportar}><FileSpreadsheet size={16} />Excel</button>
           <button className="btn-sec" onClick={exportarPdf}><FileText size={16} />PDF</button>
           <Link className="btn-sec" to={`/etiquetas?${sp.toString()}`}><Printer size={16} />Imprimir etiquetas</Link>
+          {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
           {puedeEditar && <Link className="btn-primario" to="/alta"><Plus size={16} />Alta de activos</Link>}
         </>} />
+      {importar && <ImportarActivos abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); setF('p', '') }} />}
 
       <div className="tarjeta">
         {tipos.length > 0 && (
