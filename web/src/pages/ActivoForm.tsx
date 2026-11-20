@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Camera, Plus } from 'lucide-react'
+import { ArrowLeft, Camera, X } from 'lucide-react'
 import { supabase, ESTATUS, mensajeError, type Estatus } from '../lib/supabase'
 import { useLista, nombreEmpleado } from '../lib/hooks'
 import { subirFoto } from '../lib/fotos'
 import { Encabezado, Campo, Aviso, Cargando } from '../components/ui'
+import { OpcionesCategoria, NuevoEnLinea, asegurarMarca } from '../components/CatalogoEnLinea'
 
 type Activo = {
   id?: string; empresa_id: string; categoria_id: string; descripcion: string; marca_id: string | null; modelo_id: string | null
@@ -21,14 +22,15 @@ export default function ActivoForm() {
   const { id } = useParams()
   const nav = useNavigate()
   const empresas = useLista('empresas')
-  const categorias = useLista('categorias', 'id,nombre,es_vehiculo')
+  const categorias = useLista('categorias', 'id,nombre,es_vehiculo,padre_id')
   const marcas = useLista('marcas')
-  const modelos = useLista('modelos', 'id,nombre,marca_id')
+  const modelos = useLista('modelos', 'id,nombre,marca_id,categoria_id,descripcion')
   const ubicaciones = useLista('ubicaciones', 'id,nombre,empresa_id,tipo')
   const empleados = useLista('empleados', 'id,nombres,apellidos,empresa_id', 'nombres')
   const [a, setA] = useState<Activo | null>(null)
   const [v, setV] = useState<Vehiculo>(VEH_VACIO)
   const [fotos, setFotos] = useState<File[]>([])
+  const [todasEmp, setTodasEmp] = useState(false)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -60,6 +62,11 @@ export default function ActivoForm() {
     const n = { ...s!, [k]: val }
     if (k === 'empresa_id') { n.ubicacion_id = null; n.responsable_id = null }
     if (k === 'marca_id') n.modelo_id = null
+    if (k === 'modelo_id' && val) {
+      const m = modelos.items.find(x => x.id === val) as { categoria_id?: string | null; descripcion?: string | null; nombre: string } | undefined
+      if (m?.categoria_id && !n.categoria_id) n.categoria_id = m.categoria_id
+      if (!n.descripcion.trim()) n.descripcion = m?.descripcion || `${marcas.items.find(x => x.id === n.marca_id)?.nombre ?? ''} ${m?.nombre ?? ''}`.trim()
+    }
     if (k === 'responsable_id') {
       if (val && n.estatus === 'disponible') n.estatus = 'asignado'
       if (!val && n.estatus === 'asignado') n.estatus = 'disponible'
@@ -68,20 +75,24 @@ export default function ActivoForm() {
   })
   const setVeh = (k: keyof Vehiculo, val: string) => setV(s => ({ ...s, [k]: val }))
 
-  async function nuevaMarca() {
-    const nombre = window.prompt('Nombre de la nueva marca')?.trim()
-    if (!nombre) return
-    const { data, error } = await supabase.from('marcas').insert({ nombre }).select('id').single()
-    if (error) { setError(mensajeError(error)); return }
-    await marcas.recargar(); set('marca_id', data.id)
+  // Se crean aquí mismo y quedan en el catálogo (Marcas y modelos, Catálogo de productos) para todos
+  async function nuevaCategoria(nombre: string, padre?: string) {
+    const padreCat = categorias.items.find(c => c.id === padre) as { es_vehiculo?: boolean } | undefined
+    const { data, error } = await supabase.from('categorias').insert({ nombre, padre_id: padre || null, es_vehiculo: !!padreCat?.es_vehiculo }).select('id').single()
+    if (error) return mensajeError(error)
+    await categorias.recargar(); set('categoria_id', (data as { id: string }).id); return null
   }
-  async function nuevoModelo() {
-    if (!a?.marca_id) return
-    const nombre = window.prompt('Nombre del nuevo modelo')?.trim()
-    if (!nombre) return
-    const { data, error } = await supabase.from('modelos').insert({ nombre, marca_id: a.marca_id }).select('id').single()
-    if (error) { setError(mensajeError(error)); return }
-    await modelos.recargar(); set('modelo_id', data.id)
+  async function nuevaMarca(nombre: string) {
+    try { const id = await asegurarMarca(nombre, marcas.items); await marcas.recargar(); set('marca_id', id); return null } catch (e) { return (e as Error).message }
+  }
+  async function nuevoModelo(nombre: string) {
+    if (!a?.marca_id) return 'Primero elige la marca.'
+    const marca = marcas.items.find(m => m.id === a.marca_id)?.nombre ?? ''
+    const cat = categorias.items.find(c => c.id === a.categoria_id)?.nombre
+    const { data, error } = await supabase.from('modelos').insert({ nombre, marca_id: a.marca_id, categoria_id: a.categoria_id || null,
+      descripcion: `${cat ? cat.replace(/s$/, '') + ' ' : ''}${marca} ${nombre}`.trim() }).select('id').single()
+    if (error) return mensajeError(error)
+    await modelos.recargar(); set('modelo_id', (data as { id: string }).id); return null
   }
 
   async function guardar(e: React.FormEvent) {
@@ -113,6 +124,13 @@ export default function ActivoForm() {
           numero_motor: limpio(v.numero_motor ?? null), version: limpio(v.version ?? null), tipo_licencia: limpio(v.tipo_licencia ?? null), tarjeta_circulacion: limpio(v.tarjeta_circulacion ?? null), poliza: limpio(v.poliza ?? null),
         })
         if (error) throw error
+        // el kilometraje también queda como lectura para que el mantenimiento por km lo tome
+        const km = num(v.kilometraje)
+        if (km != null && km > 0) {
+          const { data: ult } = await supabase.from('lecturas').select('valor').eq('activo_id', activoId!).eq('tipo', 'km').order('valor', { ascending: false }).limit(1)
+          const u = (ult?.[0] as { valor: number } | undefined)?.valor
+          if (u == null || km > u) await supabase.from('lecturas').insert({ activo_id: activoId, empresa_id: a!.empresa_id, tipo: 'km', valor: km, nota: id ? 'Actualizado al editar' : 'Kilometraje al dar de alta' })
+        }
       }
       let principal = a!.foto_principal ?? null
       for (const f of fotos) {
@@ -127,7 +145,8 @@ export default function ActivoForm() {
   }
 
   const ubicVis = ubicaciones.items.filter(u => u.empresa_id === a.empresa_id)
-  const empVis = empleados.items.filter(u => u.empresa_id === a.empresa_id)
+  const empVis = empleados.items.filter(u => todasEmp || u.empresa_id === a.empresa_id || u.id === a.responsable_id)
+  const nomEmpresa = (eid: unknown) => empresas.items.find(x => x.id === eid)?.nombre ?? ''
   const modVis = modelos.items.filter(m => m.marca_id === a.marca_id)
 
   return (
@@ -146,27 +165,31 @@ export default function ActivoForm() {
                 </select>
               </Campo>
               <Campo label="Categoría *">
-                <select className="campo" required value={a.categoria_id} onChange={e => set('categoria_id', e.target.value)}>
-                  <option value="">— Selecciona —</option>{categorias.items.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                </select>
+                <div className="relative flex gap-2">
+                  <select className="campo" required value={a.categoria_id} onChange={e => set('categoria_id', e.target.value)}>
+                    <option value="">— Selecciona —</option><OpcionesCategoria items={categorias.items} />
+                  </select>
+                  <NuevoEnLinea etiqueta="Nuevo tipo o subtipo" placeholder="Ej. Radios portátiles" onCrear={nuevaCategoria}
+                    extra={{ etiqueta: 'Es un tipo nuevo (sin grupo)', opciones: categorias.items.filter(c => !c.padre_id).map(c => ({ id: c.id, nombre: `Dentro de: ${c.nombre}` })) }} />
+                </div>
               </Campo>
               <Campo label="Descripción *" className="sm:col-span-2">
                 <input className="campo" required placeholder="Ej. Camioneta pick-up doble cabina, Retroexcavadora, Laptop" value={a.descripcion} onChange={e => set('descripcion', e.target.value)} />
               </Campo>
               <Campo label="Marca">
-                <div className="flex gap-2">
+                <div className="relative flex gap-2">
                   <select className="campo" value={a.marca_id ?? ''} onChange={e => set('marca_id', e.target.value || null)}>
                     <option value="">—</option>{marcas.items.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
                   </select>
-                  <button type="button" className="btn-sec px-2.5" title="Nueva marca" onClick={nuevaMarca}><Plus size={16} /></button>
+                  <NuevoEnLinea etiqueta="Nueva marca" placeholder="Ej. Hikvision" onCrear={nuevaMarca} />
                 </div>
               </Campo>
               <Campo label="Modelo">
-                <div className="flex gap-2">
+                <div className="relative flex gap-2">
                   <select className="campo" value={a.modelo_id ?? ''} disabled={!a.marca_id} onChange={e => set('modelo_id', e.target.value || null)}>
                     <option value="">—</option>{modVis.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
                   </select>
-                  <button type="button" className="btn-sec px-2.5" title="Nuevo modelo" disabled={!a.marca_id} onClick={nuevoModelo}><Plus size={16} /></button>
+                  <NuevoEnLinea etiqueta="Nuevo modelo" placeholder="Ej. DS-2CD1043" deshabilitado={!a.marca_id} onCrear={nuevoModelo} />
                 </div>
               </Campo>
               <Campo label="Número de serie"><input className="campo" value={a.serie ?? ''} onChange={e => set('serie', e.target.value)} /></Campo>
@@ -221,9 +244,10 @@ export default function ActivoForm() {
               </Campo>
               <Campo label="Responsable">
                 <select className="campo" value={a.responsable_id ?? ''} disabled={!a.empresa_id} onChange={e => set('responsable_id', e.target.value || null)}>
-                  <option value="">— Sin responsable —</option>{empVis.map(o => <option key={o.id} value={o.id}>{nombreEmpleado(o as never)}</option>)}
+                  <option value="">— Sin responsable —</option>{empVis.map(o => <option key={o.id} value={o.id}>{nombreEmpleado(o as never)}{o.empresa_id !== a.empresa_id ? ` · ${nomEmpresa(o.empresa_id)}` : ''}</option>)}
                 </select>
               </Campo>
+                <label className="-mt-2 flex items-center gap-2 text-xs text-stone-500"><input type="checkbox" checked={todasEmp} onChange={e => setTodasEmp(e.target.checked)} />Ver empleados de todas las empresas</label>
               <Campo label="Estatus">
                 <select className="campo" value={a.estatus} onChange={e => set('estatus', e.target.value as Estatus)}>
                   {Object.entries(ESTATUS).map(([k, x]) => <option key={k} value={k}>{x.texto}</option>)}
@@ -251,6 +275,7 @@ export default function ActivoForm() {
               <input type="file" accept="image/*" capture="environment" multiple className="hidden"
                 onChange={e => setFotos(f => [...f, ...Array.from(e.target.files ?? [])])} />
             </label>
+            {fotos.length > 0 && <div className="mt-3 grid grid-cols-3 gap-2">{fotos.map((f, i) => <span key={i} className="relative"><img src={URL.createObjectURL(f)} alt="" className="aspect-square w-full rounded-lg object-cover" /><button type="button" onClick={() => setFotos(x => x.filter((_, k) => k !== i))} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white" aria-label="Quitar"><X size={12} /></button></span>)}</div>}
             {fotos.length > 0 && <p className="mt-2 text-xs text-stone-600">{fotos.length} foto(s) se subirán al guardar.</p>}
           </section>
         </div>

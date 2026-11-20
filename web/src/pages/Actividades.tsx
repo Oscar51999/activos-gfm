@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { CalendarDays, KanbanSquare, Table2, Plus, ChevronLeft, ChevronRight, ChevronDown, Search, Trash2, Check, X, MessageSquare, TrendingUp, CalendarRange } from 'lucide-react'
+import { CalendarDays, KanbanSquare, Table2, Plus, ChevronLeft, ChevronRight, ChevronDown, Search, Trash2, Check, X, MessageSquare, TrendingUp, CalendarRange, FileSpreadsheet, FileText } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { useLista } from '../lib/hooks'
 import { Cargando, Modal, Campo, Aviso } from '../components/ui'
+import { libroExcel, descargar } from '../lib/excel'
+import { pdfTabla } from '../lib/pdf'
 
 type Estatus = 'pendiente' | 'en_curso' | 'atorado' | 'listo'
 type Prioridad = 'baja' | 'media' | 'alta' | 'urgente'
@@ -89,6 +91,49 @@ export default function Actividades() {
     cargar()
   }
 
+  const nombreDe = (id: string | null) => usuarios.find(u => u.id === id)?.nombre ?? ''
+  const fechaTxt = (s: string | null) => s ? new Date(s + 'T12:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+  const titulo = `Actividades · ${vista === 'calendario' ? 'Calendario' : vista === 'kanban' ? 'Kanban' : 'Tablero'}`
+  const filtrosTxt = () => [semana ? `Semana ${corta(semana)} – ${corta(finSemana)}` : 'Todas las fechas', mias && `Solo de ${perfil?.nombre ?? 'mí'}`, q.trim() && `Búsqueda: "${q.trim()}"`].filter(Boolean).join(' · ')
+  // El orden sigue la vista: tablero por grupo, calendario por fecha, kanban por estatus
+  const ordenadas = () => {
+    const xs = [...visibles]
+    if (vista === 'calendario') return xs.sort((a, b) => (a.fecha_inicio ?? a.fecha_fin ?? '9999').localeCompare(b.fecha_inicio ?? b.fecha_fin ?? '9999'))
+    if (vista === 'kanban') return xs.sort((a, b) => Object.keys(ESTATUS).indexOf(a.estatus) - Object.keys(ESTATUS).indexOf(b.estatus))
+    return xs.sort((a, b) => grupos.indexOf(a.grupo) - grupos.indexOf(b.grupo) || a.orden - b.orden)
+  }
+  const COLS: { titulo: string; valor: (a: Act) => string | number; ancho?: number }[] = [
+    { titulo: 'Actividad', valor: a => a.titulo, ancho: 38 }, { titulo: 'Grupo', valor: a => a.grupo, ancho: 14 },
+    { titulo: 'Estatus', valor: a => ESTATUS[a.estatus].t, ancho: 11 }, { titulo: 'Prioridad', valor: a => PRIORIDAD[a.prioridad].t, ancho: 10 },
+    { titulo: 'Responsable', valor: a => nombreDe(a.responsable_id), ancho: 22 }, { titulo: 'Participantes', valor: a => (a.participantes ?? []).filter(x => x !== a.responsable_id).map(nombreDe).filter(Boolean).join(', '), ancho: 28 },
+    { titulo: 'Inicio', valor: a => fechaTxt(a.fecha_inicio), ancho: 12 }, { titulo: 'Entrega', valor: a => fechaTxt(a.fecha_fin), ancho: 12 },
+    { titulo: 'Avance', valor: a => `${a.avance ?? 0}%`, ancho: 8 }, { titulo: 'Comentarios', valor: a => comentarios.get(a.id) ?? 0, ancho: 11 },
+  ]
+  async function exportarExcel() {
+    const filas = ordenadas()
+    const { data } = filas.length ? await supabase.from('actividad_avances').select('*').in('actividad_id', filas.map(a => a.id)).order('created_at') : { data: [] }
+    const avs = (data ?? []) as Avance[]
+    const porId = new Map(filas.map(a => [a.id, a]))
+    descargar(libroExcel<Act | Avance>([
+      { nombre: 'Actividades', titulo: `${titulo} · ${filtrosTxt()}`, filas, columnas: [...COLS.map(c => ({ titulo: c.titulo, valor: (a: Act | Avance) => c.valor(a as Act), ancho: c.ancho })),
+        { titulo: 'Descripción', valor: (a: Act | Avance) => (a as Act).descripcion ?? '', ancho: 40 }] },
+      { nombre: 'Avances y comentarios', titulo: 'Bitácora de avances', filas: avs, columnas: [
+        { titulo: 'Actividad', valor: x => porId.get((x as Avance).actividad_id)?.titulo ?? '', ancho: 38 }, { titulo: 'Fecha', valor: x => new Date((x as Avance).created_at).toLocaleString('es-MX'), ancho: 18 },
+        { titulo: 'Quién', valor: x => nombreDe((x as Avance).autor_id), ancho: 22 }, { titulo: 'Avance', valor: x => (x as Avance).avance != null ? `${(x as Avance).avance}%` : '', ancho: 8 },
+        { titulo: 'Estatus', valor: x => (x as Avance).estatus ? ESTATUS[(x as Avance).estatus!].t : '', ancho: 11 }, { titulo: 'Comentario', valor: x => (x as Avance).comentario ?? '', ancho: 60 },
+      ] },
+    ]), `actividades-${hoy}.xlsx`)
+  }
+  async function exportarPdf() {
+    const filas = ordenadas()
+    const colsPdf = COLS.filter(c => c.titulo !== 'Grupo' || vista !== 'tablero').filter(c => c.titulo !== 'Estatus' || vista !== 'kanban').filter(c => c.titulo !== 'Comentarios')
+    const grupos_ = vista === 'tablero' ? grupos.map(g => ({ titulo: g, filas: filas.filter(a => a.grupo === g) }))
+      : vista === 'kanban' ? (Object.keys(ESTATUS) as Estatus[]).map(k => ({ titulo: ESTATUS[k].t, filas: filas.filter(a => a.estatus === k) })) : undefined
+    const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]
+    await pdfTabla<Act>({ titulo, subtitulo: `${filas.length} actividad(es) · ${filtrosTxt()}`, horizontal: true, nombre: `actividades-${vista}-${hoy}`, filas, grupos: grupos_,
+      columnas: colsPdf.map(c => ({ titulo: c.titulo, valor: c.valor })), colorFila: a => vista === 'kanban' ? null : hex(ESTATUS[a.estatus].c) })
+  }
+
   if (!puedeEditar) return <Navigate to="/" replace />
   if (!acts) return <Cargando />
   const resumen = (Object.keys(ESTATUS) as Estatus[]).map(k => ({ k, n: visibles.filter(a => a.estatus === k).length }))
@@ -100,7 +145,11 @@ export default function Actividades() {
           <h1 className="text-2xl font-semibold sm:text-3xl">Actividades</h1>
           <p className="mt-1 text-sm text-stone-500">Pendientes del equipo de TI y supervisores: quién, qué y para cuándo.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <button className="btn-sec" onClick={exportarExcel} disabled={!visibles.length}><FileSpreadsheet size={16} />Excel</button>
+        <button className="btn-sec" onClick={exportarPdf} disabled={!visibles.length}><FileText size={16} />PDF</button>
         <button className="btn-primario" onClick={() => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: hoy })}><Plus size={16} />Nueva actividad</button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

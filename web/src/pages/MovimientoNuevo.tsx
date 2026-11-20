@@ -40,6 +40,7 @@ export default function MovimientoNuevo() {
   const [busca, setBusca] = useState('')
   const [resultados, setResultados] = useState<Act[]>([])
   const [aEmpleado, setAEmpleado] = useState('')
+  const [todasEmp, setTodasEmp] = useState(false)
   const [aUbicacion, setAUbicacion] = useState('')
   const [entrega, setEntrega] = useState(perfil?.nombre ?? '')
   const [recibe, setRecibe] = useState('')
@@ -111,7 +112,7 @@ export default function MovimientoNuevo() {
   const bloqueado = faltas.some(f => f.bloquea) && !autorizo
 
   const ubicVis = useMemo(() => ubicaciones.items.filter(u => u.empresa_id === empresa), [ubicaciones.items, empresa])
-  const empVis = useMemo(() => empleados.items.filter(u => u.empresa_id === empresa), [empleados.items, empresa])
+  const empVis = useMemo(() => empleados.items.filter(u => todasEmp || u.empresa_id === empresa || u.id === aEmpleado), [empleados.items, empresa, todasEmp, aEmpleado])
   const yaSel = new Set(sel.map(a => a.id))
 
   async function guardar(e: React.FormEvent) {
@@ -232,14 +233,15 @@ export default function MovimientoNuevo() {
           <section className="tarjeta p-5">
             <h2 className="mb-4 font-semibold">Destino</h2>
             <div className="space-y-4">
-              {tipo !== 'devolucion' && (
+              {tipo !== 'devolucion' && (<>
                 <Campo label={tipo === 'asignacion' ? 'Se entrega a *' : 'Nuevo responsable'}>
                   <select className="campo" required={tipo === 'asignacion'} disabled={!empresa} value={aEmpleado} onChange={e => setAEmpleado(e.target.value)}>
                     <option value="">{tipo === 'traspaso' ? '— Mismo responsable —' : '— Selecciona —'}</option>
-                    {empVis.map(o => <option key={o.id} value={o.id}>{nombreEmpleado(o as never)}{o.puesto ? ` · ${o.puesto}` : ''}</option>)}
+                    {empVis.map(o => <option key={o.id} value={o.id}>{nombreEmpleado(o as never)}{o.puesto ? ` · ${o.puesto}` : ''}{o.empresa_id !== empresa ? ` · ${empresas.items.find(x => x.id === o.empresa_id)?.nombre ?? ''}` : ''}</option>)}
                   </select>
                 </Campo>
-              )}
+                  <label className="-mt-2 flex items-center gap-2 text-xs text-stone-500"><input type="checkbox" checked={todasEmp} onChange={e => setTodasEmp(e.target.checked)} />Ver empleados de todas las empresas</label>
+              </>)}
               <Campo label={tipo === 'devolucion' ? 'Regresa a *' : tipo === 'asignacion' ? 'Ubicación de uso' : 'Nueva ubicación'}>
                 <select className="campo" required={tipo === 'devolucion'} disabled={!empresa} value={aUbicacion} onChange={e => setAUbicacion(e.target.value)}>
                   <option value="">{tipo === 'devolucion' ? '— Selecciona —' : '— Misma ubicación —'}</option>

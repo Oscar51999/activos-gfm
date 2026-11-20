@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Check, ChevronLeft, ChevronRight, Plus, Search, Trash2, PackagePlus, Tags, PenLine, Sparkles, ClipboardPaste, UserRound, MapPin, Camera, Loader2, ScanText, FileUp, Car, MessageSquareText, AlertTriangle } from 'lucide-react'
 import { leerEtiqueta, buscarProducto, type Lectura } from '../lib/ia'
 import { faltanParaAsignar } from '../lib/requisitos'
+import { subirFoto } from '../lib/fotos'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
@@ -12,7 +13,7 @@ import ProductoModal, { type Producto } from '../components/ProductoModal'
 import LogoEmpresa from '../components/LogoEmpresa'
 import type { EmpresaLogo } from '../lib/logos'
 
-type Fila = { serie: string; eco: string; placa?: string; anio?: string; color?: string; motor?: string; km?: string; comentario?: string }
+type Fila = { serie: string; eco: string; placa?: string; anio?: string; color?: string; motor?: string; km?: string; comentario?: string; fotos?: File[] }
 type Empresa = EmpresaLogo & { id: string }
 const PASOS = ['Producto', 'Unidades', 'Destino'] as const
 
@@ -34,6 +35,8 @@ export default function Alta() {
   const [valor, setValor] = useState('')
   const [ubicacion, setUbicacion] = useState('')
   const [empleado, setEmpleado] = useState('')
+  const [todasEmp, setTodasEmp] = useState(false)
+  const [qEmp, setQEmp] = useState('')
   const [notas, setNotas] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [fechaAlta, setFechaAlta] = useState(new Date().toISOString().slice(0, 10))
@@ -136,6 +139,12 @@ export default function Alta() {
         const kms = creados.map((c, i) => ({ activo_id: c.id, empresa_id: empresa, tipo: 'km', valor: Number(lista[i].km), nota: 'Kilometraje al dar de alta' })).filter(x => x.valor > 0)
         if (kms.length) await supabase.from('lecturas').insert(kms)
       }
+      // fotos de cada unidad (vehículos): la primera queda como foto principal
+      for (let i = 0; i < creados.length; i++) {
+        let principal: string | null = null
+        for (const f of lista[i].fotos ?? []) { const p = await subirFoto(empresa, creados[i].id, f); principal ??= p }
+        if (principal) await supabase.from('activos').update({ foto_principal: principal }).eq('id', creados[i].id)
+      }
       let mov: string | null = null
       if (empleado) {
         const emp = empleados.items.find(x => x.id === empleado)
@@ -175,7 +184,11 @@ export default function Alta() {
   const lista = productos.filter(p => !t || [p.nombre, p.marcas?.nombre, p.descripcion, p.categorias?.nombre].some(x => x?.toLowerCase().includes(t)))
   const emp = empresas.find(e => e.id === empresa)
   const ubis = ubicaciones.items.filter(u => (u as { empresa_id?: string }).empresa_id === empresa)
-  const emps = empleados.items.filter(u => (u as { empresa_id?: string }).empresa_id === empresa)
+  const nomEmpresa = (id: unknown) => { const e = empresas.find(x => x.id === id); return e ? (e.nombre_corto || e.nombre) : '' }
+  const tq = qEmp.trim().toLowerCase()
+  const emps = empleados.items.filter(u => (todasEmp || (u as { empresa_id?: string }).empresa_id === empresa || u.id === empleado)
+    && (!tq || `${nombreEmpleado(u as never)} ${(u as { puesto?: string }).puesto ?? ''}`.toLowerCase().includes(tq)))
+  const empElegido = empleados.items.find(e => e.id === empleado)
   const esVehiculo = !!(prod?.categorias as { es_vehiculo?: boolean } | null | undefined)?.es_vehiculo
   const descDefecto = prod ? (prod.descripcion || `${prod.categorias?.nombre ? prod.categorias.nombre.replace(/s$/, '') + ' ' : ''}${prod.marcas?.nombre ?? ''} ${prod.nombre}`.trim()) : ''
   const sinSerieN = (validas.length ? validas : filas).filter(f => !f.serie.trim()).length
@@ -307,6 +320,14 @@ export default function Alta() {
                           <Campo label="Color"><input className="campo" value={f.color ?? ''} onChange={e => set({ color: e.target.value })} placeholder="Blanco" /></Campo>
                           <Campo label="No. de motor"><input className="campo font-mono" value={f.motor ?? ''} onChange={e => set({ motor: e.target.value })} /></Campo>
                           <Campo label="Kilometraje actual"><input className="campo" type="number" min="0" value={f.km ?? ''} onChange={e => set({ km: e.target.value })} placeholder="0" /></Campo>
+                          <div className="sm:col-span-3">
+                            <span className="etiqueta">Fotos del vehículo</span>
+                            <div className="flex flex-wrap gap-2">
+                              {(f.fotos ?? []).map((x, k) => <span key={k} className="relative"><img src={URL.createObjectURL(x)} alt="" className="h-16 w-20 rounded-lg object-cover" /><button type="button" onClick={() => set({ fotos: (f.fotos ?? []).filter((_, j) => j !== k) })} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white" aria-label="Quitar foto"><Trash2 size={11} /></button></span>)}
+                              <label className="grid h-16 w-20 cursor-pointer place-items-center rounded-lg border border-dashed border-stone-300 text-stone-400 hover:border-marca hover:text-marca"><Camera size={18} />
+                                <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => { const n = Array.from(e.target.files ?? []); set({ fotos: [...(f.fotos ?? []), ...n].slice(0, 8) }); e.target.value = '' }} /></label>
+                            </div>
+                          </div>
                         </>}
                         <Campo label="Comentario de esta unidad" className={esVehiculo ? 'sm:col-span-2' : 'sm:col-span-2'}><input className="campo" value={f.comentario ?? ''} onChange={e => set({ comentario: e.target.value })} placeholder="Rayón en la tapa, trae cargador…" /></Campo>
                       </div>
@@ -351,6 +372,13 @@ export default function Alta() {
             <div className="tarjeta p-5">
               <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold"><UserRound size={16} className="text-marca" />¿Se entrega a alguien?</h2>
               <p className="mb-3 text-xs text-stone-500">Si eliges a un empleado, se genera su resguardo con folio para firmar. Si no, quedan como disponibles.</p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                <div className="flex overflow-hidden rounded-xl border border-stone-200 text-sm">
+                  <button onClick={() => setTodasEmp(false)} className={`px-3 py-2 ${!todasEmp ? 'bg-marca/15 text-marca' : 'text-stone-500 hover:bg-stone-100'}`}>De {emp.nombre_corto || emp.nombre}</button>
+                  <button onClick={() => setTodasEmp(true)} className={`px-3 py-2 ${todasEmp ? 'bg-marca/15 text-marca' : 'text-stone-500 hover:bg-stone-100'}`}>Todos los empleados</button>
+                </div>
+                <div className="relative min-w-[180px] flex-1"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo !py-2 pl-9" value={qEmp} onChange={e => setQEmp(e.target.value)} placeholder="Buscar por nombre o puesto…" /></div>
+              </div>
               <div className="grid max-h-80 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 <button onClick={() => setEmpleado('')} className={`rounded-xl border px-3 py-2.5 text-left text-sm transition ${!empleado ? 'border-marca bg-marca/10' : 'border-stone-200 hover:bg-stone-50'}`}>
                   <span className="font-medium">Nadie todavía</span><span className="block text-xs text-stone-500">Quedan disponibles en almacén</span>
@@ -358,7 +386,7 @@ export default function Alta() {
                 {emps.map(e => (
                   <button key={e.id} onClick={() => setEmpleado(e.id)} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition ${empleado === e.id ? 'border-marca bg-marca/10' : 'border-stone-200 hover:bg-stone-50'}`}>
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-100 text-[11px] font-bold text-marca">{nombreEmpleado(e as never).split(' ').slice(0, 2).map(p => p[0]).join('')}</span>
-                    <span className="min-w-0"><span className="block truncate font-medium">{nombreEmpleado(e as never)}</span><span className="block truncate text-xs text-stone-500">{(e as { puesto?: string }).puesto ?? ''}</span></span>
+                    <span className="min-w-0"><span className="block truncate font-medium">{nombreEmpleado(e as never)}</span><span className="block truncate text-xs text-stone-500">{[(e as { puesto?: string }).puesto, (e as { empresa_id?: string }).empresa_id !== empresa ? nomEmpresa((e as { empresa_id?: string }).empresa_id) : ''].filter(Boolean).join(' · ')}</span></span>
                   </button>
                 ))}
               </div>
@@ -371,9 +399,9 @@ export default function Alta() {
               <div className="flex justify-between gap-3"><dt className="text-stone-500">Producto</dt><dd className="truncate text-right">{prod.marcas?.nombre} {prod.nombre}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-stone-500">Unidades</dt><dd className="cifra text-lg font-semibold text-marca">{cantidad}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-stone-500">Ubicación</dt><dd className="truncate text-right">{ubis.find(u => u.id === ubicacion)?.nombre ?? '—'}</dd></div>
-              <div className="flex justify-between gap-3"><dt className="text-stone-500">Se entrega a</dt><dd className="truncate text-right">{empleado ? nombreEmpleado(emps.find(e => e.id === empleado) as never) : 'Nadie'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-stone-500">Se entrega a</dt><dd className="truncate text-right">{empleado ? nombreEmpleado(empElegido as never) : 'Nadie'}</dd></div>
             </dl>
-            {faltan.length > 0 && <div className="mt-4"><Aviso><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /><span>No se puede entregar a {nombreEmpleado(emps.find(e => e.id === empleado) as never)}: le falta {faltan.join(', ').toLowerCase()}. Súbela en su ficha (<Link to={`/empleados/${empleado}`} className="underline">Empleados → Documentos</Link>) o elige otra persona.</span></span></Aviso></div>}
+            {faltan.length > 0 && <div className="mt-4"><Aviso><span className="flex gap-2"><AlertTriangle size={16} className="shrink-0" /><span>No se puede entregar a {nombreEmpleado(empElegido as never)}: le falta {faltan.join(', ').toLowerCase()}. Súbela en su ficha (<Link to={`/empleados/${empleado}`} className="underline">Empleados → Documentos</Link>) o elige otra persona.</span></span></Aviso></div>}
             {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
             <button className="btn-primario mt-5 w-full py-3" disabled={guardando || faltan.length > 0} onClick={guardar}>
               {guardando ? 'Guardando…' : <><Check size={16} />Dar de alta {cantidad} activo(s)</>}

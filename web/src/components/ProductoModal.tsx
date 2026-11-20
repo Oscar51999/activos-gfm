@@ -5,6 +5,7 @@ import { useLista } from '../lib/hooks'
 import { fotoProducto } from '../lib/logos'
 import { Modal, Campo, Aviso } from './ui'
 import FotoActivo from './FotoActivo'
+import { OpcionesCategoria } from './CatalogoEnLinea'
 
 export type Producto = {
   id: string; nombre: string; marca_id: string; categoria_id: string | null; foto_path: string | null; descripcion: string | null
@@ -16,10 +17,11 @@ export default function ProductoModal({ abierto, onCerrar, onGuardado, producto,
   abierto: boolean; onCerrar: () => void; onGuardado: (p: Producto) => void; producto?: Producto | null
   inicial?: { marca?: string; modelo?: string; descripcion?: string; categoria?: string; foto?: string | null }
 }) {
-  const categorias = useLista('categorias')
+  const categorias = useLista('categorias', 'id,nombre,padre_id,es_vehiculo')
   const marcas = useLista('marcas')
   const [categoria, setCategoria] = useState('')
   const [catNueva, setCatNueva] = useState('')
+  const [catPadre, setCatPadre] = useState('')
   const [marca, setMarca] = useState('')
   const [modelo, setModelo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -55,7 +57,8 @@ export default function ProductoModal({ abierto, onCerrar, onGuardado, producto,
       let catId = categoria
       if (categoria === '__nueva') {
         if (!catNueva.trim()) throw new Error('Escribe el nombre de la categoría nueva.')
-        const r = await supabase.from('categorias').insert({ nombre: catNueva.trim() }).select('id').single()
+        const padre = categorias.items.find(c => c.id === catPadre) as { es_vehiculo?: boolean } | undefined
+        const r = await supabase.from('categorias').insert({ nombre: catNueva.trim(), padre_id: catPadre || null, es_vehiculo: !!padre?.es_vehiculo }).select('id').single()
         if (r.error) throw r.error
         catId = (r.data as { id: string }).id
       }
@@ -64,14 +67,14 @@ export default function ProductoModal({ abierto, onCerrar, onGuardado, producto,
       if (!nombreMarca) throw new Error('Escribe la marca.')
       let marcaId = marcas.items.find(m => m.nombre.toLowerCase() === nombreMarca.toLowerCase())?.id
       if (!marcaId) {
-        const r = await supabase.from('marcas').insert({ nombre: nombreMarca }).select('id').single()
+        const r = await supabase.from('marcas').insert({ nombre: nombreMarca, sitio: /^[a-z0-9-]+$/i.test(nombreMarca) ? `${nombreMarca.toLowerCase()}.com` : null }).select('id').single()
         if (r.error) throw r.error
         marcaId = (r.data as { id: string }).id
       }
       const datos = { nombre: modelo.trim(), marca_id: marcaId, categoria_id: catId, descripcion: descripcion.trim() || null, foto_path: foto }
       const q = producto
-        ? supabase.from('modelos').update(datos).eq('id', producto.id).select('*,marcas(nombre),categorias(nombre)').single()
-        : supabase.from('modelos').insert(datos).select('*,marcas(nombre),categorias(nombre)').single()
+        ? supabase.from('modelos').update(datos).eq('id', producto.id).select('*,marcas(nombre),categorias(nombre,es_vehiculo)').single()
+        : supabase.from('modelos').insert(datos).select('*,marcas(nombre),categorias(nombre,es_vehiculo)').single()
       const { data, error } = await q
       if (error) throw error
       categorias.recargar(); marcas.recargar()
@@ -105,11 +108,14 @@ export default function ProductoModal({ abierto, onCerrar, onGuardado, producto,
           <Campo label="Categoría *">
             <select className="campo" value={categoria} onChange={e => setCategoria(e.target.value)} required>
               <option value="">— Elige —</option>
-              {categorias.items.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              <option value="__nueva">+ Categoría nueva…</option>
+              <OpcionesCategoria items={categorias.items} />
+              <option value="__nueva">+ Tipo o subtipo nuevo…</option>
             </select>
           </Campo>
-          {categoria === '__nueva' && <Campo label="Nombre de la categoría nueva"><input className="campo" autoFocus value={catNueva} onChange={e => setCatNueva(e.target.value)} placeholder="Ej. Telefonía" /></Campo>}
+          {categoria === '__nueva' && <div className="grid gap-3 sm:grid-cols-2">
+            <Campo label="Dentro de"><select className="campo" value={catPadre} onChange={e => setCatPadre(e.target.value)}><option value="">Es un tipo nuevo</option>{categorias.items.filter(c => !c.padre_id).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></Campo>
+            <Campo label="Nombre"><input className="campo" autoFocus value={catNueva} onChange={e => setCatNueva(e.target.value)} placeholder="Ej. Radios portátiles" /></Campo>
+          </div>}
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo label="Marca *">
               <input className="campo" list="lista-marcas" required value={marca} onChange={e => setMarca(e.target.value)} placeholder="Ej. Lenovo" />

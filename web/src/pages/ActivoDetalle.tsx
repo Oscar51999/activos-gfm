@@ -90,7 +90,7 @@ export default function ActivoDetalle() {
     try {
       for (const f of Array.from(files)) {
         const p = await subirFoto(a.empresa_id, a.id, f)
-        if (!a.foto_principal) await supabase.from('activos').update({ foto_principal: p }).eq('id', a.id)
+        if (!a.foto_principal && puedeEditar) await supabase.from('activos').update({ foto_principal: p }).eq('id', a.id)
       }
       await cargar()
     } catch (e) { setError(mensajeError(e)) } finally { setSubiendo(false) }
@@ -205,7 +205,7 @@ export default function ActivoDetalle() {
           <section className="tarjeta p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-semibold">Fotos</h2>
-              {puedeEditar && (
+              {(puedeEditar || (a.es_vehiculo && a.estatus !== 'baja')) && (
                 <label className="btn-sec cursor-pointer py-1.5 text-xs">
                   <Camera size={14} />{subiendo ? 'Subiendo…' : 'Agregar'}
                   <input type="file" accept="image/*" capture="environment" multiple className="hidden" disabled={subiendo} onChange={e => agregarFotos(e.target.files)} />
