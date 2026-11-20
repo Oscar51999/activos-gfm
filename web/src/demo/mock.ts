@@ -422,7 +422,10 @@ export function crearDatos() {
       { id: 'ac2', titulo: 'Instalar access point en Entrepiedras', grupo: 'Redes', descripcion: 'Torre 2', estatus: 'pendiente', prioridad: 'media', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10), avance: 0, orden: 2, created_at: hace(1) },
       { id: 'ac3', titulo: 'Renovar antivirus', grupo: 'Equipos', descripcion: null, estatus: 'atorado', prioridad: 'urgente', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), avance: 20, orden: 3, created_at: hace(5) },
       { id: 'ac4', titulo: 'Inventario de radios', grupo: 'Equipos', descripcion: null, estatus: 'listo', prioridad: 'baja', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: null, avance: 100, orden: 4, created_at: hace(9) },
-    ], actividad_avances: [{ id: 'av1', actividad_id: 'ac1', autor_id: 'u-3', avance: 40, estatus: 'en_curso', comentario: 'Ya quedaron 4 de 10 laptops con Windows y antivirus.', created_at: hace(1) }], inmueble_pagos: [], inmueble_fallas: [], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
+    ], actividad_avances: [{ id: 'av1', actividad_id: 'ac1', autor_id: 'u-3', avance: 40, estatus: 'en_curso', comentario: 'Ya quedaron 4 de 10 laptops con Windows y antivirus.', created_at: hace(1) }], inmueble_pagos: [], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], licencias_software: [
+      { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
+      { id: 'lic2', empresa_id: 'e1', nombre: 'ESET Endpoint Security', fabricante: 'ESET', tipo: 'suscripcion', asientos: 25, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10), renovacion_automatica: true, proveedor: null, referencia: null, notas: null, activo: true, created_at: hace(60) },
+    ], licencia_asignaciones: [{ id: 'la1', licencia_id: 'lic1', empleado_id: 'em2', activo_id: null, cuenta: 'laviles@grupofirme.mx', asignada: hace(30).slice(0, 10), liberada: null, notas: null, created_at: hace(30) }], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
   return { db, urls }
 }
 
@@ -521,6 +524,12 @@ function vista(db: DB, t: string): Row[] {
     }
     return [...m.values()]
   }
+  if (t === 'v_licencias') {
+    const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0)
+    return db.licencias_software.map(l => { const e = byId(db, 'empresas', l.empresa_id)
+      const dr = l.fecha_vencimiento ? Math.round((new Date(String(l.fecha_vencimiento) + 'T00:00').getTime() - hoy0.getTime()) / 864e5) : null
+      return { ...l, empresa: e?.nombre_corto ?? e?.nombre, usados: db.licencia_asignaciones.filter(x => x.licencia_id === l.id && !x.liberada).length, dias_restantes: dr } })
+  }
   if (t === 'v_prestamos') {
     const out: Row[] = []
     for (const a of db.activos) {
@@ -542,9 +551,9 @@ function vista(db: DB, t: string): Row[] {
 // ───────── select con relaciones (subconjunto de PostgREST) ─────────
 const FK: Record<string, string> = { empresa_id: 'empresas', departamento_id: 'departamentos', marca_id: 'marcas', modelo_id: 'modelos', activo_id: 'activos',
   movimiento_id: 'movimientos', responsable_id: 'empleados', padre_id: 'categorias', a_empleado_id: 'empleados', a_ubicacion_id: 'ubicaciones',
-  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla', cc_id: 'centros_costo', ot_id: 'ordenes_trabajo', vale_id: 'vales_salida', merma_id: 'mermas', posicion_id: 'posiciones', ubicacion_esperada_id: 'ubicaciones' }
+  responsable_anterior_id: 'empleados', ubicacion_anterior_id: 'ubicaciones', categoria_id: 'categorias', ubicacion_id: 'ubicaciones', inventario_id: 'inventarios', kit_id: 'kits', empleado_id: 'empleados', proveedor_id: 'proveedores', plan_id: 'planes_mantenimiento', consumible_id: 'consumibles', solicitud_id: 'solicitudes', inmueble_id: 'inmuebles', origen_id: 'ubicaciones', destino_id: 'ubicaciones', equipo_id: 'activos', componente_id: 'activos', montado_en: 'activos', dano_id: 'codigos_falla', causa_id: 'codigos_falla', accion_id: 'codigos_falla', cc_id: 'centros_costo', licencia_id: 'licencias_software', reporte_id: 'reportes', ot_id: 'ordenes_trabajo', vale_id: 'vales_salida', merma_id: 'mermas', posicion_id: 'posiciones', ubicacion_esperada_id: 'ubicaciones' }
 const TABLA_FK: Record<string, string> = { empresas: 'empresa_id', departamentos: 'departamento_id', marcas: 'marca_id', modelos: 'modelo_id', activos: 'activo_id',
-  movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id', posiciones: 'posicion_id', ordenes_trabajo: 'ot_id', vales_salida: 'vale_id' }
+  movimientos: 'movimiento_id', empleados: 'responsable_id', categorias: 'categoria_id', ubicaciones: 'ubicacion_id', inventarios: 'inventario_id', proveedores: 'proveedor_id', consumibles: 'consumible_id', posiciones: 'posicion_id', ordenes_trabajo: 'ot_id', vales_salida: 'vale_id', licencias_software: 'licencia_id', reportes: 'reporte_id' }
 
 function partes(s: string) {
   const out: string[] = []; let d = 0, cur = ''
@@ -556,13 +565,14 @@ function proyectar(db: DB, fila: Row, sel: string): Row {
   const out: Row = items.includes('*') ? { ...fila } : {}
   for (const it of items) {
     if (it === '*') continue
-    const m = it.match(/^(?:(\w+):)?(\w+)\((.*)\)$/)
+    const m = it.match(/^(?:(\w+):)?(\w+)(?:!(\w+))?\((.*)\)$/)
     if (!m) { const al = it.match(/^(\w+):(\w+)$/); if (al) out[al[1]] = fila[al[2]]; else out[it] = fila[it]; continue }
-    const [, alias, target, inner] = m
+    const [, alias, target, hint, inner] = m
     const INVERSA: Record<string, string> = { kit_items: 'kit_id' }
     if (INVERSA[target]) { out[alias ?? target] = (db[target] ?? []).filter(r => r[INVERSA[target]] === fila.id).map(r => proyectar(db, r, inner)); continue }
     let fk = target.endsWith('_id') ? target : TABLA_FK[target]
     if (target === 'empleados' && !(fk in fila) && 'empleado_id' in fila) fk = 'empleado_id'
+    if (hint) { const base = hint.replace(/_fkey$/, ''); const col = Object.keys(fila).find(k => base.endsWith('_' + k)); if (col) fk = col }
     const tabla = target.endsWith('_id') ? FK[target] : target
     const rel = byId(db, tabla, fila[fk])
     out[alias ?? target] = rel ? proyectar(db, rel, inner) : null
@@ -630,6 +640,9 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'montajes') { base.montado_at ??= base.created_at; base.desmontado_at ??= null }
   if (t === 'inmuebles') { base.codigo ??= 'INM-' + String(db.inmuebles.length + 1).padStart(4, '0'); base.activo ??= true; base.servicios ??= []; base.updated_at = base.created_at }
   if (t === 'consumibles') { base.minimo ??= 0; base.unidad ??= 'pieza' }
+  if (t === 'licencias_software') { base.activo ??= true; base.renovacion_automatica ??= false; base.tipo ??= 'suscripcion' }
+  if (t === 'licencia_asignaciones') { base.asignada ??= new Date().toISOString().slice(0, 10); base.liberada ??= null }
+  if (t === 'bajas_activos') { base.folio ??= 'BAJ-' + String(db.bajas_activos.length + 1).padStart(5, '0'); base.estatus = 'pendiente'; base.fotos ??= []; base.solicitado_por ??= 'u-demo'; base.autorizado_por ??= null; base.autorizado_at ??= null; base.responsable_anterior ??= null }
   if (t === 'solicitudes') { base.folio ??= 'SOL-' + String(db.solicitudes.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente'; base.created_by ??= 'u-demo' }
   if (t === 'movimientos_consumible') { base.created_by ??= 'u-demo'; base.lote ??= null; base.caducidad ??= null; base.ot_id ??= null; base.vale_id ??= null; base.merma_id ??= null }
   if (t === 'mermas') { base.folio ??= 'MER-' + String(db.mermas.length + 1).padStart(5, '0'); base.estatus ??= 'pendiente'; base.solicitado_por ??= 'u-demo'; base.respuesta ??= null; base.resuelto_at ??= null }
@@ -732,6 +745,41 @@ export function instalarDemo(base: string) {
       const c = byId(db, 'categorias', a.categoria_id)
       return json(String(c?.nombre).toLowerCase().includes('maquinaria') ? 'maquinaria' : c?.es_vehiculo ? 'vehiculo' : 'otro')
     }
+    if (path.startsWith('/rest/v1/rpc/registrar_checklist_vehicular')) {
+      const a = byId(db, 'activos', body?.p_activo)
+      if (!a || a.estatus === 'baja') return json({ message: 'Vehículo no encontrado', code: 'P0001' }, 400)
+      const ult = Math.max(-1, ...db.lecturas.filter(l => l.activo_id === a.id && l.tipo === 'km').map(l => Number(l.valor)))
+      if (body.p_lectura != null && Number(body.p_lectura) < ult) return json({ message: `El kilometraje (${body.p_lectura}) es menor al último registrado (${ult})`, code: 'P0001' }, 400)
+      const resp = body.p_respuestas as { punto: string; ok: boolean; nota: string }[]; const golpes = (body.p_golpes ?? []) as { zona: string; nota: string }[]
+      const malas = resp.filter(r => !r.ok)
+      let rep: Row | null = null
+      if (malas.length || golpes.length) { rep = defaults(db, 'reportes', { activo_id: a.id, empresa_id: a.empresa_id, tipo: malas.length ? 'falla' : 'dano', prioridad: 'media', descripcion: 'Checklist vehicular: ' + [malas.map(m => m.punto + (m.nota ? ': ' + m.nota : '')).join('; '), golpes.length ? 'Golpes nuevos: ' + golpes.map(g => g.zona + (g.nota ? ': ' + g.nota : '')).join('; ') : ''].filter(Boolean).join(' · '), foto: null, reporta_nombre: body.p_operador, reporta_contacto: null, reportado_por: 'u-demo', resolucion: null, resuelto_at: null }); db.reportes.push(rep) }
+      db.checklists.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, operador: body.p_operador, empleado_id: body.p_empleado ?? null, lectura: body.p_lectura, combustible: body.p_combustible, respuestas: resp, golpes, fotos: body.p_fotos ?? [], todo_ok: !malas.length && !golpes.length, foto: null, reporte_id: rep?.id ?? null, registrado_por: 'u-demo', created_at: new Date().toISOString() })
+      if (body.p_lectura != null) db.lecturas.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, tipo: 'km', valor: Number(body.p_lectura), fecha: new Date().toISOString(), origen: 'checklist', registrado_por: 'u-demo', nota: null })
+      return json(rep?.folio ?? 'ok')
+    }
+    if (path.startsWith('/rest/v1/rpc/resolver_baja')) {
+      const b = db.bajas_activos.find(x => x.id === body?.p_id)
+      if (!b || b.estatus !== 'pendiente') return json({ message: 'Esta baja ya fue resuelta', code: 'P0001' }, 400)
+      const a = byId(db, 'activos', b.activo_id)
+      Object.assign(b, { estatus: body.p_autorizar ? 'autorizada' : 'rechazada', autorizado_por: 'u-demo', autorizado_at: new Date().toISOString(), respuesta: String(body.p_respuesta ?? '').trim() || null })
+      if (body.p_autorizar && a) { b.estatus_anterior = a.estatus; b.responsable_anterior = a.responsable_id; a.estatus = 'baja'; a.responsable_id = null
+        db.licencia_asignaciones.filter(x => x.activo_id === a.id && !x.liberada).forEach(x => { x.liberada = new Date().toISOString().slice(0, 10) }) }
+      return json(b.folio)
+    }
+    if (path.startsWith('/rest/v1/rpc/emitir_carta_no_adeudo')) {
+      const e = byId(db, 'empleados', body?.p_empleado)
+      if (!e) return json({ message: 'Empleado no encontrado', code: 'P0001' }, 400)
+      const n = db.activos.filter(a => a.responsable_id === e.id && a.estatus !== 'baja').length
+      if (n) return json({ message: `Todavía tiene ${n} activo(s) a su cargo`, code: 'P0001' }, 400)
+      const l = db.licencia_asignaciones.filter(x => x.empleado_id === e.id && !x.liberada).length
+      if (l) return json({ message: `Todavía tiene ${l} licencia(s) o cuenta(s) a su nombre`, code: 'P0001' }, 400)
+      const id = uid()
+      db.cartas_no_adeudo.push({ id, folio: 'CNA-' + String(db.cartas_no_adeudo.length + 1).padStart(5, '0'), empleado_id: e.id, empresa_id: e.empresa_id, devueltos: [], observaciones: String(body.p_observaciones ?? '').trim() || null, emitida_por: 'u-demo', created_at: new Date().toISOString() })
+      if (body.p_dar_baja) Object.assign(e, { activo: false, fecha_baja: new Date().toISOString().slice(0, 10), motivo_baja: body.p_motivo || null })
+      return json(id)
+    }
+    if (path.startsWith('/rest/v1/rpc/nombres_usuarios')) return json(db.perfiles.map(p => ({ id: p.id, nombre: p.nombre })))
     if (path.startsWith('/rest/v1/rpc/registrar_checklist')) {
       const a = db.activos.find(x => x.qr === body?.p_qr && x.estatus !== 'baja')
       if (!a) return json({ message: 'Etiqueta no reconocida', code: 'P0001' }, 400)

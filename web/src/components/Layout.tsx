@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -31,11 +31,14 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
   ] },
   { titulo: 'Control', items: [
     { to: '/mantenimiento', icono: Wrench, texto: 'Mantenimiento', alerta: 'mantenimiento' },
+    { to: '/checklist-vehicular', icono: Car, texto: 'Checklist vehicular' },
     { to: '/confiabilidad', icono: Activity, texto: 'Confiabilidad' },
     { to: '/vales', icono: Camion, texto: 'Vales de salida' },
     { to: '/vigencias', icono: FileClock, texto: 'Vigencias', alerta: 'vigencias' },
     { to: '/prestamos', icono: CalendarClock, texto: 'Préstamos', alerta: 'prestamos' },
     { to: '/reportes', icono: Siren, texto: 'Reportes de falla', alerta: 'reportes' },
+    { to: '/licencias', icono: KeyRound, texto: 'Licencias y cuentas' },
+    { to: '/bajas', icono: Archive, texto: 'Bajas de activos' },
     { to: '/inventarios', icono: ClipboardCheck, texto: 'Inventario físico' },
     { to: '/conteo-ciclico', icono: RefreshCcw, texto: 'Conteo cíclico' },
     { to: '/posiciones', icono: Grid3x3, texto: 'Posiciones de almacén' },
@@ -147,6 +150,7 @@ export default function Layout() {
 
   const todos = useMemo(() => [...grupos, ...(puedeEditar ? [{ titulo: 'Administración', items: [
     { to: '/actividades', icono: CalendarCheck, texto: 'Actividades' },
+    { to: '/indicadores', icono: BarChart3, texto: 'Indicadores' },
     ...(esAdmin ? [{ to: '/usuarios', icono: UserCog, texto: 'Usuarios' }] : []),
     ...(esSuper ? [{ to: '/admin', icono: ShieldAlert, texto: 'Panel de administrador' }] : []),
   ] }] : [])], [puedeEditar, esAdmin, esSuper])

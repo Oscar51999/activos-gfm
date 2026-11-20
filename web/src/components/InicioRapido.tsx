@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Zap, History, Bell, Settings2, Check, PackagePlus, ScanLine, ClipboardSignature, Boxes, Users, Wrench, BookOpenText, Map as MapaIcono, Tags, CalendarCheck, Landmark, FileClock, Siren,
-  Sparkles, Inbox, Warehouse, Truck, Receipt, type LucideIcon,
+  Sparkles, Inbox, Warehouse, Truck, Receipt, Car, KeyRound, Archive, BarChart3, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -28,6 +28,10 @@ const ACCESOS: Acceso[] = [
   { to: '/solicitudes', texto: 'Solicitudes', icono: Inbox },
   { to: '/almacen', texto: 'Almacén', icono: Warehouse },
   { to: '/vales', texto: 'Vales de salida', icono: Truck },
+  { to: '/checklist-vehicular', texto: 'Checklist vehicular', icono: Car },
+  { to: '/licencias', texto: 'Licencias y cuentas', icono: KeyRound },
+  { to: '/bajas', texto: 'Bajas de activos', icono: Archive },
+  { to: '/indicadores', texto: 'Indicadores', icono: BarChart3, editar: true },
 ]
 const DEFECTO = ['/alta', '/escanear', '/resguardos/nuevo', '/activos', '/mantenimiento', '/actividades']
 
@@ -55,16 +59,20 @@ export default function InicioRapido() {
       supabase.from('reportes').select('id,folio,descripcion,created_at').order('created_at', { ascending: false }).limit(3),
       puedeEditar && perfil ? supabase.from('actividades').select('id,titulo,fecha_fin,estatus').eq('responsable_id', perfil.id).neq('estatus', 'listo').not('fecha_fin', 'is', null).lte('fecha_fin', en7).order('fecha_fin').limit(4) : Promise.resolve({ data: [] }),
       supabase.from('inmueble_pagos').select('id,concepto,fecha_limite,inmueble_id,inmuebles(nombre)').eq('pagado', false).lte('fecha_limite', en7).order('fecha_limite').limit(4),
-    ]).then(([a, m, r, act, pg]) => {
+      supabase.from('v_licencias').select('id,nombre,fecha_vencimiento').eq('activo', true).not('fecha_vencimiento', 'is', null).lte('dias_restantes', 30).order('fecha_vencimiento').limit(4),
+      puedeEditar ? supabase.from('bajas_activos').select('id,folio,created_at,activos(descripcion)').eq('estatus', 'pendiente').order('created_at', { ascending: false }).limit(3) : Promise.resolve({ data: [] }),
+    ]).then(([a, m, r, act, pg, lic, bj]) => {
       const n: Novedad[] = [
         ...((a.data ?? []) as { id: string; codigo: string; descripcion: string; created_at: string }[]).map(x => ({ t: x.created_at, texto: `Alta: ${x.descripcion}`, sub: x.codigo, to: `/activos/${x.id}`, icono: PackagePlus, color: 'text-emerald-700 bg-emerald-50' })),
         ...((m.data ?? []) as { id: string; folio: string; tipo: string; fecha: string; recibe_nombre: string | null }[]).map(x => ({ t: x.fecha, texto: `${x.tipo === 'asignacion' ? 'Asignación' : x.tipo === 'devolucion' ? 'Devolución' : 'Traspaso'}${x.recibe_nombre ? ` a ${x.recibe_nombre}` : ''}`, sub: x.folio, to: `/resguardos/${x.id}`, icono: ClipboardSignature, color: 'text-sky-700 bg-sky-50' })),
         ...((r.data ?? []) as { id: string; folio: string; descripcion: string; created_at: string }[]).map(x => ({ t: x.created_at, texto: `Falla: ${x.descripcion}`, sub: x.folio, to: '/reportes', icono: Siren, color: 'text-red-700 bg-red-50' })),
         ...((act.data ?? []) as { id: string; titulo: string; fecha_fin: string }[]).map(x => ({ t: x.fecha_fin + 'T09:00', texto: `Tu actividad: ${x.titulo}`, sub: `entrega ${new Date(x.fecha_fin + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: '/actividades', icono: CalendarCheck, color: 'text-violet-700 bg-violet-50' })),
         ...((pg.data ?? []) as unknown as { id: string; concepto: string; fecha_limite: string; inmueble_id: string; inmuebles: { nombre: string } | null }[]).map(x => ({ t: x.fecha_limite + 'T09:00', texto: `Pagar ${x.concepto}`, sub: `${x.inmuebles?.nombre ?? ''} · vence ${new Date(x.fecha_limite + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: `/inmuebles/${x.inmueble_id}`, icono: Receipt, color: 'text-amber-800 bg-amber-50' })),
+        ...((lic.data ?? []) as { id: string; nombre: string; fecha_vencimiento: string }[]).map(x => ({ t: x.fecha_vencimiento + 'T09:00', texto: `Renovar ${x.nombre}`, sub: `licencia · vence ${new Date(x.fecha_vencimiento + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: `/licencias?id=${x.id}`, icono: KeyRound, color: 'text-amber-800 bg-amber-50' })),
+        ...((bj.data ?? []) as unknown as { id: string; folio: string; created_at: string; activos: { descripcion: string } | null }[]).map(x => ({ t: x.created_at, texto: `Autorizar baja: ${x.activos?.descripcion ?? ''}`, sub: x.folio, to: '/bajas', icono: Archive, color: 'text-red-700 bg-red-50' })),
       ]
       // primero lo que viene (actividades y pagos por vencer), luego lo más reciente
-      const futuro = n.filter(x => new Date(x.t).getTime() > Date.now() - 864e5 && (x.icono === CalendarCheck || x.icono === Receipt))
+      const futuro = n.filter(x => new Date(x.t).getTime() > Date.now() - 864e5 && (x.icono === CalendarCheck || x.icono === Receipt || x.icono === KeyRound || x.icono === Archive))
       const pasado = n.filter(x => !futuro.includes(x)).sort((a, b) => b.t.localeCompare(a.t))
       setNovedades([...futuro, ...pasado].slice(0, 8))
     })

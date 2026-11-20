@@ -47,6 +47,11 @@ import Bitacoras from './pages/Bitacoras'
 import AltaInteligente from './pages/AltaInteligente'
 import MarcasMenu from './pages/MarcasMenu'
 import Actividades from './pages/Actividades'
+import Licencias from './pages/Licencias'
+import Bajas, { ActaBaja } from './pages/Bajas'
+import SalidaEmpleado from './pages/SalidaEmpleado'
+import ChecklistVehicular from './pages/ChecklistVehicular'
+import Indicadores from './pages/Indicadores'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -178,6 +183,12 @@ function Rutas() {
         <Route path="bitacoras/:id" element={<Bitacoras />} />
         <Route path="admin" element={<Admin />} />
         <Route path="actividades" element={<Actividades />} />
+        <Route path="licencias" element={<Licencias />} />
+        <Route path="bajas" element={<Bajas />} />
+        <Route path="bajas/:id" element={<ActaBaja />} />
+        <Route path="empleados/:id/salida" element={<SalidaEmpleado />} />
+        <Route path="checklist-vehicular" element={<ChecklistVehicular />} />
+        <Route path="indicadores" element={<Indicadores />} />
         {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren } from 'lucide-react'
+import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car } from 'lucide-react'
 import ReportarFalla, { TIPOS_REPORTE, type TipoReporte } from '../components/ReportarFalla'
 import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
@@ -137,6 +137,8 @@ export default function ActivoDetalle() {
           <button className="btn-sec" onClick={() => setReportar(true)}><Siren size={16} />Reportar problema</button>
           <Link className="btn-sec" to={`/etiquetas?ids=${a.id}`}><Printer size={16} />Etiqueta</Link>
           {puedeEditar && a.estatus !== 'asignado' && a.estatus !== 'baja' && <Link className="btn-sec" to={`/traspasos?activo=${a.id}`}><Building2 size={16} />Otra empresa</Link>}
+          {a.es_vehiculo && a.estatus !== 'baja' && <Link className="btn-sec" to={`/checklist-vehicular?activo=${a.id}`}><Car size={16} />Checklist</Link>}
+          {puedeResguardar && a.estatus !== 'baja' && <Link className="btn-sec hover:!text-red-700" to={`/bajas?activo=${a.id}`}><Archive size={16} />Dar de baja</Link>}
           {puedeEditar && <Link className="btn-primario" to={`/activos/${a.id}/editar`}><Pencil size={16} />Editar</Link>}
           {esAdmin && <button className="btn-peligro" onClick={borrar}><Trash2 size={16} /></button>}
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardSignature, Undo2, Printer, Pencil, Mail, Phone, Hash, ArrowLeftRight, History, PenLine, Package, ShieldCheck, UserMinus } from 'lucide-react'
+import { ArrowLeft, ClipboardSignature, Undo2, Printer, Pencil, Mail, Phone, Hash, ArrowLeftRight, History, PenLine, Package, ShieldCheck, UserMinus, FileCheck2 } from 'lucide-react'
 import { supabase, mensajeError, type Estatus, type TipoMov } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { nombreEmpleado } from '../lib/hooks'
@@ -99,6 +99,7 @@ export function EmpleadoDetalle() {
               {acts.length > 0 && <Link to={`/empleados/${e.id}/resguardo`} className="btn-sec"><Printer size={16} />Resguardo vigente</Link>}
               {puedeResguardar && <Link to={`/kits?empleado=${e.id}`} className="btn-sec"><Package size={16} />Entregar kit</Link>}
               {puedeResguardar && acts.length > 0 && <button className="btn-sec" onClick={() => setConfirmar(true)}><ShieldCheck size={16} />Pedir confirmación</button>}
+              {puedeResguardar && <Link to={`/empleados/${e.id}/salida`} className="btn-sec"><FileCheck2 size={16} />Salida / no adeudo</Link>}
               {puedeEditar && <button className="btn-sec" onClick={() => setEditar(true)}><Pencil size={16} />Editar</button>}
               {puedeEditar && e.activo !== false && <button className="btn-sec hover:!border-red-200 hover:!text-red-700" onClick={() => setBaja(true)}><UserMinus size={16} />Dar de baja</button>}
             </div>
