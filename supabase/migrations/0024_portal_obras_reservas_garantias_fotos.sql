@@ -211,4 +211,17 @@ $$;
 grant execute on function public.mis_licencias() to authenticated;
 revoke execute on function public.mis_licencias() from anon;
 
+-- Quitar el permiso por defecto a PUBLIC (aplicado aparte el 22 nov)
+revoke execute on function public.mis_activos() from public, anon;
+revoke execute on function public.mis_resguardos_por_firmar() from public, anon;
+revoke execute on function public.mis_licencias() from public, anon;
+revoke execute on function public.fotos_movimiento(uuid, jsonb) from public, anon;
+revoke execute on function privado.mi_empleado() from public, anon;
+revoke execute on function privado.restringido_obras() from public, anon;
+revoke execute on function privado.ve_activo(uuid, uuid) from public, anon;
+grant execute on function public.mis_activos() to authenticated;
+grant execute on function public.mis_resguardos_por_firmar() to authenticated;
+grant execute on function public.mis_licencias() to authenticated;
+grant execute on function public.fotos_movimiento(uuid, jsonb) to authenticated;
+
 select 'ok' as resultado;
