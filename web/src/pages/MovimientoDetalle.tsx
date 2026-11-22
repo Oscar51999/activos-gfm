@@ -12,7 +12,7 @@ import { LogoFirme } from '../components/Logo'
 import { PrestamoBadge, fechaCorta } from '../components/Prestamo'
 import EnviarEnlace, { urlPublica } from '../components/Enlace'
 
-type Linea = { activo_id: string; estado_fisico: string | null; estatus_anterior: string
+type Linea = { activo_id: string; estado_fisico: string | null; fotos?: string[]; estatus_anterior: string
   activos: { codigo: string; descripcion: string; serie: string | null; numero_economico: string | null; marcas: { nombre: string } | null; modelos: { nombre: string } | null } | null
   resp_ant: { nombres: string; apellidos: string | null } | null; ubic_ant: { nombre: string } | null }
 type Mov = { id: string; folio: string; tipo: TipoMov; fecha: string; empresa_id: string; notas: string | null; entrega_nombre: string | null; recibe_nombre: string | null
@@ -52,7 +52,7 @@ export default function MovimientoDetalle() {
   async function cargar() {
     const [rm, rl] = await Promise.all([
       supabase.from('movimientos').select('*, empresas(nombre,razon_social), empleado:a_empleado_id(nombres,apellidos,puesto), ubicacion:a_ubicacion_id(nombre)').eq('id', id!).single(),
-      supabase.from('movimiento_activos').select('activo_id,estado_fisico,estatus_anterior, activos(codigo,descripcion,serie,numero_economico,marcas(nombre),modelos(nombre)), resp_ant:responsable_anterior_id(nombres,apellidos), ubic_ant:ubicacion_anterior_id(nombre)').eq('movimiento_id', id!),
+      supabase.from('movimiento_activos').select('activo_id,estado_fisico,fotos,estatus_anterior, activos(codigo,descripcion,serie,numero_economico,marcas(nombre),modelos(nombre)), resp_ant:responsable_anterior_id(nombres,apellidos), ubic_ant:ubicacion_anterior_id(nombre)').eq('movimiento_id', id!),
     ])
     if (rm.error) { setError(mensajeError(rm.error)); return }
     const mov = rm.data as unknown as Mov
@@ -188,6 +188,15 @@ export default function MovimientoDetalle() {
           </tbody>
         </table></div>
         <p className="mb-6 text-xs text-stone-500">Total: {lineas.length} activo(s).</p>
+        {lineas.some(l => l.fotos?.length) && (
+          <div className="mb-6">
+            <p className="mb-2 font-semibold">Fotos del estado {m.tipo === 'devolucion' ? 'al recibir' : 'al entregar'}</p>
+            {lineas.filter(l => l.fotos?.length).map(l => (
+              <div key={l.activo_id} className="mb-2"><p className="mb-1 text-xs"><span className="font-mono">{l.activos?.codigo}</span> · {l.activos?.descripcion}</p>
+                <div className="grid grid-cols-4 gap-2">{l.fotos!.map((f, i) => <img key={i} src={f} alt="" className="aspect-[4/3] w-full rounded object-cover ring-1 ring-stone-300" />)}</div></div>
+            ))}
+          </div>
+        )}
 
         {m.fecha_devolucion && m.tipo !== 'devolucion' && <p className="mb-3 rounded border border-stone-300 px-3 py-2"><b>Préstamo temporal.</b> Quien recibe se compromete a devolver estos activos a más tardar el <b>{fechaCorta(m.fecha_devolucion)}</b>.</p>}
         {m.notas && <p className="mb-6"><b>Notas:</b> {m.notas}</p>}

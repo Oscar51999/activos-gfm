@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff, HardHat } from 'lucide-react'
 import { supabase, ROLES, mensajeError, type Rol } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
@@ -16,18 +16,25 @@ export default function Usuarios() {
   const empleados = useLista('empleados', 'id,nombres,apellidos,empresa_id', 'nombres')
   const [filas, setFilas] = useState<Perfil[] | null>(null)
   const [accesos, setAccesos] = useState<Record<string, string[]>>({})
-  const [edit, setEdit] = useState<(Perfil & { empresas: string[] }) | null>(null)
+  const [obrasDe, setObrasDe] = useState<Record<string, string[]>>({})
+  const ubicaciones = useLista('ubicaciones', 'id,nombre,empresa_id,tipo')
+  const [qObra, setQObra] = useState('')
+  const [edit, setEdit] = useState<(Perfil & { empresas: string[]; obras: string[]; limitar: boolean }) | null>(null)
   const [error, setError] = useState('')
 
   const cargar = useCallback(async () => {
-    const [rp, ra] = await Promise.all([
+    const [rp, ra, ro] = await Promise.all([
       supabase.from('perfiles').select('*').order('activo').order('created_at', { ascending: false }),
       supabase.from('perfil_empresas').select('perfil_id,empresa_id'),
+      supabase.from('perfil_ubicaciones').select('perfil_id,ubicacion_id'),
     ])
     setFilas((rp.data as Perfil[]) ?? [])
     const m: Record<string, string[]> = {}
     ;((ra.data as { perfil_id: string; empresa_id: string }[]) ?? []).forEach(r => { (m[r.perfil_id] ??= []).push(r.empresa_id) })
     setAccesos(m)
+    const o: Record<string, string[]> = {}
+    ;((ro.data as { perfil_id: string; ubicacion_id: string }[]) ?? []).forEach(r => { (o[r.perfil_id] ??= []).push(r.ubicacion_id) })
+    setObrasDe(o)
   }, [])
   useEffect(() => { cargar() }, [cargar])
 
@@ -47,6 +54,11 @@ export default function Usuarios() {
       const r = await supabase.from('perfil_empresas').insert(poner.map(empresa_id => ({ perfil_id: edit.id, empresa_id })))
       if (r.error) { setError(mensajeError(r.error)); return }
     }
+    // Obras: si "limitar" está apagado se borran todas (sin restricción)
+    const obrasAntes = obrasDe[edit.id] ?? [], obrasAhora = edit.limitar ? edit.obras : []
+    const qo = obrasAntes.filter(x => !obrasAhora.includes(x)), po = obrasAhora.filter(x => !obrasAntes.includes(x))
+    if (qo.length) await supabase.from('perfil_ubicaciones').delete().eq('perfil_id', edit.id).in('ubicacion_id', qo)
+    if (po.length) { const r = await supabase.from('perfil_ubicaciones').insert(po.map(ubicacion_id => ({ perfil_id: edit.id, ubicacion_id }))); if (r.error) { setError(mensajeError(r.error)); return } }
     setEdit(null); cargar()
   }
 
@@ -72,7 +84,7 @@ export default function Usuarios() {
                 <td className="px-4 py-2.5 text-xs">{f.todas_empresas || f.rol === 'admin' ? 'Todas' : (accesos[f.id] ?? []).map(id => empresas.items.find(e => e.id === id)?.nombre).filter(Boolean).join(', ') || <span className="text-rojo">Ninguna</span>}</td>
                 <td className="px-4 py-2.5">{f.activo ? <span className="text-emerald-700">Activo</span> : <span className="font-medium text-amber-700">Pendiente</span>}</td>
                 <td className="whitespace-nowrap px-2">
-                  <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Editar permisos" title="Editar rol y empresas" onClick={() => { setError(''); setEdit({ ...f, empresas: accesos[f.id] ?? [] }) }}><Pencil size={15} /></button>
+                  <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Editar permisos" title="Editar rol y empresas" onClick={() => { setError(''); setEdit({ ...f, empresas: accesos[f.id] ?? [], obras: obrasDe[f.id] ?? [], limitar: (obrasDe[f.id] ?? []).length > 0 }) }}><Pencil size={15} /></button>
                   {esSuper && f.id !== yo?.id && <>
                     <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Poner contraseña" title="Poner contraseña nueva" onClick={() => setClave(f)}><KeyRound size={15} /></button>
                     <button className="rounded p-1.5 text-stone-500 hover:bg-red-50 hover:text-red-700" aria-label="Eliminar usuario" title="Eliminar usuario" onClick={() => setBorrar(f)}><Trash2 size={15} /></button>
@@ -122,6 +134,24 @@ export default function Usuarios() {
                     </div>
                   )}
                 </Campo>
+              )}
+              {edit.rol !== 'admin' && (
+                <div className="rounded-xl border border-stone-200 p-3 sm:col-span-2">
+                  <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={edit.limitar} onChange={e => setEdit({ ...edit, limitar: e.target.checked })} /><HardHat size={15} className="text-marca" />Limitar a ciertas obras</label>
+                  <p className="mt-1 text-xs text-stone-500">Solo verá y moverá el equipo que está en esas obras (y el que tenga a su nombre). Ideal para residentes.</p>
+                  {edit.limitar && <>
+                    <input className="campo mt-2 !py-1.5 text-sm" placeholder="Buscar obra o ubicación…" value={qObra} onChange={e => setQObra(e.target.value)} />
+                    <div className="mt-2 grid max-h-48 gap-1.5 overflow-y-auto sm:grid-cols-2">
+                      {ubicaciones.items.filter(u => (edit.todas_empresas || edit.empresas.includes(String(u.empresa_id))) && (!qObra || u.nombre.toLowerCase().includes(qObra.toLowerCase()))).map(u => (
+                        <label key={u.id} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={edit.obras.includes(u.id)} onChange={e => setEdit({ ...edit, obras: e.target.checked ? [...edit.obras, u.id] : edit.obras.filter(x => x !== u.id) })} />
+                          <span className="truncate">{u.nombre}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-xs text-marca">{edit.obras.length} obra(s) elegidas</p>
+                  </>}
+                </div>
               )}
             </div>
             <p className="text-xs text-stone-500"><b>Administrador:</b> todo, incluidos usuarios y permisos. <b>Supervisor:</b> todo lo demás (altas, edición de activos y catálogos, resguardos). <b>Almacén:</b> resguardos, préstamos, vales, inventarios y fallas, sin dar de alta ni editar activos. <b>Solo consulta:</b> ve la información de sus empresas.</p>

@@ -8,7 +8,8 @@ import { useLista, nombreEmpleado } from '../lib/hooks'
 import { Encabezado, Campo, Aviso, EstatusBadge } from '../components/ui'
 import FirmaPad, { type FirmaPadRef } from '../components/FirmaPad'
 import { revisarRequisitos, type Falta } from '../lib/requisitos'
-import { IdCard } from 'lucide-react'
+import { IdCard, Camera } from 'lucide-react'
+import { fotoADataUrl } from '../components/Buscadores'
 
 type Act = { id: string; codigo: string; descripcion: string; estatus: Estatus; serie: string | null; numero_economico: string | null
   responsable: string | null; ubicacion: string | null; empresa_id: string; marca: string | null; modelo: string | null }
@@ -37,6 +38,7 @@ export default function MovimientoNuevo() {
   const [empresa, setEmpresa] = useState('')
   const [sel, setSel] = useState<Act[]>([])
   const [estados, setEstados] = useState<Record<string, string>>({})
+  const [fotosEstado, setFotosEstado] = useState<Record<string, string[]>>({})
   const [busca, setBusca] = useState('')
   const [resultados, setResultados] = useState<Act[]>([])
   const [aEmpleado, setAEmpleado] = useState('')
@@ -141,6 +143,8 @@ export default function MovimientoNuevo() {
       }
       if (fechaDev && tipo !== 'devolucion') cambios.fecha_devolucion = fechaDev
       if (Object.keys(cambios).length) await supabase.from('movimientos').update(cambios).eq('id', id)
+      const conFotos = Object.fromEntries(Object.entries(fotosEstado).filter(([k, v]) => v.length && sel.some(a => a.id === k)))
+      if (Object.keys(conFotos).length) await supabase.rpc('fotos_movimiento', { p_mov: id, p_fotos: conFotos })
       nav(`/resguardos/${id}`, { replace: true })
     } catch (err) {
       setError(mensajeError(err)); setGuardando(false)
@@ -179,8 +183,15 @@ export default function MovimientoNuevo() {
                       <p className="truncate text-sm font-medium"><span className="font-mono text-xs text-stone-500">{a.codigo}</span> · {a.descripcion}</p>
                       <p className="truncate text-xs text-stone-500">{[a.serie && `S/N ${a.serie}`, a.responsable, a.ubicacion].filter(Boolean).join(' · ')}</p>
                     </div>
-                    <input className="campo py-1.5 text-xs" placeholder="Estado físico (opcional)" value={estados[a.id] ?? ''}
-                      onChange={e => setEstados(s => ({ ...s, [a.id]: e.target.value }))} />
+                    <div className="flex items-center gap-1.5">
+                      <input className="campo py-1.5 text-xs" placeholder="Estado físico (opcional)" value={estados[a.id] ?? ''}
+                        onChange={e => setEstados(s => ({ ...s, [a.id]: e.target.value }))} />
+                      <label className="relative grid h-8 w-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-stone-300 text-stone-500 hover:border-marca hover:text-marca" title="Fotos del estado (hasta 4)">
+                        <Camera size={15} />{(fotosEstado[a.id]?.length ?? 0) > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-marca px-1 text-[10px] font-bold text-[#120D04]">{fotosEstado[a.id].length}</span>}
+                        <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={async e => { const fs = Array.from(e.target.files ?? []); e.target.value = ''; const urls = await Promise.all(fs.map(f => fotoADataUrl(f, 900, 0.7))); setFotosEstado(s => ({ ...s, [a.id]: [...(s[a.id] ?? []), ...urls].slice(0, 4) })) }} />
+                      </label>
+                    </div>
+                    {(fotosEstado[a.id]?.length ?? 0) > 0 && <div className="flex gap-1.5 sm:col-span-3">{fotosEstado[a.id].map((f, k) => <span key={k} className="relative"><img src={f} alt="" className="h-14 w-16 rounded-md object-cover" /><button type="button" className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-black/70 text-white" onClick={() => setFotosEstado(s => ({ ...s, [a.id]: s[a.id].filter((_, j) => j !== k) }))} aria-label="Quitar foto"><X size={10} /></button></span>)}</div>}
                     <button type="button" className="justify-self-end rounded p-1 text-stone-400 hover:bg-stone-100 hover:text-rojo" aria-label="Quitar"
                       onClick={() => setSel(s => s.filter(x => x.id !== a.id))}><X size={16} /></button>
                   </li>

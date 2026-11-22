@@ -324,6 +324,7 @@ export function crearDatos() {
     DI('di17', 'in4', 'e5', 'escritura', null, {}), DI('di18', 'in4', 'e5', 'predial', 88, {}), DI('di19', 'in4', 'e5', 'constancias', 40, { subtipo: 'Libertad de gravámenes' }),
   )
 
+  ;(activos.find(a => a.id === 'a1') as Row).reservable = true; (activos.find(a => a.id === 'a2') as Row).reservable = true; (activos.find(a => a.id === 'a1') as Row).garantia_hasta = new Date(Date.now() + 20 * 864e5).toISOString().slice(0, 10)
   ;(activos.find(a => a.id === 'a31') as Row).montado_en = 'a4'; (activos.find(a => a.id === 'a32') as Row).montado_en = 'a4'
   const montajes = [
     { id: uid(), componente_id: 'a31', equipo_id: 'a4', empresa_id: 'e2', montado_at: hace(25), desmontado_at: null, lectura: 3300, notas: 'Para demolición en VG-069', created_by: 'u-demo' },
@@ -412,7 +413,7 @@ export function crearDatos() {
     CCX('e3', '406', 'SERVICIOS ZONA LA PAZ'), CCX('e4', '601', 'VENTAS Y COMERCIALIZACION'), CCX('e5', '705', 'SANTA CRUZ STORAGE'), CCX('e6', '301', 'CASA CLUB'), CCX('e8', '201', 'VENTA Y COMERCIALIZACIÓN INMOBILIARIA'),
   ]
   const perfiles = [
-    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: null, created_at: hace(60), es_super: true, puesto: 'Departamento de TICS', telefono: null, foto_path: null, preferencias: {} },
+    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: 'em1', created_at: hace(60), es_super: true, puesto: 'Departamento de TICS', telefono: null, foto_path: null, preferencias: {} },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
     { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
   ]
@@ -427,7 +428,7 @@ export function crearDatos() {
       { id: 'ip2', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Internet', tipo: 'internet', proveedor: 'Telmex', cuenta: '6121234567', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 4 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: 'Domiciliado', created_at: hace(30) },
       { id: 'ip3', inmueble_id: 'in2', empresa_id: 'e2', concepto: 'Agua', tipo: 'agua', proveedor: 'OOMSAPAS', cuenta: '88231', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 12 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
       { id: 'ip4', inmueble_id: 'in3', empresa_id: 'e1', concepto: 'Predial', tipo: 'predial', proveedor: 'Municipio', cuenta: '101-001-045', periodicidad: 'anual', monto: null, fecha_limite: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
-    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], licencias_software: [
+    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], reservas: [], perfil_ubicaciones: [], licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
       { id: 'lic2', empresa_id: 'e1', nombre: 'ESET Endpoint Security', fabricante: 'ESET', tipo: 'suscripcion', asientos: 25, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10), renovacion_automatica: true, proveedor: null, referencia: null, notas: null, activo: true, created_at: hace(60) },
     ], licencia_asignaciones: [{ id: 'la1', licencia_id: 'lic1', empleado_id: 'em2', activo_id: null, cuenta: 'laviles@grupofirme.mx', asignada: hace(30).slice(0, 10), liberada: null, notas: null, created_at: hace(30) }], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
@@ -528,6 +529,9 @@ function vista(db: DB, t: string): Row[] {
       m.set(k, r)
     }
     return [...m.values()]
+  }
+  if (t === 'v_reservas') {
+    return db.reservas.map(r => { const a = byId(db, 'activos', r.activo_id); return { ...r, codigo: a?.codigo, descripcion: a?.descripcion, foto_principal: a?.foto_principal, modelo_foto: byId(db, 'modelos', a?.modelo_id)?.foto_path ?? null, categoria: byId(db, 'categorias', a?.categoria_id)?.nombre, reservo: byId(db, 'perfiles', r.perfil_id)?.nombre ?? null } })
   }
   if (t === 'v_servicios_inmuebles') {
     const h0 = new Date(); h0.setHours(0, 0, 0, 0)
@@ -650,6 +654,7 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'montajes') { base.montado_at ??= base.created_at; base.desmontado_at ??= null }
   if (t === 'inmuebles') { base.codigo ??= 'INM-' + String(db.inmuebles.length + 1).padStart(4, '0'); base.activo ??= true; base.servicios ??= []; base.updated_at = base.created_at }
   if (t === 'consumibles') { base.minimo ??= 0; base.unidad ??= 'pieza' }
+  if (t === 'reservas') { base.estatus ??= 'activa'; base.perfil_id ??= 'u-demo' }
   if (t === 'licencias_software') { base.activo ??= true; base.renovacion_automatica ??= false; base.tipo ??= 'suscripcion' }
   if (t === 'licencia_asignaciones') { base.asignada ??= new Date().toISOString().slice(0, 10); base.liberada ??= null }
   if (t === 'bajas_activos') { base.folio ??= 'BAJ-' + String(db.bajas_activos.length + 1).padStart(5, '0'); base.estatus = 'pendiente'; base.fotos ??= []; base.solicitado_por ??= 'u-demo'; base.autorizado_por ??= null; base.autorizado_at ??= null; base.responsable_anterior ??= null }
@@ -788,6 +793,18 @@ export function instalarDemo(base: string) {
       db.cartas_no_adeudo.push({ id, folio: 'CNA-' + String(db.cartas_no_adeudo.length + 1).padStart(5, '0'), empleado_id: e.id, empresa_id: e.empresa_id, devueltos: [], observaciones: String(body.p_observaciones ?? '').trim() || null, emitida_por: 'u-demo', created_at: new Date().toISOString() })
       if (body.p_dar_baja) Object.assign(e, { activo: false, fecha_baja: new Date().toISOString().slice(0, 10), motivo_baja: body.p_motivo || null })
       return json(id)
+    }
+    if (path.startsWith('/rest/v1/rpc/mis_activos')) {
+      return json(db.activos.filter(a => a.responsable_id === 'em1' && a.estatus !== 'baja').map(a => ({ id: a.id, codigo: a.codigo, qr: a.qr, descripcion: a.descripcion, serie: a.serie, categoria: byId(db, 'categorias', a.categoria_id)?.nombre, marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: byId(db, 'modelos', a.modelo_id)?.nombre ?? null,
+        ubicacion: byId(db, 'ubicaciones', a.ubicacion_id)?.nombre ?? null, estatus: a.estatus, foto_principal: a.foto_principal, modelo_foto: byId(db, 'modelos', a.modelo_id)?.foto_path ?? null, empresa: byId(db, 'empresas', a.empresa_id)?.nombre_corto, garantia_hasta: a.garantia_hasta ?? null, desde: a.fecha_alta, folio: null })))
+    }
+    if (path.startsWith('/rest/v1/rpc/mis_resguardos_por_firmar')) {
+      return json(db.movimientos.filter(m => m.a_empleado_id === 'em1' && !m.cancelado && !m.firma_recibe && m.tipo !== 'devolucion').map(m => { m.token_firma ??= uid(); return { id: m.id, folio: m.folio, fecha: m.fecha, tipo: m.tipo, activos: db.movimiento_activos.filter(x => x.movimiento_id === m.id).length, token: m.token_firma } }))
+    }
+    if (path.startsWith('/rest/v1/rpc/mis_licencias')) return json(db.licencia_asignaciones.filter(x => x.empleado_id === 'em1' && !x.liberada).map(x => { const l = byId(db, 'licencias_software', x.licencia_id); return { id: x.id, licencia: l?.nombre, cuenta: x.cuenta, asignada: x.asignada, vence: l?.fecha_vencimiento } }))
+    if (path.startsWith('/rest/v1/rpc/fotos_movimiento')) {
+      for (const [k, v] of Object.entries(body?.p_fotos ?? {})) { const x = db.movimiento_activos.find(r => r.movimiento_id === body.p_mov && r.activo_id === k); if (x) x.fotos = v }
+      return json(1)
     }
     if (path.startsWith('/rest/v1/rpc/nombres_usuarios')) return json(db.perfiles.map(p => ({ id: p.id, nombre: p.nombre })))
     if (path.startsWith('/rest/v1/rpc/registrar_checklist')) {

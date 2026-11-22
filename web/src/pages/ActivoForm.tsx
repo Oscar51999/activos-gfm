@@ -11,6 +11,7 @@ type Activo = {
   id?: string; empresa_id: string; categoria_id: string; descripcion: string; marca_id: string | null; modelo_id: string | null
   serie: string | null; numero_economico: string | null; ubicacion_id: string | null; responsable_id: string | null
   estatus: Estatus; valor_referencia: number | string | null; fecha_alta: string; notas: string | null; foto_principal?: string | null
+  garantia_hasta?: string | null; garantia_proveedor?: string | null; garantia_notas?: string | null; reservable?: boolean
 }
 type Vehiculo = { placa: string | null; anio: number | string | null; color: string | null; cilindros: number | string | null; combustible: string | null
   transmision: string | null; capacidad_tanque: number | string | null; pasajeros: number | string | null; kilometraje: number | string | null
@@ -105,6 +106,7 @@ export default function ActivoForm() {
       marca_id: a!.marca_id || null, modelo_id: a!.modelo_id || null, serie: limpio(a!.serie), numero_economico: limpio(a!.numero_economico),
       ubicacion_id: a!.ubicacion_id || null, responsable_id: a!.responsable_id || null, estatus: a!.estatus,
       valor_referencia: num(a!.valor_referencia), fecha_alta: a!.fecha_alta, notas: limpio(a!.notas),
+      garantia_hasta: a!.garantia_hasta || null, garantia_proveedor: limpio(a!.garantia_proveedor ?? null), garantia_notas: limpio(a!.garantia_notas ?? null), reservable: !!a!.reservable,
     }
     try {
       let activoId = id
@@ -265,6 +267,16 @@ export default function ActivoForm() {
               <Campo label="Fecha de alta"><input className="campo" type="date" required value={a.fecha_alta} onChange={e => set('fecha_alta', e.target.value)} /></Campo>
               <Campo label="Valor de referencia (MXN)"><input className="campo" type="number" step="0.01" min={0} value={a.valor_referencia ?? ''} onChange={e => set('valor_referencia', e.target.value)} /></Campo>
             </div>
+          </section>
+
+          <section className="tarjeta p-5">
+            <h2 className="mb-4 font-semibold">Garantía y uso compartido</h2>
+            <div className="space-y-4">
+              <Campo label="Garantía hasta"><input className="campo" type="date" value={a.garantia_hasta ?? ''} onChange={e => set('garantia_hasta', e.target.value || null)} /></Campo>
+              <Campo label="Con quién se hace válida"><input className="campo" value={a.garantia_proveedor ?? ''} onChange={e => set('garantia_proveedor', e.target.value)} placeholder="Dell, distribuidor, agencia…" /></Campo>
+              <Campo label="Notas de garantía"><input className="campo" value={a.garantia_notas ?? ''} onChange={e => set('garantia_notas', e.target.value)} placeholder="Teléfono, no. de caso, qué cubre" /></Campo>
+            </div>
+            <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={!!a.reservable} onChange={e => set('reservable', e.target.checked)} />Se puede reservar (equipo compartido)</label>
           </section>
 
           <section className="tarjeta p-5">

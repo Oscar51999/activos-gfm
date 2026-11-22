@@ -163,6 +163,7 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
       { key: 'ubicacion', titulo: 'Ubicación', valores: [...new Set((datos?.ubicaciones ?? []).map(u => String(u.nombre)))], ayuda: 'Nombre o código de la ubicación de esa empresa' },
       { key: 'responsable', titulo: 'Responsable', ayuda: 'Nombre completo del empleado (de cualquier empresa). Se genera su resguardo.', ejemplo: 'Juan Pérez López' },
       { key: 'fecha', titulo: 'Fecha de alta', tipo: 'fecha', ejemplo: '2026-11-20' }, { key: 'factura', titulo: 'Factura' },
+      { key: 'garantia', titulo: 'Garantía hasta', tipo: 'fecha', ejemplo: '2027-11-20' }, { key: 'garantia_con', titulo: 'Garantía con', ejemplo: 'Dell' },
       { key: 'valor', titulo: 'Valor de referencia', tipo: 'numero' }, { key: 'notas', titulo: 'Notas' },
     ]
   }
@@ -199,7 +200,7 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
         const notas = [extras.join(' · '), d.factura && `Factura ${d.factura}`, d.notas].filter(Boolean).join('\n') || null
         const r = await supabase.from('activos').insert({ empresa_id: e.id, categoria_id: c.id, marca_id: marcaId, modelo_id: modeloId, descripcion: d.descripcion.trim(),
           serie: d.serie || null, numero_economico: d.eco || null, ubicacion_id: u?.id ?? null, fecha_alta: aFecha(d.fecha) ?? undefined,
-          valor_referencia: d.valor ? aNumero(d.valor) : null, notas }).select('id').single()
+          valor_referencia: d.valor ? aNumero(d.valor) : null, notas, garantia_hasta: aFecha(d.garantia), garantia_proveedor: d.garantia_con || null }).select('id').single()
         if (r.error) throw r.error
         const id = (r.data as { id: string }).id
         const t = tipoDe(c.id)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Zap, History, Bell, Settings2, Check, PackagePlus, ScanLine, ClipboardSignature, Boxes, Users, Wrench, BookOpenText, Map as MapaIcono, Tags, CalendarCheck, Landmark, FileClock, Siren,
-  Sparkles, Inbox, Warehouse, Truck, Receipt, Car, KeyRound, Archive, BarChart3, type LucideIcon,
+  Sparkles, Inbox, Warehouse, Truck, Receipt, Car, KeyRound, Archive, BarChart3, ShieldCheck, UserRound, CalendarClock as Agenda, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -28,6 +28,8 @@ const ACCESOS: Acceso[] = [
   { to: '/solicitudes', texto: 'Solicitudes', icono: Inbox },
   { to: '/almacen', texto: 'Almacén', icono: Warehouse },
   { to: '/vales', texto: 'Vales de salida', icono: Truck },
+  { to: '/mis-equipos', texto: 'Mis equipos', icono: UserRound },
+  { to: '/reservas', texto: 'Reservar equipo', icono: Agenda },
   { to: '/checklist-vehicular', texto: 'Checklist vehicular', icono: Car },
   { to: '/licencias', texto: 'Licencias y cuentas', icono: KeyRound },
   { to: '/bajas', texto: 'Bajas de activos', icono: Archive },
@@ -60,8 +62,9 @@ export default function InicioRapido({ ver = { accesos: true, recientes: true, n
       puedeEditar && perfil ? supabase.from('actividades').select('id,titulo,fecha_fin,estatus').eq('responsable_id', perfil.id).neq('estatus', 'listo').not('fecha_fin', 'is', null).lte('fecha_fin', en7).order('fecha_fin').limit(4) : Promise.resolve({ data: [] }),
       supabase.from('inmueble_pagos').select('id,concepto,fecha_limite,inmueble_id,inmuebles(nombre)').eq('pagado', false).lte('fecha_limite', en7).order('fecha_limite').limit(4),
       supabase.from('v_licencias').select('id,nombre,fecha_vencimiento').eq('activo', true).not('fecha_vencimiento', 'is', null).lte('dias_restantes', 30).order('fecha_vencimiento').limit(4),
+      supabase.from('activos').select('id,codigo,descripcion,garantia_hasta').gte('garantia_hasta', new Date().toISOString().slice(0, 10)).lte('garantia_hasta', new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)).order('garantia_hasta').limit(3),
       puedeEditar ? supabase.from('bajas_activos').select('id,folio,created_at,activos(descripcion)').eq('estatus', 'pendiente').order('created_at', { ascending: false }).limit(3) : Promise.resolve({ data: [] }),
-    ]).then(([a, m, r, act, pg, lic, bj]) => {
+    ]).then(([a, m, r, act, pg, lic, gar, bj]) => {
       const n: Novedad[] = [
         ...((a.data ?? []) as { id: string; codigo: string; descripcion: string; created_at: string }[]).map(x => ({ t: x.created_at, texto: `Alta: ${x.descripcion}`, sub: x.codigo, to: `/activos/${x.id}`, icono: PackagePlus, color: 'text-emerald-700 bg-emerald-50' })),
         ...((m.data ?? []) as { id: string; folio: string; tipo: string; fecha: string; recibe_nombre: string | null }[]).map(x => ({ t: x.fecha, texto: `${x.tipo === 'asignacion' ? 'Asignación' : x.tipo === 'devolucion' ? 'Devolución' : 'Traspaso'}${x.recibe_nombre ? ` a ${x.recibe_nombre}` : ''}`, sub: x.folio, to: `/resguardos/${x.id}`, icono: ClipboardSignature, color: 'text-sky-700 bg-sky-50' })),
@@ -69,10 +72,11 @@ export default function InicioRapido({ ver = { accesos: true, recientes: true, n
         ...((act.data ?? []) as { id: string; titulo: string; fecha_fin: string }[]).map(x => ({ t: x.fecha_fin + 'T09:00', texto: `Tu actividad: ${x.titulo}`, sub: `entrega ${new Date(x.fecha_fin + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: '/actividades', icono: CalendarCheck, color: 'text-violet-700 bg-violet-50' })),
         ...((pg.data ?? []) as unknown as { id: string; concepto: string; fecha_limite: string; inmueble_id: string; inmuebles: { nombre: string } | null }[]).map(x => ({ t: x.fecha_limite + 'T09:00', texto: `Pagar ${x.concepto}`, sub: `${x.inmuebles?.nombre ?? ''} · vence ${new Date(x.fecha_limite + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: `/inmuebles/${x.inmueble_id}`, icono: Receipt, color: 'text-amber-800 bg-amber-50' })),
         ...((lic.data ?? []) as { id: string; nombre: string; fecha_vencimiento: string }[]).map(x => ({ t: x.fecha_vencimiento + 'T09:00', texto: `Renovar ${x.nombre}`, sub: `licencia · vence ${new Date(x.fecha_vencimiento + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: `/licencias?id=${x.id}`, icono: KeyRound, color: 'text-amber-800 bg-amber-50' })),
+        ...((gar.data ?? []) as { id: string; codigo: string; descripcion: string; garantia_hasta: string }[]).map(x => ({ t: x.garantia_hasta + 'T09:00', texto: `Garantía por vencer: ${x.descripcion}`, sub: `${x.codigo} · vence ${new Date(x.garantia_hasta + 'T12:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`, to: `/activos/${x.id}`, icono: ShieldCheck, color: 'text-sky-700 bg-sky-50' })),
         ...((bj.data ?? []) as unknown as { id: string; folio: string; created_at: string; activos: { descripcion: string } | null }[]).map(x => ({ t: x.created_at, texto: `Autorizar baja: ${x.activos?.descripcion ?? ''}`, sub: x.folio, to: '/bajas', icono: Archive, color: 'text-red-700 bg-red-50' })),
       ]
       // primero lo que viene (actividades y pagos por vencer), luego lo más reciente
-      const futuro = n.filter(x => new Date(x.t).getTime() > Date.now() - 864e5 && (x.icono === CalendarCheck || x.icono === Receipt || x.icono === KeyRound || x.icono === Archive))
+      const futuro = n.filter(x => new Date(x.t).getTime() > Date.now() - 864e5 && (x.icono === CalendarCheck || x.icono === Receipt || x.icono === KeyRound || x.icono === Archive || x.icono === ShieldCheck))
       const pasado = n.filter(x => !futuro.includes(x)).sort((a, b) => b.t.localeCompare(a.t))
       setNovedades([...futuro, ...pasado].slice(0, 8))
     })

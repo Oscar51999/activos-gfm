@@ -14,8 +14,9 @@ export type Perfil = {
   foto_path?: string | null
   telefono?: string | null
   puesto?: string | null
-  preferencias?: { tema?: Tema; accesos?: string[]; acento?: string | null } | null
+  preferencias?: { tema?: Tema; accesos?: string[]; acento?: string | null; tablero?: unknown } | null
   es_super?: boolean
+  empleado_id?: string | null
 }
 
 /** URL pública de la foto de perfil. */
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function cargarPerfil(uid: string | undefined) {
     if (!uid) { setPerfil(null); return }
     const { data } = await supabase.from('perfiles')
-      .select('id,nombre,email,rol,activo,todas_empresas,usuario,foto_path,telefono,puesto,preferencias,es_super').eq('id', uid).maybeSingle()
+      .select('id,nombre,email,rol,activo,todas_empresas,usuario,foto_path,telefono,puesto,preferencias,es_super,empleado_id').eq('id', uid).maybeSingle()
     const p = (data as Perfil) ?? null
     setPerfil(p)
     // El tema elegido en el perfil sigue a la persona en cualquier equipo

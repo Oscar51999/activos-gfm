@@ -53,6 +53,8 @@ import SalidaEmpleado from './pages/SalidaEmpleado'
 import ChecklistVehicular from './pages/ChecklistVehicular'
 import Indicadores from './pages/Indicadores'
 import Servicios from './pages/Servicios'
+import MisEquipos from './pages/MisEquipos'
+import Reservas from './pages/Reservas'
 import { LogoFirme } from './components/Logo'
 
 function Pendiente() {
@@ -191,6 +193,8 @@ function Rutas() {
         <Route path="checklist-vehicular" element={<ChecklistVehicular />} />
         <Route path="indicadores" element={<Indicadores />} />
         <Route path="servicios" element={<Servicios />} />
+        <Route path="mis-equipos" element={<MisEquipos />} />
+        <Route path="reservas" element={<Reservas />} />
         {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

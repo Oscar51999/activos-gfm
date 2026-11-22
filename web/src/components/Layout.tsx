@@ -18,6 +18,8 @@ type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; 
 const grupos: { titulo: string; items: Entrada[] }[] = [
   { titulo: 'Operación', items: [
     { to: '/', icono: LayoutDashboard, texto: 'Tablero', fin: true },
+    { to: '/mis-equipos', icono: UserRound, texto: 'Mis equipos' },
+    { to: '/reservas', icono: CalendarClock, texto: 'Reservas de equipo' },
     { to: '/preguntar', icono: Sparkles, texto: 'Pregúntale' },
     { to: '/empresas', icono: Building2, texto: 'Empresas' },
     { to: '/activos', icono: Boxes, texto: 'Activos' },

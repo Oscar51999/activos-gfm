@@ -38,12 +38,12 @@ export default function Activos() {
     q: sp.get('q') ?? '', empresa: sp.get('empresa') ?? '', categoria: sp.get('categoria') ?? '',
     ubicacion: sp.get('ubicacion') ?? '', estatus: sp.get('estatus') ?? '', pagina: Number(sp.get('p') ?? 1),
     tipo: sp.get('tipo') ?? '', marca: sp.get('marca') ?? '', resp: sp.get('resp') ?? '', serie: sp.get('serie') ?? '',
-    desde: sp.get('desde') ?? '', hasta: sp.get('hasta') ?? '',
+    desde: sp.get('desde') ?? '', hasta: sp.get('hasta') ?? '', garantia: sp.get('garantia') ?? '',
   }
   const tipos = categorias.items.filter(c => !c.padre_id).sort((a, b) => a.nombre.localeCompare(b.nombre))
   const idsTipo = f.tipo ? [f.tipo, ...categorias.items.filter(c => c.padre_id === f.tipo).map(c => c.id)] : []
   const subtipos = f.tipo ? categorias.items.filter(c => c.padre_id === f.tipo) : []
-  const nFiltros = [f.empresa, f.categoria, f.ubicacion, f.estatus, f.tipo, f.marca, f.resp, f.serie, f.desde, f.hasta].filter(Boolean).length
+  const nFiltros = [f.empresa, f.categoria, f.ubicacion, f.estatus, f.tipo, f.marca, f.resp, f.serie, f.desde, f.hasta, f.garantia].filter(Boolean).length
   const setF = (k: string, v: string) => {
     const n = new URLSearchParams(sp)
     if (v) n.set(k, v); else n.delete(k)
@@ -63,6 +63,13 @@ export default function Activos() {
     if (f.serie === 'con') q = q.not('serie', 'is', null)
     if (f.desde) q = q.gte('fecha_alta', f.desde)
     if (f.hasta) q = q.lte('fecha_alta', f.hasta)
+    if (f.garantia) {
+      const hoy = new Date().toISOString().slice(0, 10), en30 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
+      if (f.garantia === 'sin') q = q.is('garantia_hasta', null)
+      if (f.garantia === 'vigente') q = q.gte('garantia_hasta', hoy)
+      if (f.garantia === 'vencer') q = q.gte('garantia_hasta', hoy).lte('garantia_hasta', en30)
+      if (f.garantia === 'vencida') q = q.lt('garantia_hasta', hoy)
+    }
     if (f.ubicacion) q = q.eq('ubicacion_id', f.ubicacion)
     if (f.estatus) q = q.eq('estatus', f.estatus)
     if (f.q) {
@@ -71,7 +78,7 @@ export default function Activos() {
     }
     return q.order('codigo', { ascending: false })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f.empresa, f.categoria, f.ubicacion, f.estatus, f.q, f.marca, f.resp, f.serie, f.desde, f.hasta, idsTipo.join(',')])
+  }, [f.empresa, f.categoria, f.ubicacion, f.estatus, f.q, f.marca, f.resp, f.serie, f.desde, f.hasta, f.garantia, idsTipo.join(',')])
 
   useEffect(() => {
     let vivo = true
@@ -160,7 +167,7 @@ export default function Activos() {
             <option value="">Todos los estatus</option>{Object.entries(ESTATUS).map(([k, v]) => <option key={k} value={k}>{v.texto}</option>)}
           </select>
           <button className={`btn-sec justify-center ${masFiltros || nFiltros > 2 ? '!border-marca/50 !text-marca' : ''}`} onClick={() => setMasFiltros(x => !x)}><SlidersHorizontal size={15} />Más filtros{nFiltros ? ` · ${nFiltros}` : ''}</button>
-          {(masFiltros || f.ubicacion || f.marca || f.resp || f.serie || f.desde || f.hasta) && <>
+          {(masFiltros || f.ubicacion || f.marca || f.resp || f.serie || f.desde || f.hasta || f.garantia) && <>
             <select className="campo" value={f.ubicacion} onChange={e => setF('ubicacion', e.target.value)}>
               <option value="">Todas las ubicaciones</option>{ubicVisibles.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
             </select>
@@ -172,6 +179,9 @@ export default function Activos() {
             </select>
             <select className="campo" value={f.serie} onChange={e => setF('serie', e.target.value)}>
               <option value="">Con o sin serie</option><option value="con">Con número de serie</option><option value="sin">Sin número de serie</option>
+            </select>
+            <select className="campo" value={f.garantia} onChange={e => setF('garantia', e.target.value)}>
+              <option value="">Cualquier garantía</option><option value="vigente">Garantía vigente</option><option value="vencer">Garantía vence en 30 días</option><option value="vencida">Garantía vencida</option><option value="sin">Sin garantía registrada</option>
             </select>
             <div className="flex min-w-0 items-center gap-2 text-xs text-stone-500 sm:col-span-2">
               <span className="shrink-0">Alta del</span><input className="campo min-w-0 !py-2" type="date" value={f.desde} onChange={e => setF('desde', e.target.value)} aria-label="Fecha de alta desde" />

@@ -41,6 +41,7 @@ export default function Alta() {
   const [descripcion, setDescripcion] = useState('')
   const [fechaAlta, setFechaAlta] = useState(new Date().toISOString().slice(0, 10))
   const [factura, setFactura] = useState('')
+  const [garantia, setGarantia] = useState({ hasta: '', con: '' })
   const [sinSerie, setSinSerie] = useState(false)
   const [faltan, setFaltan] = useState<string[]>([])
   const [error, setError] = useState('')
@@ -127,6 +128,7 @@ export default function Alta() {
         serie: f.serie.trim() || null, numero_economico: f.eco.trim() || null, fecha_alta: fechaAlta || undefined,
         ubicacion_id: ubicacion || null, valor_referencia: valor ? Number(valor) : null,
         notas: [f.comentario?.trim(), factura.trim() && `Factura ${factura.trim()}`, notas.trim()].filter(Boolean).join(' · ') || null,
+        garantia_hasta: garantia.hasta || null, garantia_proveedor: garantia.con.trim() || null,
       }))
       const { data, error } = await supabase.from('activos').insert(filasBD).select('id,codigo')
       if (error) throw error
@@ -294,6 +296,8 @@ export default function Alta() {
                 <Campo label="Descripción" className="sm:col-span-2"><input className="campo" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder={descDefecto} /></Campo>
                 <Campo label="Fecha de alta / compra"><input className="campo" type="date" value={fechaAlta} onChange={e => setFechaAlta(e.target.value)} /></Campo>
                 <Campo label="Factura o folio de compra"><input className="campo" value={factura} onChange={e => setFactura(e.target.value)} placeholder="A-4821" /></Campo>
+                <Campo label="Garantía hasta (opcional)"><input className="campo" type="date" value={garantia.hasta} onChange={e => setGarantia({ ...garantia, hasta: e.target.value })} /></Campo>
+                <Campo label="Garantía con"><input className="campo" value={garantia.con} onChange={e => setGarantia({ ...garantia, con: e.target.value })} placeholder="Dell, distribuidor, agencia…" /></Campo>
                 <Campo label="Comentarios para todas las unidades" className="sm:col-span-2"><textarea className="campo" rows={2} value={notas} onChange={e => setNotas(e.target.value)} placeholder="Accesorios incluidos, garantía, estado, observaciones…" /></Campo>
               </div>
             </div>

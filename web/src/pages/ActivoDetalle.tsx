@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car } from 'lucide-react'
+import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car, CalendarClock, ShieldCheck } from 'lucide-react'
 import ReportarFalla, { TIPOS_REPORTE, type TipoReporte } from '../components/ReportarFalla'
 import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
@@ -22,11 +22,11 @@ import type { ActivoFila } from './Activos'
 import { TipoBadge } from './Movimientos'
 import type { TipoMov } from '../lib/supabase'
 
-type Detalle = ActivoFila & { valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; posicion?: string | null; clase_abc?: string | null }
+type Detalle = ActivoFila & { garantia_hasta?: string | null; garantia_proveedor?: string | null; reservable?: boolean; valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; posicion?: string | null; clase_abc?: string | null }
 type Veh = { placa: string | null; anio: number | null; color: string | null; combustible: string | null; transmision: string | null; kilometraje: number | null; cilindros: number | null; pasajeros: number | null; capacidad_tanque: number | null
   numero_motor?: string | null; version?: string | null; tipo_licencia?: string | null; tarjeta_circulacion?: string | null; poliza?: string | null }
 type Foto = { id: string; path: string; url?: string }
-type Resg = { movimiento_id: string; estado_fisico: string | null; movimientos: { folio: string; tipo: TipoMov; fecha: string; recibe_nombre: string | null; entrega_nombre: string | null; cancelado: boolean; ubicacion: { nombre: string } | null } | null }
+type Resg = { movimiento_id: string; estado_fisico: string | null; fotos?: string[]; movimientos: { folio: string; tipo: TipoMov; fecha: string; recibe_nombre: string | null; entrega_nombre: string | null; cancelado: boolean; ubicacion: { nombre: string } | null } | null }
 type Mov = { id: number; accion: string; fecha: string; antes: Record<string, unknown> | null; despues: Record<string, unknown> | null }
 
 const CAMPOS_BITACORA: Record<string, string> = {
@@ -43,6 +43,7 @@ export default function ActivoDetalle() {
   const nav = useNavigate()
   const { puedeEditar, esAdmin, puedeResguardar } = useAuth()
   const [resg, setResg] = useState<Resg[]>([])
+  const [garNotas, setGarNotas] = useState<string | null>(null)
   const [a, setA] = useState<Detalle | null>(null)
   const [veh, setVeh] = useState<Veh | null>(null)
   const [fotos, setFotos] = useState<Foto[]>([])
@@ -62,16 +63,16 @@ export default function ActivoDetalle() {
   const [subiendo, setSubiendo] = useState(false)
 
   async function cargar() {
-    supabase.from('movimiento_activos').select('movimiento_id,estado_fisico, movimientos(folio,tipo,fecha,recibe_nombre,entrega_nombre,cancelado, ubicacion:a_ubicacion_id(nombre))')
+    supabase.from('movimiento_activos').select('movimiento_id,estado_fisico,fotos, movimientos(folio,tipo,fecha,recibe_nombre,entrega_nombre,cancelado, ubicacion:a_ubicacion_id(nombre))')
       .eq('activo_id', id!).then(({ data }) => setResg(((data as unknown as Resg[]) ?? []).sort((x, y) => (y.movimientos?.fecha ?? '').localeCompare(x.movimientos?.fecha ?? ''))))
     const [ra, rv, rf, rn] = await Promise.all([
       supabase.from('v_activos').select('*').eq('id', id!).single(),
       supabase.from('activo_vehiculo').select('*').eq('activo_id', id!).maybeSingle(),
       supabase.from('activo_fotos').select('id,path').eq('activo_id', id!).order('created_at'),
-      supabase.from('activos').select('notas').eq('id', id!).single(),
+      supabase.from('activos').select('notas,garantia_notas').eq('id', id!).single(),
     ])
     if (ra.error) { setError(mensajeError(ra.error)); return }
-    setA(ra.data as Detalle); setVeh(rv.data as Veh | null); setNotas(rn.data?.notas ?? null)
+    setA(ra.data as Detalle); setVeh(rv.data as Veh | null); setNotas(rn.data?.notas ?? null); setGarNotas((rn.data as { garantia_notas?: string | null } | null)?.garantia_notas ?? null)
     if (ra.data) { const d = ra.data as Detalle; registrarReciente(`/activos/${d.id}`, `${d.codigo} · ${d.descripcion}`, 'Activo') }
     const fs = await Promise.all(((rf.data as Foto[]) ?? []).map(async f => ({ ...f, url: await urlFirmada(f.path) })))
     setFotos(fs)
@@ -137,6 +138,7 @@ export default function ActivoDetalle() {
           <button className="btn-sec" onClick={() => setReportar(true)}><Siren size={16} />Reportar problema</button>
           <Link className="btn-sec" to={`/etiquetas?ids=${a.id}`}><Printer size={16} />Etiqueta</Link>
           {puedeEditar && a.estatus !== 'asignado' && a.estatus !== 'baja' && <Link className="btn-sec" to={`/traspasos?activo=${a.id}`}><Building2 size={16} />Otra empresa</Link>}
+          {a.reservable && a.estatus !== 'baja' && <Link className="btn-sec" to={`/reservas?activo=${a.id}`}><CalendarClock size={16} />Reservar</Link>}
           {a.es_vehiculo && a.estatus !== 'baja' && <Link className="btn-sec" to={`/checklist-vehicular?activo=${a.id}`}><Car size={16} />Checklist</Link>}
           {puedeResguardar && a.estatus !== 'baja' && <Link className="btn-sec hover:!text-red-700" to={`/bajas?activo=${a.id}`}><Archive size={16} />Dar de baja</Link>}
           {puedeEditar && <Link className="btn-primario" to={`/activos/${a.id}/editar`}><Pencil size={16} />Editar</Link>}
@@ -173,6 +175,9 @@ export default function ActivoDetalle() {
               <Dato k="Fecha de alta" v={fecha(a.fecha_alta)} />
               <Dato k="Valor de referencia" v={moneda(a.valor_referencia)} />
               <Dato k="Última actualización" v={fecha(a.updated_at)} />
+              <Dato k="Garantía" v={a.garantia_hasta ? <EstadoGarantia hasta={a.garantia_hasta} /> : null} />
+              <Dato k="Garantía con" v={a.garantia_proveedor} />
+              {garNotas && <Dato k="Notas de garantía" v={garNotas} />}
             </dl>
             {notas && <p className="mt-4 whitespace-pre-line border-t border-stone-100 pt-4 text-sm text-stone-700">{notas}</p>}
           </section>
@@ -226,6 +231,7 @@ export default function ActivoDetalle() {
 
           <section className="tarjeta p-5">
             <h2 className="mb-4 font-semibold">Historial de resguardos</h2>
+            <CompararEstado resg={resg} />
             {resg.length === 0 ? <p className="text-sm text-stone-500">Sin movimientos todavía.</p> : (
               <ol className="space-y-3">
                 {resg.map(r => r.movimientos && (
@@ -234,6 +240,7 @@ export default function ActivoDetalle() {
                       <div className="flex items-center gap-2"><TipoBadge tipo={r.movimientos.tipo} /><span className="text-xs text-stone-500">{new Date(r.movimientos.fecha).toLocaleDateString('es-MX', { dateStyle: 'medium' })}</span></div>
                       <p className="mt-1">{r.movimientos.entrega_nombre ?? '—'} → {r.movimientos.recibe_nombre ?? '—'}{r.movimientos.ubicacion ? ` · ${r.movimientos.ubicacion.nombre}` : ''}</p>
                       {r.estado_fisico && <p className="text-xs text-stone-500">Estado: {r.estado_fisico}</p>}
+                      {(r.fotos?.length ?? 0) > 0 && <div className="mt-1.5 flex gap-1.5">{r.fotos!.map((f, i) => <a key={i} href={f} target="_blank" rel="noreferrer"><img src={f} alt="" className="h-14 w-16 rounded-md object-cover ring-1 ring-stone-200" /></a>)}</div>}
                     </div>
                     <Link to={`/resguardos/${r.movimiento_id}`} className="font-mono text-xs text-stone-600 hover:underline">{r.movimientos.folio}</Link>
                   </li>
@@ -275,4 +282,29 @@ export default function ActivoDetalle() {
       </div>
     </div>
   )
+}
+
+/** Fotos de cuando se entregó contra cuando se recibió de regreso, para ver si regresó dañado. */
+function CompararEstado({ resg }: { resg: Resg[] }) {
+  const conFotos = resg.filter(r => r.movimientos && !r.movimientos.cancelado && (r.fotos?.length ?? 0) > 0)
+  const recibido = conFotos.find(r => r.movimientos!.tipo === 'devolucion')
+  const entregado = recibido ? conFotos.find(r => r.movimientos!.tipo !== 'devolucion' && r.movimientos!.fecha < recibido.movimientos!.fecha) : undefined
+  if (!recibido || !entregado) return null
+  const col = (t: string, r: Resg) => (
+    <div className="min-w-0"><p className="mb-1 text-xs font-medium">{t} · {new Date(r.movimientos!.fecha).toLocaleDateString('es-MX', { dateStyle: 'medium' })}</p>
+      <div className="grid grid-cols-2 gap-1.5">{r.fotos!.map((f, i) => <img key={i} src={f} alt="" className="aspect-[4/3] w-full rounded-md object-cover" />)}</div>
+      {r.estado_fisico && <p className="mt-1 text-xs text-stone-500">{r.estado_fisico}</p>}</div>
+  )
+  return (
+    <div className="mb-4 rounded-xl border border-marca/30 bg-marca/5 p-3">
+      <p className="mb-2 text-sm font-semibold">Cómo se entregó vs. cómo regresó</p>
+      <div className="grid gap-3 sm:grid-cols-2">{col(`Entregado a ${entregado.movimientos!.recibe_nombre ?? '—'}`, entregado)}{col('Recibido de regreso', recibido)}</div>
+    </div>
+  )
+}
+
+function EstadoGarantia({ hasta }: { hasta: string }) {
+  const d = Math.round((new Date(hasta + 'T12:00').getTime() - Date.now()) / 864e5)
+  const c = d < 0 ? 'text-stone-500' : d <= 30 ? 'text-amber-700' : 'text-emerald-700'
+  return <span className={`inline-flex items-center gap-1 ${c}`}><ShieldCheck size={14} />{d < 0 ? `Vencida (${fecha(hasta)})` : `Hasta ${fecha(hasta)}${d <= 30 ? ` · quedan ${d} días` : ''}`}</span>
 }

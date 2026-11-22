@@ -30,7 +30,7 @@ export default function Solicitudes() {
   const { puedeResguardar, perfil, session } = useAuth()
   const [lista, setLista] = useState<Solicitud[] | null>(null)
   const [filtro, setFiltro] = useState<'abiertas' | Estatus | 'todas'>('abiertas')
-  const [nueva, setNueva] = useState(false)
+  const [nueva, setNueva] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('nuevo') === '1')
   const [responder, setResponder] = useState<{ s: Solicitud; aprobar: boolean } | null>(null)
   const [entregar, setEntregar] = useState<Solicitud | null>(null)
   const [error, setError] = useState('')

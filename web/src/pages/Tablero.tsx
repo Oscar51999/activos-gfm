@@ -3,7 +3,7 @@ import { SECCIONES, prefTablero, DEFECTO_TABLERO, type PrefTablero } from '../li
 import { ServiciosProximos } from './Servicios'
 import { Modal } from '../components/ui'
 import { Link } from 'react-router-dom'
-import { Plus, ScanLine, Boxes, Gem, UserX, Wrench, ArrowUpRight, ClipboardSignature, PenLine, Activity, CalendarClock, Siren, FileClock, Inbox, Warehouse, Receipt, SlidersHorizontal, ChevronUp, ChevronDown, Eye, EyeOff, RotateCcw, Check } from 'lucide-react'
+import { Plus, ScanLine, Boxes, Gem, UserX, Wrench, ArrowUpRight, ClipboardSignature, PenLine, Activity, CalendarClock, Siren, FileClock, Inbox, Warehouse, Receipt, SlidersHorizontal, ChevronUp, ChevronDown, Eye, EyeOff, RotateCcw, Check, ShieldCheck } from 'lucide-react'
 import { avisosAlmacen } from '../lib/almacen'
 import { supabase, ESTATUS, TIPOS_MOV, type Estatus, type TipoMov } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -131,6 +131,7 @@ export default function Tablero() {
   const pref = prefTablero((perfil?.preferencias as { tablero?: PrefTablero } | null)?.tablero)
   const ve = (id: string) => !pref.ocultos.includes(id)
   const [serv, setServ] = useState({ vencidos: 0, semana: 0 })
+  const [gar, setGar] = useState({ v30: 0, vencidas: 0 })
   const [filas, setFilas] = useState<Fila[] | null>(null)
   const [movs, setMovs] = useState<Mov[]>([])
   const [empresas, setEmpresas] = useState<(EmpresaLogo & { id: string })[]>([])
@@ -157,6 +158,8 @@ export default function Tablero() {
       setAten({ solPend: al.pendientes, solEnt: al.porEntregar, bajo: al.bajo, mttoVenc: me.filter(x => x.estado === 'vencido').length, mttoProx: me.filter(x => x.estado === 'proximo').length, docVenc: fv.filter(f => f < hoy).length, doc30: fv.filter(f => f >= hoy && f <= en30).length, vencidos: fp.filter(f => f < hoy).length, pronto: fp.filter(f => f >= hoy && f <= en3).length, reportes: rp.length, alta: rp.filter(x => x.prioridad === 'alta').length, conteos: i.data?.length ?? 0 })
     })
     const hoyS = new Date().toISOString().slice(0, 10), en7S = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)
+    supabase.from('activos').select('garantia_hasta').neq('estatus', 'baja').not('garantia_hasta', 'is', null).lte('garantia_hasta', new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)).gte('garantia_hasta', new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10))
+      .then(({ data }) => { const f = ((data ?? []) as { garantia_hasta: string }[]).map(x => x.garantia_hasta); setGar({ v30: f.filter(x => x >= hoyS).length, vencidas: f.filter(x => x < hoyS).length }) })
     supabase.from('inmueble_pagos').select('fecha_limite').eq('pagado', false).lte('fecha_limite', en7S).then(({ data }) => { const f = ((data ?? []) as { fecha_limite: string }[]).map(x => x.fecha_limite); setServ({ vencidos: f.filter(x => x < hoyS).length, semana: f.filter(x => x >= hoyS).length }) })
     supabase.from('empresas').select('id,nombre,nombre_corto,logo_path,logo_oscuro,color').eq('activo', true).order('nombre')
       .then(({ data }) => setEmpresas((data as (EmpresaLogo & { id: string })[]) ?? []))
@@ -214,6 +217,7 @@ export default function Tablero() {
               ['reportes', '/reportes', Siren, 'Reportes de falla por atender', aten.reportes, aten.alta ? `${aten.alta} de prioridad alta` : 'Desde las etiquetas QR', aten.alta > 0],
               ['mantenimiento', '/mantenimiento', Wrench, 'Mantenimientos vencidos', aten.mttoVenc, aten.mttoProx ? `${aten.mttoProx} próximos` : 'Preventivos al día', aten.mttoVenc > 0],
               ['servicios', '/servicios', Receipt, 'Servicios de inmuebles vencidos', serv.vencidos, serv.semana ? `${serv.semana} vencen esta semana` : 'Luz, agua, predial al día', serv.vencidos > 0],
+              ['garantias', '/activos?garantia=vencer', ShieldCheck, 'Garantías por vencer (30 días)', gar.v30, gar.vencidas ? `${gar.vencidas} vencieron en los últimos 90 días` : 'Aprovecha antes de que venzan', gar.v30 > 0],
               ['solicitudes', '/solicitudes', Inbox, 'Solicitudes por aprobar', aten.solPend, aten.solEnt ? `${aten.solEnt} aprobadas por entregar` : 'Equipo y material pedido', false],
               ['almacen', '/almacen?bajo=1', Warehouse, 'Material bajo mínimo', aten.bajo, aten.bajo ? 'Hay que surtir' : 'Existencias completas', aten.bajo > 0],
             ] as const).filter(([id]) => ve(`atencion.${id}`)).map(([, to, I, t, n, sub, rojo], k) => (

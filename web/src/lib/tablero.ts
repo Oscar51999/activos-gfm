@@ -4,7 +4,7 @@ export type Seccion = { id: string; t: string; d: string; mitad?: boolean; edita
 export const SECCIONES: Seccion[] = [
   { id: 'inicio', t: 'Inicio rápido', d: 'Tus accesos directos, lo último que abriste y las novedades', subs: [['accesos', 'Accesos directos'], ['recientes', 'Accesos recientes'], ['novedades', 'Novedades']] },
   { id: 'kpis', t: 'Indicadores principales', d: 'Totales grandes de activos', subs: [['total', 'Activos registrados'], ['valor', 'Valor de referencia'], ['sinresp', 'Sin responsable'], ['mtto', 'En mantenimiento']] },
-  { id: 'atencion', t: 'Pendientes por atender', d: 'Tarjetas de alerta con su número', subs: [['docs', 'Documentos vencidos'], ['prestamos', 'Préstamos vencidos'], ['reportes', 'Reportes de falla'], ['mantenimiento', 'Mantenimientos vencidos'], ['servicios', 'Servicios vencidos'], ['solicitudes', 'Solicitudes por aprobar'], ['almacen', 'Material bajo mínimo']] },
+  { id: 'atencion', t: 'Pendientes por atender', d: 'Tarjetas de alerta con su número', subs: [['docs', 'Documentos vencidos'], ['prestamos', 'Préstamos vencidos'], ['reportes', 'Reportes de falla'], ['mantenimiento', 'Mantenimientos vencidos'], ['servicios', 'Servicios vencidos'], ['garantias', 'Garantías por vencer'], ['solicitudes', 'Solicitudes por aprobar'], ['almacen', 'Material bajo mínimo']] },
   { id: 'servicios', t: 'Servicios por pagar', d: 'Luz, agua, predial… de los inmuebles que vencen en 15 días' },
   { id: 'empresas', t: 'Empresas', d: 'Logos con el número de activos de cada una' },
   { id: 'estatus', t: 'Distribución por estatus', d: 'Anillo de disponibles, asignados, mantenimiento…', mitad: true },
