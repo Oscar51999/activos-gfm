@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -14,7 +14,7 @@ import Comandos, { type Destino } from './Comandos'
 import { avisosAlmacen } from '../lib/almacen'
 import { escuchar, pendientes, sincronizar, estaMandando } from '../lib/sinSenal'
 
-type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; alerta?: 'prestamos' | 'reportes' | 'vigencias' | 'mantenimiento' | 'solicitudes' | 'almacen' }
+type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; alerta?: 'prestamos' | 'reportes' | 'vigencias' | 'mantenimiento' | 'solicitudes' | 'almacen' | 'servicios' }
 const grupos: { titulo: string; items: Entrada[] }[] = [
   { titulo: 'Operación', items: [
     { to: '/', icono: LayoutDashboard, texto: 'Tablero', fin: true },
@@ -48,6 +48,7 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
   { titulo: 'Organización', items: [
     { to: '/empleados', icono: Users, texto: 'Empleados' },
     { to: '/inmuebles', icono: Landmark, texto: 'Inmuebles' },
+    { to: '/servicios', icono: Receipt, texto: 'Servicios por pagar', alerta: 'servicios' },
     { to: '/ubicaciones', icono: MapPin, texto: 'Ubicaciones' },
     { to: '/departamentos', icono: Briefcase, texto: 'Departamentos' },
     { to: '/sucursales', icono: Factory, texto: 'Sucursales' },
@@ -136,7 +137,7 @@ export default function Layout() {
   const [buscar, setBuscar] = useState(false)
   const loc = useLocation()
   useReflejo()
-  const [alertas, setAlertas] = useState({ prestamos: 0, reportes: 0, vigencias: 0, mantenimiento: 0, solicitudes: 0, almacen: 0 })
+  const [alertas, setAlertas] = useState({ prestamos: 0, reportes: 0, vigencias: 0, mantenimiento: 0, solicitudes: 0, almacen: 0, servicios: 0 })
   useEffect(() => {
     const hoy = new Date(); const iso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
     Promise.all([
@@ -144,8 +145,9 @@ export default function Layout() {
       supabase.from('reportes').select('id').eq('estatus', 'abierto'),
       supabase.from('v_vigencias').select('id').lt('fecha_vencimiento', iso),
       supabase.from('v_mantenimiento').select('plan_id').eq('estado', 'vencido'),
+      supabase.from('inmueble_pagos').select('id').eq('pagado', false).lt('fecha_limite', iso),
       avisosAlmacen(),
-    ]).then(([p, r, v, m, a]) => setAlertas({ prestamos: p.data?.length ?? 0, reportes: r.data?.length ?? 0, vigencias: v.data?.length ?? 0, mantenimiento: m.data?.length ?? 0, solicitudes: a.pendientes, almacen: a.bajo }))
+    ]).then(([p, r, v, m, sv, a]) => setAlertas({ prestamos: p.data?.length ?? 0, reportes: r.data?.length ?? 0, vigencias: v.data?.length ?? 0, mantenimiento: m.data?.length ?? 0, solicitudes: a.pendientes, almacen: a.bajo, servicios: sv.data?.length ?? 0 }))
   }, [loc.pathname])
 
   const todos = useMemo(() => [...grupos, ...(puedeEditar ? [{ titulo: 'Administración', items: [

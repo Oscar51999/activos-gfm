@@ -422,7 +422,12 @@ export function crearDatos() {
       { id: 'ac2', titulo: 'Instalar access point en Entrepiedras', grupo: 'Redes', descripcion: 'Torre 2', estatus: 'pendiente', prioridad: 'media', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10), avance: 0, orden: 2, created_at: hace(1) },
       { id: 'ac3', titulo: 'Renovar antivirus', grupo: 'Equipos', descripcion: null, estatus: 'atorado', prioridad: 'urgente', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), avance: 20, orden: 3, created_at: hace(5) },
       { id: 'ac4', titulo: 'Inventario de radios', grupo: 'Equipos', descripcion: null, estatus: 'listo', prioridad: 'baja', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: null, avance: 100, orden: 4, created_at: hace(9) },
-    ], actividad_avances: [{ id: 'av1', actividad_id: 'ac1', autor_id: 'u-3', avance: 40, estatus: 'en_curso', comentario: 'Ya quedaron 4 de 10 laptops con Windows y antivirus.', created_at: hace(1) }], inmueble_pagos: [], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], licencias_software: [
+    ], actividad_avances: [{ id: 'av1', actividad_id: 'ac1', autor_id: 'u-3', avance: 40, estatus: 'en_curso', comentario: 'Ya quedaron 4 de 10 laptops con Windows y antivirus.', created_at: hace(1) }], inmueble_pagos: [
+      { id: 'ip1', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Luz', tipo: 'luz', proveedor: 'CFE', cuenta: '123456789012', periodicidad: 'bimestral', monto: null, fecha_limite: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
+      { id: 'ip2', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Internet', tipo: 'internet', proveedor: 'Telmex', cuenta: '6121234567', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 4 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: 'Domiciliado', created_at: hace(30) },
+      { id: 'ip3', inmueble_id: 'in2', empresa_id: 'e2', concepto: 'Agua', tipo: 'agua', proveedor: 'OOMSAPAS', cuenta: '88231', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 12 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
+      { id: 'ip4', inmueble_id: 'in3', empresa_id: 'e1', concepto: 'Predial', tipo: 'predial', proveedor: 'Municipio', cuenta: '101-001-045', periodicidad: 'anual', monto: null, fecha_limite: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
+    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
       { id: 'lic2', empresa_id: 'e1', nombre: 'ESET Endpoint Security', fabricante: 'ESET', tipo: 'suscripcion', asientos: 25, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10), renovacion_automatica: true, proveedor: null, referencia: null, notas: null, activo: true, created_at: hace(60) },
     ], licencia_asignaciones: [{ id: 'la1', licencia_id: 'lic1', empleado_id: 'em2', activo_id: null, cuenta: 'laviles@grupofirme.mx', asignada: hace(30).slice(0, 10), liberada: null, notas: null, created_at: hace(30) }], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
@@ -523,6 +528,11 @@ function vista(db: DB, t: string): Row[] {
       m.set(k, r)
     }
     return [...m.values()]
+  }
+  if (t === 'v_servicios_inmuebles') {
+    const h0 = new Date(); h0.setHours(0, 0, 0, 0)
+    return db.inmueble_pagos.map(p => { const i = byId(db, 'inmuebles', p.inmueble_id), e = byId(db, 'empresas', p.empresa_id)
+      return { ...p, inmueble: i?.nombre, inmueble_codigo: i?.codigo, empresa: e?.nombre_corto ?? e?.nombre, dias_restantes: Math.round((new Date(String(p.fecha_limite) + 'T00:00').getTime() - h0.getTime()) / 864e5) } })
   }
   if (t === 'v_licencias') {
     const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0)

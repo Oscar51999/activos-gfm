@@ -329,3 +329,29 @@ export function ImportarConsumibles({ abierto, onCerrar, onListo }: Base) {
   }
   return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="artículos de almacén" columnas={columnas} procesar={procesar} nombreArchivo="almacen" />
 }
+
+// ─────────────────────── Servicios por pagar de los inmuebles ───────────────────────
+const TIPOS_SERV: Record<string, string> = { luz: 'Luz (CFE)', agua: 'Agua', predial: 'Predial', internet: 'Internet', telefono: 'Teléfono', gas: 'Gas', renta: 'Renta', mantenimiento: 'Mantenimiento / cuota', seguro: 'Seguro', vigilancia: 'Vigilancia', basura: 'Recolección de basura', otro: 'Otro' }
+const PERIOD: Record<string, string> = { unico: 'Una vez', mensual: 'Mensual', bimestral: 'Bimestral', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' }
+export function ImportarServicios({ abierto, onCerrar, onListo }: Base) {
+  const datos = useCargar(abierto, async () => ({ inmuebles: await lista('inmuebles', 'id,nombre,codigo,empresa_id') }))
+  const columnas: ColImport[] = [
+    { key: 'inmueble', titulo: 'Inmueble', requerido: true, valores: datos?.inmuebles.map(i => `${i.codigo} · ${i.nombre}`), ayuda: 'Código (INM-0001) o nombre del inmueble', ejemplo: datos?.inmuebles[0] ? String(datos.inmuebles[0].codigo) : 'INM-0001' },
+    { key: 'tipo', titulo: 'Tipo', valores: Object.values(TIPOS_SERV), ejemplo: 'Luz (CFE)' }, { key: 'concepto', titulo: 'Concepto', requerido: true, ejemplo: 'Luz oficina' },
+    { key: 'proveedor', titulo: 'A quién se paga', ejemplo: 'CFE' }, { key: 'cuenta', titulo: 'No. de servicio', ejemplo: '123456789012' },
+    { key: 'periodicidad', titulo: 'Cada cuándo', valores: Object.values(PERIOD), ejemplo: 'Bimestral' }, { key: 'fecha', titulo: 'Próximo vencimiento', requerido: true, tipo: 'fecha', ejemplo: '2026-12-15' },
+    { key: 'monto', titulo: 'Monto aproximado', tipo: 'numero' }, { key: 'notas', titulo: 'Notas', ejemplo: 'Domiciliado' },
+  ]
+  async function procesar(filas: Filas): Promise<ResultadoImport> {
+    const errores: ResultadoImport['errores'] = []
+    const inm = indice(datos?.inmuebles ?? [], i => i.codigo, i => i.nombre, i => `${i.codigo} · ${i.nombre}`)
+    const listas = filas.flatMap(f => {
+      const d = f.datos, i = inm(d.inmueble)
+      if (!i) { errores.push({ fila: f.n, error: `Inmueble "${d.inmueble}" no existe` }); return [] }
+      return [{ n: f.n, fila: { inmueble_id: i.id, empresa_id: i.empresa_id, tipo: clave(TIPOS_SERV, d.tipo) ?? 'otro', concepto: d.concepto, proveedor: d.proveedor || null, cuenta: d.cuenta || null,
+        periodicidad: clave(PERIOD, d.periodicidad) ?? 'mensual', fecha_limite: aFecha(d.fecha), monto: d.monto ? aNumero(d.monto) : null, notas: d.notas || null } }]
+    })
+    return { ok: await insertar('inmueble_pagos', listas, errores), errores }
+  }
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="servicios de inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="servicios-inmuebles" />
+}

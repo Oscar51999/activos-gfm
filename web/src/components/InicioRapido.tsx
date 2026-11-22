@@ -43,7 +43,7 @@ const hace = (f: string) => {
 }
 
 /** Arriba del tablero: mis accesos directos, lo último que abrí y novedades del sistema. */
-export default function InicioRapido() {
+export default function InicioRapido({ ver = { accesos: true, recientes: true, novedades: true } }: { ver?: { accesos: boolean; recientes: boolean; novedades: boolean } }) {
   const { perfil, puedeEditar, puedeResguardar, recargarPerfil } = useAuth()
   const [editando, setEditando] = useState(false)
   const [novedades, setNovedades] = useState<Novedad[] | null>(null)
@@ -85,8 +85,8 @@ export default function InicioRapido() {
   }
 
   return (
-    <div className="mb-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.2fr)] [&>*]:min-w-0">
-      <section className="tarjeta p-4">
+    <div className={`grid items-start gap-4 [&>*]:min-w-0 ${[ver.accesos, ver.recientes, ver.novedades].filter(Boolean).length === 3 ? 'lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.2fr)]' : [ver.accesos, ver.recientes, ver.novedades].filter(Boolean).length === 2 ? 'lg:grid-cols-2' : ''}`}>
+      {ver.accesos && <section className="tarjeta p-4">
         <h2 className="mb-3 flex items-center justify-between text-sm font-semibold"><span className="flex items-center gap-2"><Zap size={15} className="text-marca" />Accesos directos</span>
           <button onClick={() => setEditando(true)} className="text-stone-400 hover:text-marca" aria-label="Elegir accesos directos" title="Elegir accesos"><Settings2 size={15} /></button></h2>
         <div className="grid grid-cols-3 gap-2">
@@ -96,16 +96,16 @@ export default function InicioRapido() {
             </Link>
           ))}
         </div>
-      </section>
-      <section className="tarjeta p-4">
+      </section>}
+      {ver.recientes && <section className="tarjeta p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><History size={15} className="text-marca" />Accesos recientes</h2>
         {rec.length === 0 ? <p className="text-xs text-stone-500">Aquí aparece lo último que abras.</p> : (
           <ul className="space-y-1">
             {rec.map(r => <li key={r.to}><Link to={r.to} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-stone-100"><span className="min-w-0 flex-1 truncate">{r.texto}</span><span className="shrink-0 text-[10px] uppercase tracking-wider text-stone-400">{r.tipo}</span></Link></li>)}
           </ul>
         )}
-      </section>
-      <section className="tarjeta p-4">
+      </section>}
+      {ver.novedades && <section className="tarjeta p-4">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Bell size={15} className="text-marca" />Novedades</h2>
         {!novedades ? <p className="text-xs text-stone-500">Cargando…</p> : novedades.length === 0 ? <p className="text-xs text-stone-500">Sin novedades por ahora.</p> : (
           <ul className="space-y-1">
@@ -117,7 +117,7 @@ export default function InicioRapido() {
             ))}
           </ul>
         )}
-      </section>
+      </section>}
       {editando && <ElegirAccesos permitidos={permitidos} actuales={elegidos.map(a => a.to)} onCerrar={() => setEditando(false)} onGuardar={guardarAccesos} />}
     </div>
   )

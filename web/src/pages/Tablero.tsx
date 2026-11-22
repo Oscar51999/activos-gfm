@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { SECCIONES, prefTablero, DEFECTO_TABLERO, type PrefTablero } from '../lib/tablero'
+import { ServiciosProximos } from './Servicios'
+import { Modal } from '../components/ui'
 import { Link } from 'react-router-dom'
-import { Plus, ScanLine, Boxes, Gem, UserX, Wrench, ArrowUpRight, ClipboardSignature, PenLine, Activity, CalendarClock, Siren, FileClock, Inbox, Warehouse } from 'lucide-react'
+import { Plus, ScanLine, Boxes, Gem, UserX, Wrench, ArrowUpRight, ClipboardSignature, PenLine, Activity, CalendarClock, Siren, FileClock, Inbox, Warehouse, Receipt, SlidersHorizontal, ChevronUp, ChevronDown, Eye, EyeOff, RotateCcw, Check } from 'lucide-react'
 import { avisosAlmacen } from '../lib/almacen'
 import { supabase, ESTATUS, TIPOS_MOV, type Estatus, type TipoMov } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -123,7 +126,11 @@ function Barras({ titulo, datos, total, filtro }: { titulo: string; datos: [stri
 }
 
 export default function Tablero() {
-  const { perfil, puedeEditar, puedeResguardar } = useAuth()
+  const { perfil, puedeEditar, puedeResguardar, recargarPerfil } = useAuth()
+  const [personalizar, setPersonalizar] = useState(false)
+  const pref = prefTablero((perfil?.preferencias as { tablero?: PrefTablero } | null)?.tablero)
+  const ve = (id: string) => !pref.ocultos.includes(id)
+  const [serv, setServ] = useState({ vencidos: 0, semana: 0 })
   const [filas, setFilas] = useState<Fila[] | null>(null)
   const [movs, setMovs] = useState<Mov[]>([])
   const [empresas, setEmpresas] = useState<(EmpresaLogo & { id: string })[]>([])
@@ -149,6 +156,8 @@ export default function Tablero() {
       const d30 = new Date(); d30.setDate(d30.getDate() + 30); const en30 = `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, '0')}-${String(d30.getDate()).padStart(2, '0')}`
       setAten({ solPend: al.pendientes, solEnt: al.porEntregar, bajo: al.bajo, mttoVenc: me.filter(x => x.estado === 'vencido').length, mttoProx: me.filter(x => x.estado === 'proximo').length, docVenc: fv.filter(f => f < hoy).length, doc30: fv.filter(f => f >= hoy && f <= en30).length, vencidos: fp.filter(f => f < hoy).length, pronto: fp.filter(f => f >= hoy && f <= en3).length, reportes: rp.length, alta: rp.filter(x => x.prioridad === 'alta').length, conteos: i.data?.length ?? 0 })
     })
+    const hoyS = new Date().toISOString().slice(0, 10), en7S = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)
+    supabase.from('inmueble_pagos').select('fecha_limite').eq('pagado', false).lte('fecha_limite', en7S).then(({ data }) => { const f = ((data ?? []) as { fecha_limite: string }[]).map(x => x.fecha_limite); setServ({ vencidos: f.filter(x => x < hoyS).length, semana: f.filter(x => x >= hoyS).length }) })
     supabase.from('empresas').select('id,nombre,nombre_corto,logo_path,logo_oscuro,color').eq('activo', true).order('nombre')
       .then(({ data }) => setEmpresas((data as (EmpresaLogo & { id: string })[]) ?? []))
     supabase.from('v_movimientos').select('*').order('fecha', { ascending: false }).limit(6)
@@ -177,38 +186,37 @@ export default function Tablero() {
           <p className="mt-1 text-sm text-stone-500">Así están los activos de todas las empresas en este momento.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button className="btn-sec" onClick={() => setPersonalizar(true)} title="Elegir qué ver en el tablero"><SlidersHorizontal size={16} />Personalizar</button>
           <Link to="/escanear" className="btn-sec"><ScanLine size={16} />Escanear</Link>
           {puedeResguardar && <Link to="/resguardos/nuevo" className="btn-sec"><ClipboardSignature size={16} />Resguardo</Link>}
           {puedeEditar && <Link to="/alta" className="btn-primario"><Plus size={16} />Alta de activos</Link>}
         </div>
       </div>
 
-      <InicioRapido />
-
-      {total === 0 ? (
-        <div className="tarjeta">
-          <Vacio titulo="Aún no hay activos registrados"
-            texto="Empieza por dar de alta ubicaciones y empleados en Organización; después registra cada activo con su foto y etiqueta QR."
-            accion={puedeEditar && <Link to="/alta" className="btn-primario"><Plus size={16} />Registrar el primero</Link>} />
-        </div>
-      ) : (
-        <>
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <Kpi retraso={0} to="/activos" icono={Boxes} titulo="Activos registrados" valor={total} acento />
-            <Kpi retraso={70} to="/activos" icono={Gem} titulo="Valor de referencia" valor={valor} formato={mxn} nota="sin contar bajas" />
-            <Kpi retraso={140} to="/activos?estatus=disponible" icono={UserX} titulo="Sin responsable" valor={sinResponsable} nota="sin resguardo vigente" />
-            <Kpi retraso={210} to="/activos?estatus=mantenimiento" icono={Wrench} titulo="En mantenimiento" valor={enMtto} />
+      {(() => {
+        const bloques: Record<string, ReactNode> = {
+          inicio: <InicioRapido ver={{ accesos: ve('inicio.accesos'), recientes: ve('inicio.recientes'), novedades: ve('inicio.novedades') }} />,
+          servicios: <ServiciosProximos />,
+          ...(total === 0 ? {} : {
+            kpis: (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {ve('kpis.total') && <Kpi retraso={0} to="/activos" icono={Boxes} titulo="Activos registrados" valor={total} acento />}
+            {ve('kpis.valor') && <Kpi retraso={70} to="/activos" icono={Gem} titulo="Valor de referencia" valor={valor} formato={mxn} nota="sin contar bajas" />}
+            {ve('kpis.sinresp') && <Kpi retraso={140} to="/activos?estatus=disponible" icono={UserX} titulo="Sin responsable" valor={sinResponsable} nota="sin resguardo vigente" />}
+            {ve('kpis.mtto') && <Kpi retraso={210} to="/activos?estatus=mantenimiento" icono={Wrench} titulo="En mantenimiento" valor={enMtto} />}
           </div>
-
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            ),
+            atencion: (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {([
-              ['/vigencias', FileClock, 'Documentos vencidos', aten.docVenc, aten.doc30 ? `${aten.doc30} vencen en 30 días` : 'Pólizas, tarjetas, licencias', aten.docVenc > 0],
-              ['/prestamos', CalendarClock, 'Préstamos vencidos', aten.vencidos, aten.pronto ? `${aten.pronto} regresan en 3 días` : 'Ninguno por vencer', aten.vencidos > 0],
-              ['/reportes', Siren, 'Reportes de falla por atender', aten.reportes, aten.alta ? `${aten.alta} de prioridad alta` : 'Desde las etiquetas QR', aten.alta > 0],
-              ['/mantenimiento', Wrench, 'Mantenimientos vencidos', aten.mttoVenc, aten.mttoProx ? `${aten.mttoProx} próximos` : 'Preventivos al día', aten.mttoVenc > 0],
-              ['/solicitudes', Inbox, 'Solicitudes por aprobar', aten.solPend, aten.solEnt ? `${aten.solEnt} aprobadas por entregar` : 'Equipo y material pedido', false],
-              ['/almacen?bajo=1', Warehouse, 'Material bajo mínimo', aten.bajo, aten.bajo ? 'Hay que surtir' : 'Existencias completas', aten.bajo > 0],
-            ] as const).map(([to, I, t, n, sub, rojo], k) => (
+              ['docs', '/vigencias', FileClock, 'Documentos vencidos', aten.docVenc, aten.doc30 ? `${aten.doc30} vencen en 30 días` : 'Pólizas, tarjetas, licencias', aten.docVenc > 0],
+              ['prestamos', '/prestamos', CalendarClock, 'Préstamos vencidos', aten.vencidos, aten.pronto ? `${aten.pronto} regresan en 3 días` : 'Ninguno por vencer', aten.vencidos > 0],
+              ['reportes', '/reportes', Siren, 'Reportes de falla por atender', aten.reportes, aten.alta ? `${aten.alta} de prioridad alta` : 'Desde las etiquetas QR', aten.alta > 0],
+              ['mantenimiento', '/mantenimiento', Wrench, 'Mantenimientos vencidos', aten.mttoVenc, aten.mttoProx ? `${aten.mttoProx} próximos` : 'Preventivos al día', aten.mttoVenc > 0],
+              ['servicios', '/servicios', Receipt, 'Servicios de inmuebles vencidos', serv.vencidos, serv.semana ? `${serv.semana} vencen esta semana` : 'Luz, agua, predial al día', serv.vencidos > 0],
+              ['solicitudes', '/solicitudes', Inbox, 'Solicitudes por aprobar', aten.solPend, aten.solEnt ? `${aten.solEnt} aprobadas por entregar` : 'Equipo y material pedido', false],
+              ['almacen', '/almacen?bajo=1', Warehouse, 'Material bajo mínimo', aten.bajo, aten.bajo ? 'Hay que surtir' : 'Existencias completas', aten.bajo > 0],
+            ] as const).filter(([id]) => ve(`atencion.${id}`)).map(([, to, I, t, n, sub, rojo], k) => (
               <Link key={to} to={to} className={`tarjeta viva group flex animate-entrar items-center gap-4 p-4 ${rojo ? '!border-red-200' : ''}`} style={{ animationDelay: `${280 + k * 60}ms` }}>
                 <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl ${rojo ? 'bg-red-50 text-red-700' : 'bg-stone-100 text-marca'}`}>
                   <I size={20} />{rojo && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulso" style={{ boxShadow: '0 0 0 0 rgb(239 68 68 / .6)' }} />}
@@ -219,8 +227,9 @@ export default function Tablero() {
             ))}
           </div>
 
-          {empresas.length > 0 && (
-            <section className="mb-6">
+            ),
+            empresas: empresas.length > 0 ? (
+            <section>
               <h2 className="mb-3 flex items-center justify-between text-sm font-semibold">Empresas<Link to="/empresas" className="text-[11px] font-normal text-marca hover:underline">Ver todas</Link></h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[...empresas].sort((a, b) => filas.filter(f => f.empresa_id === b.id).length - filas.filter(f => f.empresa_id === a.id).length).map((e, i) => {
@@ -235,15 +244,15 @@ export default function Tablero() {
                 })}
               </div>
             </section>
-          )}
-
-          <div className="mb-6 grid gap-6 lg:grid-cols-5">
-            <section className="tarjeta min-w-0 p-5 lg:col-span-3">
+            ) : null,
+            estatus: (
+            <section className="tarjeta min-w-0 p-5 h-full">
               <h2 className="mb-5 flex items-center justify-between text-sm font-semibold">Distribución por estatus<span className="hidden text-[10px] font-normal uppercase tracking-wider text-stone-400 sm:inline">pasa el cursor o toca</span></h2>
               <Anillo datos={porEstatus} total={total} />
             </section>
-
-            <section className="tarjeta flex min-w-0 flex-col p-5 lg:col-span-2">
+            ),
+            actividad: (
+            <section className="tarjeta flex min-w-0 flex-col p-5 h-full">
               <h2 className="mb-4 flex items-center justify-between text-sm font-semibold">
                 Actividad reciente
                 <Link to="/resguardos" className="text-[11px] font-normal text-marca hover:underline">Ver todo</Link>
@@ -267,15 +276,77 @@ export default function Tablero() {
               )}
               {sinFirma > 0 && <Link to="/resguardos" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{sinFirma} resguardo(s) recientes esperan firma</Link>}
             </section>
-          </div>
-
+            ),
+            graficas: (
           <div className="grid gap-6 lg:grid-cols-3">
-            <Barras titulo="Por empresa" datos={contar(filas, f => f.empresa)} total={total} />
-            <Barras titulo="Por categoría" datos={contar(filas, f => f.categoria)} total={total} />
-            <Barras titulo="Por ubicación" datos={contar(filas, f => f.ubicacion)} total={total} />
+            {ve('graficas.empresa') && <Barras titulo="Por empresa" datos={contar(filas, f => f.empresa)} total={total} />}
+            {ve('graficas.categoria') && <Barras titulo="Por categoría" datos={contar(filas, f => f.categoria)} total={total} />}
+            {ve('graficas.ubicacion') && <Barras titulo="Por ubicación" datos={contar(filas, f => f.ubicacion)} total={total} />}
           </div>
+            ),
+          }),
+        }
+        const visibles = pref.orden.filter(id => ve(id) && bloques[id])
+        return <>
+          <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+            {visibles.map(id => <div key={id} className={SECCIONES.find(x => x.id === id)?.mitad ? '' : 'lg:col-span-2'}>{bloques[id]}</div>)}
+          </div>
+          {total === 0 && (
+        <div className="tarjeta">
+          <Vacio titulo="Aún no hay activos registrados"
+            texto="Empieza por dar de alta ubicaciones y empleados en Organización; después registra cada activo con su foto y etiqueta QR."
+            accion={puedeEditar && <Link to="/alta" className="btn-primario"><Plus size={16} />Registrar el primero</Link>} />
+        </div>
+          )}
+          {visibles.length === 0 && <div className="tarjeta p-8 text-center text-sm text-stone-500">Ocultaste todas las secciones. <button className="text-marca underline" onClick={() => setPersonalizar(true)}>Personalizar el tablero</button></div>}
         </>
-      )}
+      })()}
+      {personalizar && <Personalizar inicial={pref} onCerrar={() => setPersonalizar(false)} onGuardar={async p => {
+        if (perfil) { await supabase.from('perfiles').update({ preferencias: { ...(perfil.preferencias ?? {}), tablero: p } }).eq('id', perfil.id); await recargarPerfil() }
+        setPersonalizar(false)
+      }} />}
     </div>
+  )
+}
+
+/** Elegir qué secciones ver en el tablero, en qué orden y qué tarjetas dentro de cada una. Se guarda en el perfil. */
+function Personalizar({ inicial, onCerrar, onGuardar }: { inicial: PrefTablero; onCerrar: () => void; onGuardar: (p: PrefTablero) => void }) {
+  const [p, setP] = useState<PrefTablero>(inicial)
+  const [guardando, setGuardando] = useState(false)
+  const on = (id: string) => !p.ocultos.includes(id)
+  const alternar = (id: string) => setP(x => ({ ...x, ocultos: x.ocultos.includes(id) ? x.ocultos.filter(o => o !== id) : [...x.ocultos, id] }))
+  const mover = (i: number, d: number) => setP(x => { const o = [...x.orden]; const j = i + d; if (j < 0 || j >= o.length) return x; [o[i], o[j]] = [o[j], o[i]]; return { ...x, orden: o } })
+  return (
+    <Modal abierto titulo="Personalizar mi tablero" onCerrar={onCerrar} ancho="max-w-2xl">
+      <p className="mb-4 text-sm text-stone-500">Elige qué ver y en qué orden. Solo cambia tu tablero; se guarda en tu perfil y lo verás igual en cualquier equipo.</p>
+      <ul className="space-y-2">
+        {p.orden.map((id, i) => {
+          const sec = SECCIONES.find(x => x.id === id)!
+          return (
+            <li key={id} className={`rounded-xl border p-3 transition ${on(id) ? 'border-stone-200' : 'border-dashed border-stone-200 opacity-60'}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col">
+                  <button className="rounded p-0.5 text-stone-400 hover:text-marca disabled:opacity-30" disabled={i === 0} onClick={() => mover(i, -1)} aria-label="Subir"><ChevronUp size={16} /></button>
+                  <button className="rounded p-0.5 text-stone-400 hover:text-marca disabled:opacity-30" disabled={i === p.orden.length - 1} onClick={() => mover(i, 1)} aria-label="Bajar"><ChevronDown size={16} /></button>
+                </div>
+                <div className="min-w-0 flex-1"><p className="font-medium">{sec.t}</p><p className="truncate text-xs text-stone-500">{sec.d}</p></div>
+                <button onClick={() => alternar(id)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs ${on(id) ? 'border-marca/50 bg-marca/10 text-marca' : 'border-stone-300 text-stone-500'}`}>{on(id) ? <><Eye size={14} />Visible</> : <><EyeOff size={14} />Oculta</>}</button>
+              </div>
+              {sec.subs && on(id) && (
+                <div className="mt-2 flex flex-wrap gap-1.5 pl-9">
+                  {sec.subs.map(([k, t]) => { const sid = `${id}.${k}`; return (
+                    <button key={k} onClick={() => alternar(sid)} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs ring-1 ring-inset ${on(sid) ? 'bg-marca/10 text-marca ring-marca/40' : 'text-stone-400 ring-stone-200 line-through'}`}>{on(sid) && <Check size={11} />}{t}</button>
+                  ) })}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <div className="mt-5 flex flex-wrap justify-between gap-2">
+        <button className="btn-sec" onClick={() => setP(DEFECTO_TABLERO)}><RotateCcw size={15} />Restablecer</button>
+        <div className="flex gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className="btn-primario" disabled={guardando} onClick={() => { setGuardando(true); onGuardar(p) }}><Check size={15} />Guardar</button></div>
+      </div>
+    </Modal>
   )
 }
