@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2, Upload } from 'lucide-react'
+import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2, Upload, Tent, Users, BedDouble, HardHat } from 'lucide-react'
 import { ImportarInmuebles } from '../components/Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -16,9 +16,22 @@ export type Inmueble = { id: string; codigo: string; empresa_id: string; nombre:
   superficie_terreno: number | null; superficie_construccion: number | null; calle: string | null; numero_ext: string | null; numero_int: string | null; manzana: string | null; lote: string | null
   colonia: string | null; entre_calles: string | null; municipio: string | null; estado: string | null; cp: string | null; tipo: string; clasificacion: string | null; situacion: string | null
   servicios: string[]; colindancias: string | null; observaciones: string | null; foto: string | null; latitud: number | null; longitud: number | null; ubicacion_id: string | null; activo: boolean
+  encargado_id?: string | null; telefono?: string | null; estatus_operacion?: string; puestos_trabajo?: number | null; horario?: string | null
+  capacidad_personas?: number | null; ocupacion?: number | null; cuartos?: number | null; banos?: number | null; obra_cc_id?: string | null; fecha_apertura?: string | null; fecha_cierre?: string | null
+  encargado?: { nombres: string; apellidos: string | null } | null; obra?: { clave: string; nombre: string } | null
   empresas?: { nombre: string; nombre_corto: string | null; color: string | null } | null }
 
 export const TIPOS_INM: Record<string, string> = { terreno: 'Terreno', oficina: 'Oficina corporativa', bodega: 'Bodega', taller: 'Taller', campamento: 'Campamento', patio: 'Patio de maquinaria', casa_personal: 'Casa para personal', edificacion_proceso: 'Edificación en proceso' }
+/** Separadores de la página: oficinas y campamentos llevan datos distintos. */
+export const GRUPOS_INM = [
+  { k: 'oficinas', t: 'Oficinas', tipos: ['oficina'], icono: Building2 },
+  { k: 'campamentos', t: 'Campamentos', tipos: ['campamento', 'casa_personal'], icono: Tent },
+  { k: 'otros', t: 'Terrenos, bodegas y otros', tipos: ['terreno', 'bodega', 'taller', 'patio', 'edificacion_proceso'], icono: Landmark },
+] as const
+export const grupoDe = (tipo: string) => GRUPOS_INM.find(g => (g.tipos as readonly string[]).includes(tipo))?.k ?? 'otros'
+const OPERACION: Record<string, { t: string; c: string }> = { por_abrir: { t: 'Por abrir', c: 'bg-sky-50 text-sky-700' }, operando: { t: 'Operando', c: 'bg-emerald-50 text-emerald-700' }, cerrado: { t: 'Cerrado', c: 'bg-stone-100 text-stone-500' } }
+const SEL_INM = '*, empresas(nombre,nombre_corto,color), encargado:encargado_id(nombres,apellidos), obra:obra_cc_id(clave,nombre)'
+const nomEnc = (i: Inmueble) => i.encargado ? [i.encargado.nombres, i.encargado.apellidos].filter(Boolean).join(' ') : null
 const CLASIF: Record<string, string> = { urbana: 'Urbana', suburbana: 'Suburbana', rustica: 'Rústica o rural' }
 const SITUACION: Record<string, string> = { no_disponible: 'No disponible', en_proceso: 'En proceso', reserva: 'De reserva', en_desarrollo: 'En desarrollo', renta: 'En renta', oficina: 'Oficina', campamento: 'Campamento', empresa_socios: 'Empresa y/o socios' }
 const SERVICIOS = [['agua', 'Agua', Droplets], ['luz', 'Luz', Zap], ['drenaje', 'Drenaje', Waves], ['internet', 'Internet', Wifi], ['gas', 'Gas', Flame], ['pavimento', 'Pavimento', Route]] as const
@@ -54,19 +67,21 @@ export default function Inmuebles() {
   const [q, setQ] = useState('')
   const [empresa, setEmpresa] = useState('')
   const [tipo, setTipo] = useState('')
+  const [grupo, setGrupoS] = useState<string>(() => new URLSearchParams(location.hash.split('?')[1] ?? '').get('grupo') ?? 'oficinas')
+  const setGrupo = (g: string) => { setGrupoS(g); setTipo(''); history.replaceState(null, '', `#/inmuebles?grupo=${g}`) }
   const [nuevo, setNuevo] = useState(false)
   const [importar, setImportar] = useState(false)
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
   const nav = useNavigate()
 
   const cargar = () => {
-    supabase.from('inmuebles').select('*, empresas(nombre,nombre_corto,color)').eq('activo', true).order('codigo').then(({ data }) => setLista((data as unknown as Inmueble[]) ?? []))
+    supabase.from('inmuebles').select(SEL_INM).eq('activo', true).order('codigo').then(({ data }) => setLista((data as unknown as Inmueble[]) ?? []))
     supabase.from('documentos').select('inmueble_id,tipo,fecha_vencimiento,avisar_dias').eq('vigente', true).not('inmueble_id', 'is', null).then(({ data }) => setDocs((data as DocMin[]) ?? []))
   }
   useEffect(cargar, [])
 
-  const vis = useMemo(() => (lista ?? []).filter(i => (!empresa || i.empresa_id === empresa) && (!tipo || i.tipo === tipo)
-    && (!q || [i.codigo, i.nombre, i.clave_catastral, i.colonia, i.propietario].some(x => x?.toLowerCase().includes(q.toLowerCase())))), [lista, empresa, tipo, q])
+  const vis = useMemo(() => (lista ?? []).filter(i => (grupo === 'todos' || grupoDe(i.tipo) === grupo) && (!empresa || i.empresa_id === empresa) && (!tipo || i.tipo === tipo)
+    && (!q || [i.codigo, i.nombre, i.clave_catastral, i.colonia, i.propietario].some(x => x?.toLowerCase().includes(q.toLowerCase())))), [lista, empresa, tipo, q, grupo])
   if (!lista) return <Cargando />
   const exps = new Map(lista.map(i => [i.id, expediente(docs.filter(d => d.inmueble_id === i.id))]))
   const completos = [...exps.values()].filter(e => e.pct === 100).length
@@ -81,20 +96,42 @@ export default function Inmuebles() {
           <p className="mt-1 text-sm text-stone-500">Terrenos, oficinas, bodegas, talleres, campamentos y casas del personal, con su expediente de documentos.</p>
         </div>
         {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
-        {puedeEditar && <button className="btn-primario" onClick={() => setNuevo(true)}><Plus size={16} />Nuevo inmueble</button>}
+        {puedeEditar && <button className="btn-primario" onClick={() => setNuevo(true)}><Plus size={16} />{grupo === 'campamentos' ? 'Nuevo campamento' : grupo === 'oficinas' ? 'Nueva oficina' : 'Nuevo inmueble'}</button>}
         {importar && <ImportarInmuebles abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
       </div>
 
+      <div className="mb-5 flex flex-wrap gap-2 border-b border-stone-200">
+        {[...GRUPOS_INM, { k: 'todos', t: 'Todos', tipos: [], icono: Landmark }].map(g => {
+          const n = g.k === 'todos' ? lista.length : lista.filter(i => grupoDe(i.tipo) === g.k).length
+          return <button key={g.k} onClick={() => setGrupo(g.k)} className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm transition ${grupo === g.k ? 'border-marca font-semibold text-marca' : 'border-transparent text-stone-500 hover:text-tinta'}`}><g.icono size={16} />{g.t}<span className="cifra rounded-full bg-stone-100 px-1.5 text-[11px] text-stone-500">{n}</span></button>
+        })}
+      </div>
+
+      {grupo === 'campamentos' ? (() => {
+        const cs = lista.filter(i => grupoDe(i.tipo) === 'campamentos' && i.estatus_operacion !== 'cerrado')
+        const cap = cs.reduce((s, i) => s + (i.capacidad_personas ?? 0), 0), oc = cs.reduce((s, i) => s + (i.ocupacion ?? 0), 0)
+        return <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {([[Tent, 'Campamentos abiertos', String(cs.length)], [BedDouble, 'Capacidad (personas)', num(cap)], [Users, 'Ocupación actual', num(oc)], [HardHat, 'Lugares libres', cap ? `${num(Math.max(0, cap - oc))} · ${Math.round(oc / cap * 100)}%` : '—']] as const).map(([I, t, v]) => (
+            <div key={t} className="tarjeta p-4"><I size={18} className="text-marca" /><p className="cifra mt-2 text-2xl font-semibold sm:text-3xl">{v}</p><p className="text-xs text-stone-500">{t}</p></div>))}
+        </div>
+      })() : grupo === 'oficinas' ? (() => {
+        const os = lista.filter(i => grupoDe(i.tipo) === 'oficinas')
+        return <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {([[Building2, 'Oficinas', String(os.length)], [Users, 'Puestos de trabajo', num(os.reduce((s, i) => s + (i.puestos_trabajo ?? 0), 0))], [Ruler, 'm² construidos', num(os.reduce((s, i) => s + Number(i.superficie_construccion ?? 0), 0))], [CheckCircle2, 'Expediente completo', `${os.filter(i => exps.get(i.id)?.pct === 100).length} de ${os.length}`]] as const).map(([I, t, v]) => (
+            <div key={t} className="tarjeta p-4"><I size={18} className="text-marca" /><p className="cifra mt-2 text-2xl font-semibold sm:text-3xl">{v}</p><p className="text-xs text-stone-500">{t}</p></div>))}
+        </div>
+      })() : (
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {([[Landmark, 'Inmuebles', String(lista.length), false], [Ruler, 'm² de terreno', num(m2), false], [CheckCircle2, 'Expediente completo', `${completos} de ${lista.length}`, false], [AlertTriangle, 'Con documentos vencidos', String(conVencidos), conVencidos > 0]] as const).map(([I, t, v, rojo]) => (
           <div key={t} className={`tarjeta p-4 ${rojo ? '!border-red-200' : ''}`}><I size={18} className={rojo ? 'text-red-700' : 'text-marca'} /><p className={`cifra mt-2 text-2xl font-semibold sm:text-3xl ${rojo ? 'text-red-700' : ''}`}>{v}</p><p className="text-[11px] uppercase tracking-wider text-stone-500">{t}</p></div>
         ))}
       </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative min-w-0 flex-1 sm:max-w-xs"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo !pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Nombre, clave catastral, colonia…" /></div>
         <select className="campo !w-auto" value={empresa} onChange={e => setEmpresa(e.target.value)} aria-label="Empresa"><option value="">Todas las empresas</option>{empresas.map(e => <option key={e.id} value={e.id}>{(e.nombre_corto as string) || e.nombre}</option>)}</select>
-        <select className="campo !w-auto" value={tipo} onChange={e => setTipo(e.target.value)} aria-label="Tipo"><option value="">Todos los tipos</option>{Object.entries(TIPOS_INM).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
+        <select className="campo !w-auto" value={tipo} onChange={e => setTipo(e.target.value)} aria-label="Tipo"><option value="">Todos los tipos</option>{Object.entries(TIPOS_INM).filter(([k]) => grupo === 'todos' || grupoDe(k) === grupo).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
       </div>
 
       {vis.length === 0 ? <div className="tarjeta"><Vacio titulo="Sin inmuebles" texto="Da de alta los terrenos, oficinas y bodegas para llevar su expediente y recibir avisos de predial, uso de suelo y protección civil." /></div> : (
@@ -106,6 +143,7 @@ export default function Inmuebles() {
                 <div className="relative h-32 overflow-hidden bg-gradient-to-br from-stone-100 to-transparent">
                   {i.foto ? <img src={i.foto} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-stone-300"><Building2 size={40} strokeWidth={1.2} /></div>}
                   <span className="absolute left-3 top-3 rounded-full bg-lienzo/80 px-2.5 py-0.5 text-[11px] font-medium text-tinta backdrop-blur">{TIPOS_INM[i.tipo]}</span>
+                  {grupoDe(i.tipo) !== 'otros' && i.estatus_operacion && <span className={`absolute right-3 top-3 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${OPERACION[i.estatus_operacion]?.c}`}>{OPERACION[i.estatus_operacion]?.t}</span>}
                   <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: i.empresas?.color ?? '#E2A64B' }} />
                 </div>
                 <div className="flex items-center gap-3 p-4">
@@ -113,6 +151,12 @@ export default function Inmuebles() {
                     <p className="font-mono text-[11px] text-marca">{i.codigo}</p>
                     <p className="truncate font-medium">{i.nombre}</p>
                     <p className="truncate text-xs text-stone-500">{i.empresas?.nombre_corto || i.empresas?.nombre}{i.superficie_terreno ? ` · ${num(i.superficie_terreno)} m²` : ''}</p>
+                    {grupoDe(i.tipo) === 'campamentos' && <>
+                      <p className="mt-1 truncate text-xs text-stone-600">{[i.obra && `Obra ${i.obra.clave}`, nomEnc(i) && `Encargado: ${nomEnc(i)}`].filter(Boolean).join(' · ') || 'Sin obra ni encargado'}</p>
+                      {i.capacidad_personas ? <div className="mt-1.5"><div className="flex justify-between text-[11px] text-stone-500"><span>{i.ocupacion ?? 0} de {i.capacidad_personas} personas</span><span>{Math.round((i.ocupacion ?? 0) / i.capacidad_personas * 100)}%</span></div>
+                        <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-stone-100"><div className={`h-full rounded-full ${(i.ocupacion ?? 0) >= i.capacidad_personas ? 'bg-red-500' : 'bg-marca'}`} style={{ width: `${Math.min(100, (i.ocupacion ?? 0) / i.capacidad_personas * 100)}%` }} /></div></div> : null}
+                    </>}
+                    {grupoDe(i.tipo) === 'oficinas' && <p className="mt-1 truncate text-xs text-stone-600">{[i.puestos_trabajo != null && `${i.puestos_trabajo} puestos`, nomEnc(i) && `Encargado: ${nomEnc(i)}`, i.horario].filter(Boolean).join(' · ') || 'Sin datos de operación'}</p>}
                     <p className="mt-1 text-[11px] text-stone-400">{e.tiene} de {e.total} documentos básicos{e.vencidos ? <span className="text-red-700"> · {e.vencidos} vencido{e.vencidos > 1 ? 's' : ''}</span> : e.porVencer ? <span className="text-amber-700"> · {e.porVencer} por vencer</span> : ''}</p>
                   </div>
                   <Anillo pct={e.pct} rojo={e.vencidos > 0} />
@@ -122,7 +166,7 @@ export default function Inmuebles() {
           })}
         </div>
       )}
-      {nuevo && <InmuebleModal onCerrar={() => setNuevo(false)} onListo={id => { setNuevo(false); nav(`/inmuebles/${id}`) }} />}
+      {nuevo && <InmuebleModal tipoInicial={grupo === 'campamentos' ? 'campamento' : grupo === 'oficinas' ? 'oficina' : 'terreno'} onCerrar={() => setNuevo(false)} onListo={id => { setNuevo(false); nav(`/inmuebles/${id}`) }} />}
     </div>
   )
 }
@@ -133,7 +177,7 @@ export function InmuebleDetalle() {
   const [i, setI] = useState<Inmueble | null | undefined>(undefined)
   const [docs, setDocs] = useState<Documento[]>([])
   const [editar, setEditar] = useState(false)
-  const cargar = () => { supabase.from('inmuebles').select('*, empresas(nombre,nombre_corto,color)').eq('id', id!).maybeSingle().then(({ data }) => { setI(data as unknown as Inmueble | null); if (data) registrarReciente(`/inmuebles/${id}`, (data as { nombre: string }).nombre, 'Inmueble') }) }
+  const cargar = () => { supabase.from('inmuebles').select(SEL_INM).eq('id', id!).maybeSingle().then(({ data }) => { setI(data as unknown as Inmueble | null); if (data) registrarReciente(`/inmuebles/${id}`, (data as { nombre: string }).nombre, 'Inmueble') }) }
   useEffect(cargar, [id]) // eslint-disable-line react-hooks/exhaustive-deps
   if (i === undefined) return <Cargando />
   if (!i) return <Aviso>No encontré este inmueble.</Aviso>
@@ -142,10 +186,15 @@ export function InmuebleDetalle() {
     ['Tipo', TIPOS_INM[i.tipo]], ['Clasificación', i.clasificacion ? CLASIF[i.clasificacion] : null], ['Situación', i.situacion ? SITUACION[i.situacion] : null],
     ['Propietario', i.propietario], ['Clave catastral', i.clave_catastral], ['Terreno', i.superficie_terreno ? `${num(i.superficie_terreno)} m²` : null],
     ['Construcción', i.superficie_construccion ? `${num(i.superficie_construccion)} m²` : null], ['Entre calles', i.entre_calles], ['C.P.', i.cp],
+    ...(grupoDe(i.tipo) !== 'otros' ? [['Estatus', OPERACION[i.estatus_operacion ?? 'operando']?.t ?? null], ['Encargado', nomEnc(i)], ['Teléfono', i.telefono ?? null]] as [string, string | null][] : []),
+    ...(grupoDe(i.tipo) === 'oficinas' ? [['Puestos de trabajo', i.puestos_trabajo != null ? String(i.puestos_trabajo) : null], ['Horario', i.horario ?? null]] as [string, string | null][] : []),
+    ...(grupoDe(i.tipo) === 'campamentos' ? [['Obra que atiende', i.obra ? `${i.obra.clave} · ${i.obra.nombre}` : null], ['Capacidad', i.capacidad_personas != null ? `${i.capacidad_personas} personas` : null],
+      ['Ocupación', i.ocupacion != null ? `${i.ocupacion} personas${i.capacidad_personas ? ` (${Math.round(i.ocupacion / i.capacidad_personas * 100)}%)` : ''}` : null], ['Cuartos', i.cuartos != null ? String(i.cuartos) : null], ['Baños', i.banos != null ? String(i.banos) : null],
+      ['Apertura', i.fecha_apertura ? new Date(i.fecha_apertura + 'T12:00').toLocaleDateString('es-MX', { dateStyle: 'medium' }) : null], ['Cierre', i.fecha_cierre ? new Date(i.fecha_cierre + 'T12:00').toLocaleDateString('es-MX', { dateStyle: 'medium' }) : null]] as [string, string | null][] : []),
   ]
   return (
     <div>
-      <Link to="/inmuebles" className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-marca"><ArrowLeft size={15} />Inmuebles</Link>
+      <Link to={`/inmuebles?grupo=${grupoDe(i.tipo)}`} className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-marca"><ArrowLeft size={15} />{GRUPOS_INM.find(g => g.k === grupoDe(i.tipo))?.t ?? 'Inmuebles'}</Link>
       <div className="tarjeta relative mb-6 overflow-hidden">
         <div className="grid md:grid-cols-[300px_minmax(0,1fr)]">
           <div className="relative h-48 bg-gradient-to-br from-stone-100 to-transparent md:h-full">
@@ -213,11 +262,14 @@ export function InmuebleDetalle() {
   )
 }
 
-function InmuebleModal({ inmueble, onCerrar, onListo }: { inmueble?: Inmueble; onCerrar: () => void; onListo: (id: string) => void }) {
+function InmuebleModal({ inmueble, tipoInicial = 'terreno', onCerrar, onListo }: { inmueble?: Inmueble; tipoInicial?: string; onCerrar: () => void; onListo: (id: string) => void }) {
+  const { items: emps } = useLista('empleados', 'id,nombres,apellidos,empresa_id', 'nombres')
+  const { items: ccs } = useLista('centros_costo', 'id,clave,nombre,empresa_id,es_obra', 'clave')
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
   const { items: ubis } = useLista('ubicaciones', 'id,nombre,empresa_id')
   const base = { empresa_id: '', nombre: '', propietario: '', clave_catastral: '', superficie_terreno: '', superficie_construccion: '', calle: '', numero_ext: '', numero_int: '', manzana: '', lote: '', colonia: '',
-    entre_calles: '', municipio: 'La Paz', estado: 'Baja California Sur', cp: '', tipo: 'terreno', clasificacion: 'urbana', situacion: '', colindancias: '', observaciones: '', ubicacion_id: '' }
+    entre_calles: '', municipio: 'La Paz', estado: 'Baja California Sur', cp: '', tipo: tipoInicial, clasificacion: 'urbana', situacion: '', colindancias: '', observaciones: '', ubicacion_id: '',
+    encargado_id: '', telefono: '', estatus_operacion: 'operando', puestos_trabajo: '', horario: '', capacidad_personas: '', ocupacion: '', cuartos: '', banos: '', obra_cc_id: '', fecha_apertura: '', fecha_cierre: '' }
   const [f, setF] = useState<Record<string, string>>(() => inmueble ? Object.fromEntries(Object.keys(base).map(k => [k, String((inmueble as unknown as Record<string, unknown>)[k] ?? '')])) : base)
   const [servicios, setServicios] = useState<string[]>(inmueble?.servicios ?? [])
   const [foto, setFoto] = useState<string | null>(inmueble?.foto ?? null)
@@ -236,6 +288,8 @@ function InmuebleModal({ inmueble, onCerrar, onListo }: { inmueble?: Inmueble; o
     const datos: Record<string, unknown> = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === '' ? null : v]))
     datos.superficie_terreno = f.superficie_terreno ? Number(f.superficie_terreno) : null
     datos.superficie_construccion = f.superficie_construccion ? Number(f.superficie_construccion) : null
+    for (const k of ['puestos_trabajo', 'capacidad_personas', 'ocupacion', 'cuartos', 'banos']) datos[k] = f[k] ? Number(f[k]) : null
+    datos.estatus_operacion = f.estatus_operacion || 'operando'
     Object.assign(datos, { servicios, foto, latitud: c?.lat ?? null, longitud: c?.lng ?? null, nombre: f.nombre.trim() })
     const r = inmueble ? await supabase.from('inmuebles').update(datos).eq('id', inmueble.id).select('id').single() : await supabase.from('inmuebles').insert(datos).select('id').single()
     if (r.error) return setError(mensajeError(r.error))
@@ -261,6 +315,28 @@ function InmuebleModal({ inmueble, onCerrar, onListo }: { inmueble?: Inmueble; o
             <Campo label="Tipo"><select className="campo" value={f.tipo} onChange={set('tipo')}>{Object.entries(TIPOS_INM).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></Campo>
           </div>
         </div>
+        {grupoDe(f.tipo) !== 'otros' && (
+          <div className="rounded-xl border border-marca/30 bg-marca/5 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold">{grupoDe(f.tipo) === 'campamentos' ? <><Tent size={16} className="text-marca" />Datos del campamento</> : <><Building2 size={16} className="text-marca" />Datos de la oficina</>}</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Campo label="Estatus"><select className="campo" value={f.estatus_operacion} onChange={set('estatus_operacion')}>{Object.entries(OPERACION).map(([k, x]) => <option key={k} value={k}>{x.t}</option>)}</select></Campo>
+              <Campo label="Encargado"><select className="campo" value={f.encargado_id} onChange={set('encargado_id')}><option value="">—</option>{emps.map(e => <option key={e.id} value={e.id}>{[e.nombres, e.apellidos].filter(Boolean).join(' ')}</option>)}</select></Campo>
+              {txt('telefono', 'Teléfono', '612 000 0000')}
+              {grupoDe(f.tipo) === 'oficinas' ? <>
+                <Campo label="Puestos de trabajo"><input className="campo cifra" type="number" min={0} value={f.puestos_trabajo} onChange={set('puestos_trabajo')} /></Campo>
+                {txt('horario', 'Horario', 'L-V 8:00 a 18:00', 'sm:col-span-2')}
+              </> : <>
+                <Campo label="Obra que atiende" className="sm:col-span-3"><select className="campo" value={f.obra_cc_id} onChange={set('obra_cc_id')}><option value="">—</option>{ccs.filter(c => c.empresa_id === f.empresa_id || !f.empresa_id).map(c => <option key={c.id} value={c.id}>{String(c.clave)} · {c.nombre}</option>)}</select></Campo>
+                <Campo label="Capacidad (personas)"><input className="campo cifra" type="number" min={0} value={f.capacidad_personas} onChange={set('capacidad_personas')} /></Campo>
+                <Campo label="Ocupación actual"><input className="campo cifra" type="number" min={0} value={f.ocupacion} onChange={set('ocupacion')} /></Campo>
+                <Campo label="Cuartos"><input className="campo cifra" type="number" min={0} value={f.cuartos} onChange={set('cuartos')} /></Campo>
+                <Campo label="Baños"><input className="campo cifra" type="number" min={0} value={f.banos} onChange={set('banos')} /></Campo>
+                <Campo label="Apertura"><input className="campo" type="date" value={f.fecha_apertura} onChange={set('fecha_apertura')} /></Campo>
+                <Campo label="Cierre (estimado)"><input className="campo" type="date" value={f.fecha_cierre} onChange={set('fecha_cierre')} /></Campo>
+              </>}
+            </div>
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-3">
           <Campo label="Clasificación"><select className="campo" value={f.clasificacion} onChange={set('clasificacion')}><option value="">—</option>{Object.entries(CLASIF).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></Campo>
           <Campo label="Situación"><select className="campo" value={f.situacion} onChange={set('situacion')}><option value="">—</option>{Object.entries(SITUACION).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></Campo>
