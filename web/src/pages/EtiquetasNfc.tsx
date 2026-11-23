@@ -94,6 +94,7 @@ export default function EtiquetasNfc() {
       <label className="mb-5 inline-flex items-center gap-2 text-sm text-stone-600"><input type="checkbox" checked={f.todos} onChange={e => setF({ ...f, todos: e.target.checked })} />Mostrar también los que ya tienen sticker (para cambiarlo)</label>
 
       {!lista ? <Cargando /> : (
+        <>
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem] *:min-w-0">
           <section className="tarjeta p-5">
             {a ? (
@@ -135,15 +136,31 @@ export default function EtiquetasNfc() {
                 <li key={h.id} className="flex items-center gap-2 text-xs"><CheckCircle2 size={13} className="text-emerald-600" /><Link to={`/activos/${h.id}`} className="font-mono hover:underline">{h.codigo}</Link><span className="min-w-0 flex-1 truncate font-mono text-stone-400">{h.uid}</span>
                   <button className="text-stone-400 hover:text-red-600" title="Deshacer" onClick={() => deshacer(h)}><Undo2 size={13} /></button></li>))}</ul>}
             </div>
-            <div className="tarjeta p-2">
-              <p className="px-2 pb-1 pt-1 text-xs uppercase tracking-wider text-stone-500">Lista ({lista.length})</p>
-              <ul className="max-h-[28rem] overflow-auto">{lista.map(x => (
-                <li key={x.id}><button onClick={() => { setActual(x.id); setMsg(null) }} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs ${x.id === actual ? 'bg-marca/15 text-tinta' : 'hover:bg-stone-50'}`}>
-                  {x.nfc_uid ? <CheckCircle2 size={13} className="shrink-0 text-emerald-600" /> : <Nfc size={13} className="shrink-0 text-stone-300" />}
-                  <span className="font-mono">{x.codigo}</span><span className="min-w-0 flex-1 truncate text-stone-500">{x.descripcion}</span></button></li>))}</ul>
-            </div>
           </aside>
         </div>
+
+        <section className="mt-6">
+          <h2 className="mb-3 flex items-center justify-between text-sm font-semibold"><span>Equipos ({lista.length})</span><span className="text-xs font-normal text-stone-500">Toca un equipo para ligarle su sticker</span></h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {lista.map(x => (
+              <button key={x.id} onClick={() => { setActual(x.id); setMsg(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                className={`tarjeta group overflow-hidden text-left transition hover:-translate-y-0.5 hover:border-marca/60 ${x.id === actual ? '!border-marca ring-2 ring-marca/40' : ''}`}>
+                <div className="relative">
+                  <FotoActivo foto={x.foto_principal} fotoModelo={x.modelo_foto} categoria={x.categoria} className="aspect-[4/3] w-full" icono={34} />
+                  <span className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${x.nfc_uid ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-stone-50 text-stone-500 ring-stone-200'}`}>
+                    {x.nfc_uid ? <CheckCircle2 size={11} /> : <Nfc size={11} />}{x.nfc_uid ? 'Con sticker' : 'Sin sticker'}
+                  </span>
+                </div>
+                <div className="space-y-0.5 p-3">
+                  <p className="font-mono text-[11px] text-stone-500">{x.codigo}</p>
+                  <p className="line-clamp-2 text-sm font-medium leading-snug">{[x.marca, x.modelo].filter(Boolean).join(' ') || x.descripcion}</p>
+                  <p className="truncate text-xs text-stone-500">{x.responsable || x.ubicacion || 'Sin responsable'}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+        </>
       )}
     </div>
   )
