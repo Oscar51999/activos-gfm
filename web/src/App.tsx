@@ -12,6 +12,7 @@ import ActivoDetalle from './pages/ActivoDetalle'
 import { AbrirQR } from './pages/AbrirQR'
 const Etiquetas = lazy(() => import('./pages/Etiquetas'))
 const Escanear = lazy(() => import('./pages/Escanear'))
+const EtiquetasNfc = lazy(() => import('./pages/EtiquetasNfc'))
 import Usuarios from './pages/Usuarios'
 import Movimientos from './pages/Movimientos'
 import MovimientoNuevo from './pages/MovimientoNuevo'
@@ -136,6 +137,7 @@ function Rutas() {
         <Route path="activos/:id/editar" element={<ActivoForm />} />
         <Route path="etiquetas" element={<Suspense fallback={<Cargando />}><Etiquetas /></Suspense>} />
         <Route path="escanear" element={<Suspense fallback={<Cargando />}><Escanear /></Suspense>} />
+        <Route path="etiquetas-nfc" element={<Suspense fallback={<Cargando />}><EtiquetasNfc /></Suspense>} />
         <Route path="q/:qr" element={<AbrirQR />} />
         <Route path="resguardos" element={<Movimientos />} />
         <Route path="resguardos/nuevo" element={<MovimientoNuevo />} />

@@ -151,6 +151,7 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
       { key: 'modelo', titulo: 'Modelo', ayuda: 'Si no existe, se crea con esa marca y categoría', ejemplo: t.vehiculo ? 'NP300' : t.computo ? 'Inspiron 15' : 'GBH 2-28' },
       { key: 'serie', titulo: t.vehiculo ? 'VIN / No. de serie' : 'No. de serie', ejemplo: t.vehiculo ? '3N6AD33A0KK800001' : 'CRH6VB4' },
       { key: 'eco', titulo: 'No. económico', ejemplo: t.vehiculo ? 'CP-12' : '' },
+      { key: 'nfc', titulo: 'Sticker NFC', ayuda: 'Número del chip (opcional; también se puede ligar después)', ejemplo: '04A2B3C4D5E680' },
       ...(t.vehiculo ? [
         { key: 'placa', titulo: 'Placa', ejemplo: 'CZ-1234-A' }, { key: 'anio', titulo: 'Año', tipo: 'numero' as const, ejemplo: '2024' }, { key: 'color', titulo: 'Color', ejemplo: 'Blanco' },
         { key: 'motor', titulo: 'No. de motor' }, { key: 'km', titulo: t.maquinaria ? 'Horómetro' : 'Kilometraje', tipo: 'numero' as const, ejemplo: t.maquinaria ? '6130' : '48250' },
@@ -200,7 +201,7 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
         const notas = [extras.join(' · '), d.factura && `Factura ${d.factura}`, d.notas].filter(Boolean).join('\n') || null
         const r = await supabase.from('activos').insert({ empresa_id: e.id, categoria_id: c.id, marca_id: marcaId, modelo_id: modeloId, descripcion: d.descripcion.trim(),
           serie: d.serie || null, numero_economico: d.eco || null, ubicacion_id: u?.id ?? null, fecha_alta: aFecha(d.fecha) ?? undefined,
-          valor_referencia: d.valor ? aNumero(d.valor) : null, notas, garantia_hasta: aFecha(d.garantia), garantia_proveedor: d.garantia_con || null }).select('id').single()
+          valor_referencia: d.valor ? aNumero(d.valor) : null, notas, garantia_hasta: aFecha(d.garantia), garantia_proveedor: d.garantia_con || null, nfc_uid: d.nfc || null }).select('id').single()
         if (r.error) throw r.error
         const id = (r.data as { id: string }).id
         const t = tipoDe(c.id)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Zap, History, Bell, Settings2, Check, PackagePlus, ScanLine, ClipboardSignature, Boxes, Users, Wrench, BookOpenText, Map as MapaIcono, Tags, CalendarCheck, Landmark, FileClock, Siren,
-  Sparkles, Inbox, Warehouse, Truck, Receipt, Car, KeyRound, Archive, BarChart3, ShieldCheck, UserRound, CalendarClock as Agenda, type LucideIcon,
+  Sparkles, Inbox, Warehouse, Truck, Receipt, Car, KeyRound, Archive, BarChart3, ShieldCheck, UserRound, CalendarClock as Agenda, Nfc, type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -14,6 +14,7 @@ const ACCESOS: Acceso[] = [
   { to: '/alta', texto: 'Alta de activos', icono: PackagePlus, editar: true },
   { to: '/alta/inteligente', texto: 'Alta con factura', icono: Sparkles, editar: true },
   { to: '/escanear', texto: 'Escanear QR', icono: ScanLine },
+  { to: '/etiquetas-nfc', texto: 'Ligar stickers NFC', icono: Nfc, editar: true },
   { to: '/resguardos/nuevo', texto: 'Nuevo resguardo', icono: ClipboardSignature, resguardar: true },
   { to: '/activos', texto: 'Activos', icono: Boxes },
   { to: '/empleados', texto: 'Empleados', icono: Users },

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -30,6 +30,7 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/mapa', icono: MapaIcono, texto: 'Mapa de obras' },
     { to: '/bitacoras', icono: BookOpenText, texto: 'Bitácoras' },
     { to: '/escanear', icono: ScanLine, texto: 'Escanear QR' },
+    { to: '/etiquetas-nfc', icono: Nfc, texto: 'Etiquetas NFC' },
   ] },
   { titulo: 'Control', items: [
     { to: '/mantenimiento', icono: Wrench, texto: 'Mantenimiento', alerta: 'mantenimiento' },
@@ -164,6 +165,7 @@ export default function Layout() {
     { to: '/alta/inteligente', texto: 'Alta inteligente (factura o foto)', icono: Sparkles, grupo: 'Acción' },
     { to: '/resguardos/nuevo', texto: 'Nuevo resguardo', icono: ClipboardSignature, grupo: 'Acción' },
     { to: '/etiquetas', texto: 'Imprimir etiquetas QR', icono: Tags, grupo: 'Acción' },
+    { to: '/etiquetas-nfc', texto: 'Ligar stickers NFC', icono: Nfc, grupo: 'Acción' },
     { to: '/inventarios', texto: 'Nuevo conteo de inventario', icono: ClipboardCheck, grupo: 'Acción' },
     { to: '/solicitudes', texto: 'Pedir equipo o material', icono: Inbox, grupo: 'Acción' },
     { to: '/perfil', texto: 'Mi perfil', icono: UserRound, grupo: 'Cuenta' },

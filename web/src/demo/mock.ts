@@ -363,7 +363,8 @@ export function crearDatos() {
   const ABC: Record<string, string> = { c1: 'A', c2: 'A', c4: 'A', c5: 'A', c3: 'B', c6: 'B', c7: 'B', c8: 'C' }
   for (const c of categorias as Row[]) c.clase_abc = ABC[c.id as string] ?? 'C'
   const epc = (codigo: string) => '47464D' + Number((codigo.match(/\d+/) ?? ['0'])[0]).toString(16).toUpperCase().padStart(18, '0')
-  for (const a of activos as Row[]) { a.rfid_epc = epc(String(a.codigo)); a.posicion_id ??= null }
+  for (const a of activos as Row[]) { a.rfid_epc = epc(String(a.codigo)); a.posicion_id ??= null; a.nfc_uid ??= null }
+  if (activos[0]) (activos[0] as Row).nfc_uid = '04A2B3C4D5E680'
   const PO = (id: string, pasillo: string | null, rack: string | null, nivel: string | null, codigo: string, descripcion: string | null = null) =>
     ({ id, empresa_id: 'e1', ubicacion_id: 'u1', pasillo, rack, nivel, posicion: null, codigo, descripcion, activo: true, created_at: hace(30) })
   const posiciones = [
@@ -668,7 +669,7 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'activos') {
     folioAct = Math.max(folioAct, db.activos.length)
     base.codigo ??= 'ACT-' + String(++folioAct).padStart(6, '0'); base.qr ??= uid(); base.estatus ??= 'disponible'
-    base.rfid_epc ??= '47464D' + Number((String(base.codigo).match(/\d+/) ?? ['0'])[0]).toString(16).toUpperCase().padStart(18, '0'); base.posicion_id ??= null
+    base.rfid_epc ??= '47464D' + Number((String(base.codigo).match(/\d+/) ?? ['0'])[0]).toString(16).toUpperCase().padStart(18, '0'); base.posicion_id ??= null; base.nfc_uid ??= null
     base.fecha_alta ??= hoy; base.updated_at = base.created_at
   }
   return base

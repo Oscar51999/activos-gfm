@@ -15,7 +15,7 @@ export default function CamaraQR({ onLeer }: { onLeer: (texto: string) => void }
       ultimo.current = { t: texto, at: ahora }
       cb.current(texto)
     }, () => {}).catch(() => setError('No se pudo abrir la cámara. Revisa el permiso del navegador o usa el lector / teclado.'))
-    return () => { lector.stop().catch(() => {}) }
+    return () => { try { lector.stop().catch(() => {}) } catch { /* la cámara nunca arrancó */ } }
   }, [])
   return (
     <div>

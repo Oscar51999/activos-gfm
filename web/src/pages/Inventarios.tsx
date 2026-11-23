@@ -4,6 +4,7 @@ import { ScanLine, Plus, ArrowLeft, CheckCircle2, AlertTriangle, MapPinned, Help
 import { supabase, mensajeError, type Estatus } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { coincideLectura, separarLecturas } from '../lib/qr'
+import { BotonNfcCelular } from '../components/Nfc'
 import { Cargando, Vacio, Aviso, Modal, Campo, EstatusBadge } from '../components/ui'
 import FotoActivo from '../components/FotoActivo'
 import LogoEmpresa from '../components/LogoEmpresa'
@@ -13,7 +14,7 @@ const Camara = lazy(() => import('../components/CamaraQR'))
 type Inv = { id: string; folio: string; empresa_id: string; ubicacion_id: string | null; nombre: string; estatus: 'abierto' | 'cerrado'; created_at: string; cerrado_at: string | null
   resumen: { esperados: number; encontrados: number; faltantes: number; fuera: number; desconocidos: number } | null
   empresas?: EmpresaLogo | null; ubicaciones?: { nombre: string } | null }
-type Act = { id: string; codigo: string; qr: string; rfid_epc?: string | null; descripcion: string; serie: string | null; numero_economico: string | null; estatus: Estatus; ubicacion_id: string | null; ubicacion: string | null
+type Act = { id: string; codigo: string; qr: string; rfid_epc?: string | null; nfc_uid?: string | null; descripcion: string; serie: string | null; numero_economico: string | null; estatus: Estatus; ubicacion_id: string | null; ubicacion: string | null
   responsable: string | null; marca: string | null; modelo: string | null; categoria: string; foto_principal: string | null; modelo_foto: string | null }
 type Lectura = { id: string; activo_id: string | null; leido: string; created_at: string }
 
@@ -112,7 +113,7 @@ export function InventarioConteo() {
   useEffect(() => {
     supabase.from('inventarios').select('*,empresas(nombre,nombre_corto,logo_path,logo_oscuro,color),ubicaciones(nombre)').eq('id', id!).single().then(({ data }) => {
       const i = data as unknown as Inv; setInv(i)
-      supabase.from('v_activos').select('id,codigo,qr,rfid_epc,descripcion,serie,numero_economico,estatus,ubicacion_id,ubicacion,responsable,marca,modelo,categoria,foto_principal,modelo_foto')
+      supabase.from('v_activos').select('id,codigo,qr,rfid_epc,nfc_uid,descripcion,serie,numero_economico,estatus,ubicacion_id,ubicacion,responsable,marca,modelo,categoria,foto_principal,modelo_foto')
         .eq('empresa_id', i.empresa_id).neq('estatus', 'baja').limit(10000).then(({ data: a }) => {
           const l = (a as Act[]) ?? []; setTodos(l); setEsperados(i.ubicacion_id ? l.filter(x => x.ubicacion_id === i.ubicacion_id) : l)
         })
@@ -194,7 +195,7 @@ export function InventarioConteo() {
               </div>
               {camara && <Suspense fallback={<Cargando texto="Abriendo cámara…" />}><Camara onLeer={registrar} /></Suspense>}
               <form onSubmit={e => { e.preventDefault(); registrar(texto); setTexto('') }} className="mt-3 flex gap-2">
-                <input ref={input} autoFocus className="campo font-mono" placeholder="Escanea QR o RFID, o escribe código, serie o No. económico y Enter" value={texto} onChange={e => setTexto(e.target.value)}
+                <input ref={input} autoFocus className="campo font-mono" placeholder="Escanea QR, NFC o RFID, o escribe código, serie o No. económico y Enter" value={texto} onChange={e => setTexto(e.target.value)}
                   onPaste={e => { const xs = separarLecturas(e.clipboardData.getData('text')); if (xs.length > 1) { e.preventDefault(); (async () => { for (const x of xs) await registrar(x) })() } }} list="codigos-inv" />
                 <datalist id="codigos-inv">{faltantes.slice(0, 200).map(a => <option key={a.id} value={a.codigo}>{[a.marca, a.modelo].filter(Boolean).join(' ') || a.descripcion}</option>)}</datalist>
                 <button className="btn-primario">Contar</button>
@@ -205,7 +206,8 @@ export function InventarioConteo() {
                   <span className="min-w-0"><b className="block">{flash.tipo === 'ok' ? 'Encontrado' : flash.tipo === 'fuera' ? 'Está en otro lugar' : flash.tipo === 'repetido' ? 'Repetido' : 'No reconocido'}</b><span className="block truncate">{flash.msg}</span></span>
                 </div>
               )}
-              <p className="mt-3 text-[11px] text-stone-400">Funciona con la cámara del celular, con un lector de códigos USB/Bluetooth o tecleando el código.</p>
+              <div className="mt-3"><BotonNfcCelular onLeer={uid => registrar(uid)} texto="Contar stickers NFC con el celular" /></div>
+              <p className="mt-3 text-[11px] text-stone-400">Funciona con la cámara del celular, con el lector NFC o de códigos USB/Bluetooth, o tecleando el código.</p>
             </>
           ) : inv.resumen ? (
             <div>

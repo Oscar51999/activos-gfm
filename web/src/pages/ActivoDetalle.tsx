@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car, CalendarClock, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car, CalendarClock, ShieldCheck, Nfc } from 'lucide-react'
+import { LigarNfc } from '../components/Nfc'
 import ReportarFalla, { TIPOS_REPORTE, type TipoReporte } from '../components/ReportarFalla'
 import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
@@ -22,7 +23,7 @@ import type { ActivoFila } from './Activos'
 import { TipoBadge } from './Movimientos'
 import type { TipoMov } from '../lib/supabase'
 
-type Detalle = ActivoFila & { garantia_hasta?: string | null; garantia_proveedor?: string | null; reservable?: boolean; valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; posicion?: string | null; clase_abc?: string | null }
+type Detalle = ActivoFila & { garantia_hasta?: string | null; garantia_proveedor?: string | null; reservable?: boolean; valor_referencia: number | null; fecha_alta: string; foto_principal: string | null; updated_at: string; es_vehiculo: boolean; rfid_epc?: string | null; nfc_uid?: string | null; qr?: string; posicion?: string | null; clase_abc?: string | null }
 type Veh = { placa: string | null; anio: number | null; color: string | null; combustible: string | null; transmision: string | null; kilometraje: number | null; cilindros: number | null; pasajeros: number | null; capacidad_tanque: number | null
   numero_motor?: string | null; version?: string | null; tipo_licencia?: string | null; tarjeta_circulacion?: string | null; poliza?: string | null }
 type Foto = { id: string; path: string; url?: string }
@@ -51,6 +52,7 @@ export default function ActivoDetalle() {
   const [movs, setMovs] = useState<Mov[]>([])
   const [error, setError] = useState('')
   const [reportar, setReportar] = useState(false)
+  const [nfc, setNfc] = useState(false)
   const [prestamo, setPrestamo] = useState<string | null>(null)
   const [reportes, setReportes] = useState<{ id: string; folio: string; tipo: TipoReporte; descripcion: string; estatus: string; created_at: string }[]>([])
   const { perfil: perfilRep } = useAuth()
@@ -137,6 +139,7 @@ export default function ActivoDetalle() {
           {puedeResguardar && ['asignado', 'disponible', 'mantenimiento'].includes(a.estatus) && <Link className="btn-sec" to={`/resguardos/nuevo?tipo=traspaso&activos=${a.id}`}><ArrowLeftRight size={16} />Traspasar</Link>}
           <button className="btn-sec" onClick={() => setReportar(true)}><Siren size={16} />Reportar problema</button>
           <Link className="btn-sec" to={`/etiquetas?ids=${a.id}`}><Printer size={16} />Etiqueta</Link>
+          {puedeEditar && <button className="btn-sec" onClick={() => setNfc(true)}><Nfc size={16} />{a.nfc_uid ? 'Sticker NFC' : 'Ligar NFC'}</button>}
           {puedeEditar && a.estatus !== 'asignado' && a.estatus !== 'baja' && <Link className="btn-sec" to={`/traspasos?activo=${a.id}`}><Building2 size={16} />Otra empresa</Link>}
           {a.reservable && a.estatus !== 'baja' && <Link className="btn-sec" to={`/reservas?activo=${a.id}`}><CalendarClock size={16} />Reservar</Link>}
           {a.es_vehiculo && a.estatus !== 'baja' && <Link className="btn-sec" to={`/checklist-vehicular?activo=${a.id}`}><Car size={16} />Checklist</Link>}
@@ -152,6 +155,9 @@ export default function ActivoDetalle() {
           {reportes.slice(0, 2).map(r => <span key={r.id} className="mt-1 block truncate text-xs"><span className="font-mono">{r.folio}</span> · {TIPOS_REPORTE[r.tipo]?.texto}: {r.descripcion}</span>)}
         </Link>
       )}
+      {nfc && <Modal abierto titulo={`Sticker NFC · ${a.codigo}`} onCerrar={() => setNfc(false)} ancho="max-w-lg">
+        <LigarNfc activo={a} onCambio={uid => setA({ ...a, nfc_uid: uid })} />
+      </Modal>}
       <Modal abierto={reportar} onCerrar={() => { setReportar(false); cargarExtras() }} titulo={`Reportar problema · ${a.codigo}`}>
         <ReportarFalla qr={(a as unknown as { qr: string }).qr} nombreInicial={perfilRep?.nombre ?? ''} onListo={() => cargarExtras()} />
       </Modal>
@@ -170,6 +176,7 @@ export default function ActivoDetalle() {
               <Dato k="Número de serie" v={a.serie} />
               <Dato k="Número económico" v={a.numero_economico} />
               <Dato k="Posición en almacén" v={a.posicion} />
+              <Dato k="Sticker NFC" v={a.nfc_uid && <span className="break-all font-mono text-xs">{a.nfc_uid}</span>} />
               <Dato k="Etiqueta RFID (EPC)" v={a.rfid_epc && <span className="break-all font-mono text-xs">{a.rfid_epc}</span>} />
               <Dato k="Conteo cíclico" v={a.clase_abc && `Clase ${a.clase_abc} · cada ${a.clase_abc === 'A' ? 30 : a.clase_abc === 'B' ? 90 : 180} días`} />
               <Dato k="Fecha de alta" v={fecha(a.fecha_alta)} />

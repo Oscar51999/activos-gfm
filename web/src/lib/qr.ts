@@ -19,12 +19,15 @@ export function epcDeCodigo(codigo: string) {
   return '47464D' + n.toString(16).toUpperCase().padStart(18, '0')
 }
 
-type Identificable = { qr?: string | null; codigo: string; numero_economico?: string | null; serie?: string | null; rfid_epc?: string | null }
-/** ¿Lo leído (QR, RFID, código, No. económico o serie) corresponde a este activo? */
+import { formasNfc } from './nfc'
+
+type Identificable = { qr?: string | null; codigo: string; numero_economico?: string | null; serie?: string | null; rfid_epc?: string | null; nfc_uid?: string | null }
+/** ¿Lo leído (QR, RFID, NFC, código, No. económico o serie) corresponde a este activo? */
 export function coincideLectura(a: Identificable, texto: string) {
   const t = texto.trim(), up = t.toUpperCase()
   const qr = leerQR(t)
   if (qr) return a.qr === qr
+  if (a.nfc_uid && formasNfc(t).includes(a.nfc_uid)) return true
   if (esEPC(t)) return (a.rfid_epc ?? epcDeCodigo(a.codigo)).toUpperCase() === up
   return a.codigo === up || a.numero_economico?.toUpperCase() === up || a.serie?.toUpperCase() === up
 }
