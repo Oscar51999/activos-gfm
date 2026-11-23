@@ -860,6 +860,13 @@ export function instalarDemo(base: string) {
       Object.assign(t, { estatus: body.p_aprobar ? 'aprobado' : 'rechazado', respuesta: body.p_respuesta || null, resuelto_por: 'u-demo', resuelto_at: new Date().toISOString() })
       return json(null, 204)
     }
+    if (path.startsWith('/rest/v1/rpc/ficha_qr')) {
+      const a = db.activos.find(x => x.qr === body?.p_qr && x.estatus !== 'baja')
+      if (!a) return json([])
+      const e = byId(db, 'empresas', a.empresa_id), mo = byId(db, 'modelos', a.modelo_id)
+      return json([{ codigo: a.codigo, descripcion: a.descripcion, marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: mo?.nombre ?? null, categoria: byId(db, 'categorias', a.categoria_id)?.nombre ?? '',
+        serie: a.serie ?? null, numero_economico: a.numero_economico ?? null, empresa: e?.nombre_corto ?? e?.nombre, ubicacion: byId(db, 'ubicaciones', a.ubicacion_id)?.nombre ?? null, estatus: a.estatus, foto: mo?.foto_path ?? null }])
+    }
     if (path.startsWith('/rest/v1/rpc/activo_por_qr')) {
       const a = db.activos.find(x => x.qr === body?.p_qr && x.estatus !== 'baja')
       if (!a) return json([])
