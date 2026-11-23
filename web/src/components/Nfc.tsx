@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Nfc, Smartphone, Trash2, Link2, CheckCircle2 } from 'lucide-react'
+import { Nfc, Smartphone, Trash2, Link2, CheckCircle2, Copy } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { formasNfc, normalNfc, hayNfcCelular, leerConCelular, grabarEnlace } from '../lib/nfc'
 import { urlQR } from '../lib/qr'
@@ -24,6 +24,31 @@ export function BotonNfcCelular({ onLeer, texto = 'Leer NFC con el celular', cla
       <button type="button" className={`${className} ${activo ? '!border-marca !text-marca animate-pulse' : ''}`} onClick={alternar}><Smartphone size={16} />{activo ? 'Acerca el sticker al celular… (toca para parar)' : texto}</button>
       {error && <span className="text-xs text-red-600">{error}</span>}
     </span>
+  )
+}
+
+export const esIphone = () => typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+/** Enlace del activo para grabarlo en el sticker con una app (p. ej. NFC Tools en iPhone). */
+export function EnlaceParaSticker({ qr }: { qr: string }) {
+  const [copiado, setCopiado] = useState(false)
+  const ref = useRef<HTMLInputElement>(null)
+  const url = urlQR(qr)
+  async function copiar() {
+    try { await navigator.clipboard.writeText(url); setCopiado(true) }
+    catch { ref.current?.select(); try { document.execCommand('copy'); setCopiado(true) } catch { /* el usuario lo copia a mano */ } }
+    setTimeout(() => setCopiado(false), 2500)
+  }
+  return (
+    <div className="rounded-xl border border-stone-200 p-3">
+      <p className="mb-1 text-sm font-medium">Para que el iPhone lo lea</p>
+      <p className="mb-2 text-xs text-stone-500">El iPhone no lee stickers desde la página: lee el <b>enlace grabado</b> en el sticker. Grábalo una sola vez con la app gratuita <b>NFC Tools</b>: Escribir → Añadir un registro → URL → pega este enlace → Escribir → acerca el sticker.</p>
+      <div className="flex gap-2">
+        <input ref={ref} readOnly className="campo font-mono text-xs" value={url} onFocus={e => e.currentTarget.select()} />
+        <button type="button" className="btn-sec shrink-0" onClick={copiar}>{copiado ? <CheckCircle2 size={16} /> : <Copy size={16} />}{copiado ? 'Copiado' : 'Copiar'}</button>
+      </div>
+      <p className="mt-2 text-[11px] text-stone-400">Después, cualquier iPhone o Android abre esta ficha con solo acercar la parte de arriba del teléfono al sticker.</p>
+    </div>
   )
 }
 
@@ -94,6 +119,7 @@ export function LigarNfc({ activo, onCambio }: { activo: { id: string; codigo: s
         <BotonNfcCelular onLeer={uid => ligar(uid)} texto="Ligar con el celular" />
         {hayNfcCelular() && activo.qr && <button type="button" className="btn-sec" disabled={grabando} onClick={grabar}><Link2 size={16} />Grabar enlace en el sticker</button>}
       </div>
+      {activo.qr && !hayNfcCelular() && <EnlaceParaSticker qr={activo.qr} />}
       {msg && (msg.tipo === 'ok'
         ? <p className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"><CheckCircle2 size={16} />{msg.t}</p>
         : <Aviso tipo={msg.tipo === 'error' ? 'error' : 'info'}>{msg.t}{msg.otro && <> <Link className="underline" to={`/activos/${msg.otro.id}`}>Ver {msg.otro.codigo}</Link></>}</Aviso>)}

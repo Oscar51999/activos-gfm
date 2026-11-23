@@ -4,7 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
 import { leerQR, esEPC, leerPosicion } from '../lib/qr'
 import { Encabezado, Aviso } from '../components/ui'
-import { BotonNfcCelular, activoPorNfc } from '../components/Nfc'
+import { BotonNfcCelular, activoPorNfc, esIphone } from '../components/Nfc'
 
 const parar = (l: Html5Qrcode, luego: () => void) => { try { l.stop().catch(() => {}).finally(luego) } catch { luego() } }
 
@@ -52,6 +52,10 @@ export default function Escanear() {
         <input autoFocus className="campo" placeholder="Acerca el sticker NFC al lector, o escribe código, No. económico o serie" value={codigo} onChange={e => setCodigo(e.target.value)} />
         <button className="btn-primario">Buscar</button>
       </form>
+      {esIphone() && <div className="mt-4 rounded-xl border border-marca/30 bg-marca/10 p-3 text-sm">
+        <p className="font-medium">¿Sticker NFC con iPhone?</p>
+        <p className="mt-1 text-xs text-stone-500">La cámara no lee el sticker. Sal de esta pantalla y acerca la <b>parte de arriba</b> del iPhone al sticker: aparecerá un aviso para abrir la ficha. Funciona si el sticker tiene grabado su enlace (en la ficha del activo → “Sticker NFC” está el enlace y cómo grabarlo).</p>
+      </div>}
       <div className="mt-3"><BotonNfcCelular onLeer={(uid, contenido) => { setCodigo(uid); buscar(undefined, contenido && leerQR(contenido) ? contenido : uid) }} /></div>
     </div>
   )
