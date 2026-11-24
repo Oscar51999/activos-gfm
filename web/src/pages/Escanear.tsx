@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { leerQR, esEPC, leerPosicion } from '../lib/qr'
 import { Encabezado, Aviso } from '../components/ui'
 import { BotonNfcCelular, activoPorNfc, esIphone } from '../components/Nfc'
+import { registrarEscaneo } from '../lib/escaneo'
 
 const parar = (l: Html5Qrcode, luego: () => void) => { try { l.stop().catch(() => {}).finally(luego) } catch { luego() } }
 
@@ -27,7 +28,7 @@ export default function Escanear() {
     return () => { if (!detenido) try { lector.stop().catch(() => {}) } catch { /* la cámara nunca arrancó */ } }
   }, [nav])
 
-  async function buscar(e?: React.FormEvent, valor = codigo) {
+  async function buscar(e?: React.FormEvent, valor = codigo, origen: 'lector' | 'nfc_celular' = 'lector') {
     e?.preventDefault()
     const pos = leerPosicion(valor)
     if (pos) { nav(`/posiciones?pos=${pos}`); return }
@@ -36,10 +37,10 @@ export default function Escanear() {
     const t = valor.replace(/[,()"]/g, '').trim().toUpperCase()
     if (!t) return
     const nfc = await activoPorNfc(t)
-    if (nfc) { nav(`/activos/${nfc.id}`); return }
+    if (nfc) { registrarEscaneo({ activo: nfc.id, origen }); nav(`/activos/${nfc.id}`); return }
     const { data } = esEPC(t) ? await supabase.from('activos').select('id').eq('rfid_epc', t).limit(1).maybeSingle()
       : await supabase.from('activos').select('id').or(`codigo.eq.${t},numero_economico.eq.${t},serie.eq.${t},rfid_epc.eq.${t}`).limit(1).maybeSingle()
-    if (data) nav(`/activos/${data.id}`)
+    if (data) { registrarEscaneo({ activo: data.id, origen }); nav(`/activos/${data.id}`) }
     else setError(`No se encontró un activo con "${t}". Si es un sticker NFC nuevo, lígalo desde la ficha del activo o en Etiquetas NFC.`)
   }
 
@@ -56,7 +57,7 @@ export default function Escanear() {
         <p className="font-medium">¿Sticker NFC con iPhone?</p>
         <p className="mt-1 text-xs text-stone-500">La cámara no lee el sticker. Sal de esta pantalla y acerca la <b>parte de arriba</b> del iPhone al sticker: aparecerá un aviso para abrir la ficha. Funciona si el sticker tiene grabado su enlace (en la ficha del activo → “Sticker NFC” está el enlace y cómo grabarlo).</p>
       </div>}
-      <div className="mt-3"><BotonNfcCelular onLeer={(uid, contenido) => { setCodigo(uid); buscar(undefined, contenido && leerQR(contenido) ? contenido : uid) }} /></div>
+      <div className="mt-3"><BotonNfcCelular onLeer={(uid, contenido) => { setCodigo(uid); buscar(undefined, contenido && leerQR(contenido) ? contenido : uid, 'nfc_celular') }} /></div>
     </div>
   )
 }

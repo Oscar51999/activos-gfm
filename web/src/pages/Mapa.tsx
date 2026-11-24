@@ -34,6 +34,8 @@ export default function Mapa() {
   const [hover, setHover] = useState<string | null>(null)
   const [inms, setInms] = useState<{ id: string; codigo: string; nombre: string; empresa_id: string; latitud: number; longitud: number; empresas: { color: string | null } | null }[]>([])
   const [verInm, setVerInm] = useState(true)
+  const [esc, setEsc] = useState<{ activo_id: string; latitud: number; longitud: number; ubicado_at: string; ubicado_por: string; lejos: boolean }[]>([])
+  const [verEsc, setVerEsc] = useState(true)
   const navegar = useNavigate()
   const svg = useRef<SVGSVGElement>(null)
   const arrastre = useRef<{ x: number; y: number; vx: number; vy: number; movio: boolean } | null>(null)
@@ -47,6 +49,7 @@ export default function Mapa() {
     supabase.from('v_activos').select('id,codigo,descripcion,marca,modelo,estatus,ubicacion_id,modelo_foto,foto_principal,categoria,responsable').neq('estatus', 'baja').then(({ data }) => setActs((data as Act[]) ?? []))
     supabase.from('reportes').select('activo_id').in('estatus', ['abierto', 'en_proceso']).then(({ data }) => setConReporte(new Set(((data ?? []) as { activo_id: string }[]).map(r => r.activo_id))))
     supabase.from('v_existencias').select('*').then(({ data }) => setEx((data as Existencia[]) ?? []))
+    supabase.from('v_ultimo_escaneo').select('activo_id,latitud,longitud,ubicado_at,ubicado_por,lejos').not('latitud', 'is', null).then(({ data }) => setEsc((data as never) ?? []))
     supabase.from('inmuebles').select('id,codigo,nombre,empresa_id,latitud,longitud,empresas(color)').eq('activo', true).not('latitud', 'is', null).then(({ data }) => setInms((data as never) ?? []))
   }, [])
 
@@ -165,6 +168,13 @@ export default function Mapa() {
                   <rect x={-t / 2.4} y={-t / 2.4} width={t / 1.2} height={t / 1.2} transform="rotate(45)" fill={x.empresas?.color ?? '#E2A64B'} />
                 </g>
               ) })}
+              {/* visto por última vez: triángulos (rojos si fue lejos de su lugar) */}
+              {verEsc && esc.map(x => { const ac = acts.find(a => a.id === x.activo_id); if (!ac) return null; const p = proy(Number(x.latitud), Number(x.longitud)); const t = 6 / Math.sqrt(vista.k); return (
+                <g key={'e' + x.activo_id} transform={`translate(${p.x} ${p.y})`} className="cursor-pointer" onPointerUp={e => { if (!colocar && !arrastre.current?.movio) { e.stopPropagation(); arrastre.current = null; navegar(`/activos/${x.activo_id}`) } }}>
+                  <title>{`${ac.codigo} · ${ac.descripcion}\nVisto el ${new Date(x.ubicado_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })} por ${x.ubicado_por}`}</title>
+                  <path d={`M0 ${-t * 1.3} L${t * 1.15} ${t * 0.75} L${-t * 1.15} ${t * 0.75} Z`} fill={x.lejos ? '#ef4444' : '#38bdf8'} style={{ stroke: 'var(--color-lienzo)' }} strokeWidth={1.5 / vista.k} />
+                </g>
+              ) })}
               {/* pines */}
               {[...conCoord].sort((a, b) => enLugar(b.id).length - enLugar(a.id).length).map(x => {
                 const p = proy(x.latitud!, x.longitud!)
@@ -197,6 +207,7 @@ export default function Mapa() {
           <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-stone-200 px-3 py-2 text-[10px] text-stone-500 sm:absolute sm:bottom-3 sm:left-3 sm:max-w-[70%] sm:rounded-xl sm:border-0 sm:bg-lienzo/80 sm:backdrop-blur">
             {empresasUsadas.filter(([id]) => conCoord.some(x => x.empresa_id === id)).map(([id, e]) => <span key={id} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: e?.color ?? '#E2A64B' }} />{e?.nombre_corto || e?.nombre}</span>)}
             <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full border border-red-500" />con reporte abierto</span>
+            {esc.length > 0 && <button onClick={() => setVerEsc(v => !v)} className={`inline-flex items-center gap-1 ${verEsc ? '' : 'line-through opacity-60'}`}><span className="h-0 w-0 border-x-[4px] border-b-[7px] border-x-transparent border-b-sky-400" />visto por última vez</button>}
             {inms.length > 0 && <button onClick={() => setVerInm(v => !v)} className={`inline-flex items-center gap-1 ${verInm ? '' : 'line-through opacity-60'}`}><span className="h-2 w-2 rotate-45 border border-marca" />inmuebles</button>}
           </div>
         </div>

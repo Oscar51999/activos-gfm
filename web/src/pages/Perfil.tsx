@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Camera, Trash2, Sun, Moon, KeyRound, ShieldAlert, Save, Loader2 } from 'lucide-react'
+import { Camera, Trash2, Sun, Moon, KeyRound, ShieldAlert, Save, Loader2, Mail, Smartphone } from 'lucide-react'
+import { nombreModulo } from '../lib/avisos'
+import { InstruccionesInstalar } from '../components/Instalar'
 import { supabase, ROLES, mensajeError } from '../lib/supabase'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { comprimir } from '../lib/fotos'
@@ -135,6 +137,37 @@ export default function Perfil() {
           <label className="flex items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-sm">Otro <input type="color" value={acento ?? '#E2A64B'} onChange={e => elegirAcento(e.target.value)} className="h-6 w-8 cursor-pointer bg-transparent" /></label>
         </div>
       </section>
+      <MisAvisos />
+      <section className="tarjeta mt-5 p-5">
+        <h3 className="flex items-center gap-2 font-semibold"><Smartphone size={17} className="text-marca" />La app en tu celular</h3>
+        <InstruccionesInstalar />
+      </section>
     </div>
   )
 }
+
+/** Qué avisos le llegan al usuario por correo, y el interruptor para pausarlos. */
+function MisAvisos() {
+  const { perfil } = useAuth()
+  const [d, setD] = useState<{ avisos: string[]; avisos_activos: boolean; avisos_correo: string | null; email: string | null } | null>(null)
+  useEffect(() => {
+    if (!perfil) return
+    supabase.from('perfiles').select('avisos,avisos_activos,avisos_correo,email').eq('id', perfil.id).maybeSingle().then(({ data }) => setD(data as never))
+  }, [perfil])
+  if (!perfil || !d) return null
+  async function cambiar(v: boolean) {
+    const { error } = await supabase.from('perfiles').update({ avisos_activos: v }).eq('id', perfil!.id)
+    if (!error) setD({ ...d!, avisos_activos: v })
+  }
+  return (
+    <section className="tarjeta mt-5 p-5">
+      <h3 className="flex items-center gap-2 font-semibold"><Mail size={17} className="text-marca" />Avisos por correo</h3>
+      {d.avisos?.length ? <>
+        <p className="mb-3 mt-1 text-sm text-stone-500">Cada mañana te llega a <b>{d.avisos_correo || d.email}</b> lo pendiente de lo que atiendes:</p>
+        <div className="mb-4 flex flex-wrap gap-1.5">{d.avisos.map(m => <span key={m} className="rounded-full bg-marca/10 px-2.5 py-1 text-xs text-marca-oscuro ring-1 ring-inset ring-marca/30">{nombreModulo(m)}</span>)}</div>
+      </> : <p className="mb-4 mt-1 text-sm text-stone-500">No tienes temas asignados. Si estás ligado a un empleado, te llegan tus resguardos por firmar y tus préstamos vencidos. El administrador asigna los temas en Usuarios.</p>}
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.avisos_activos} onChange={e => cambiar(e.target.checked)} />Recibir avisos por correo</label>
+    </section>
+  )
+}
+

@@ -7,6 +7,7 @@ import ReportarFalla, { TIPOS_REPORTE, type TipoReporte } from '../components/Re
 import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
 import LineaTiempo from '../components/LineaTiempo'
+import UltimoEscaneo from '../components/UltimoEscaneo'
 import UsoPanel from '../components/UsoPanel'
 import Componentes from '../components/Componentes'
 import MantenimientoActivo from '../components/MantenimientoActivo'
@@ -284,6 +285,7 @@ export default function ActivoDetalle() {
             <p className="mt-3 font-mono text-sm font-semibold">{a.codigo}</p>
             <p className="mt-1 text-xs text-stone-500">Escanéalo con el celular para abrir esta ficha.</p>
           </section>
+          <UltimoEscaneo activoId={a.id} />
           <LineaTiempo activoId={a.id} alta={(a as unknown as { created_at?: string }).created_at ?? a.fecha_alta} />
         </div>
       </div>

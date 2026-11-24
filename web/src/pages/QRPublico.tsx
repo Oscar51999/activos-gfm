@@ -8,6 +8,7 @@ import FotoActivo from '../components/FotoActivo'
 import ReportarFalla from '../components/ReportarFalla'
 import ChecklistDiario from '../components/Checklist'
 import type { TipoEquipo } from '../lib/mantenimiento'
+import { registrarEscaneo } from '../lib/escaneo'
 
 type Info = { codigo: string; descripcion: string; marca: string | null; modelo: string | null; categoria: string; serie: string | null; numero_economico: string | null
   empresa: string; ubicacion: string | null; estatus: Estatus; foto: string | null }
@@ -31,6 +32,7 @@ export default function QRPublico({ onEntrar }: { onEntrar: () => void }) {
       const x = ((r.data as Partial<Info>[]) ?? [])[0]
       setInfo(x ? { categoria: '', serie: null, numero_economico: null, ubicacion: null, estatus: 'disponible', ...x } as Info : null)
     })
+    if (qr) registrarEscaneo({ qr, origen: 'etiqueta' })
     supabase.rpc('tipo_equipo_por_qr', { p_qr: qr }).then(({ data }) => setTipo((data as TipoEquipo | null) ?? 'otro'))
   }, [qr])
   useEffect(() => { if (modo !== 'info') setTimeout(() => form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60) }, [modo])
@@ -69,6 +71,7 @@ export default function QRPublico({ onEntrar }: { onEntrar: () => void }) {
                 <button className="btn-primario w-full justify-center !py-3 text-base" onClick={() => setModo('reporte')}><Siren size={18} />Reportar una falla o daño</button>
                 {tipo !== 'otro' && <button className="btn-sec w-full justify-center !py-3" onClick={() => setModo('checklist')}><ClipboardCheck size={18} />Checklist antes de arrancar</button>}
                 <button className="btn-sec w-full justify-center !py-3" onClick={onEntrar}><LogIn size={18} />Ver ficha completa (iniciar sesión)</button>
+                <p className="px-2 text-center text-[11px] text-stone-500">¿Eres del equipo? Inicia sesión una vez en este navegador y la próxima vez que escanees verás la ficha completa: responsable, asignar, traspasar y dar de baja.</p>
               </div>
             ) : (
               <div ref={form} className="tarjeta scroll-mt-4 p-5">

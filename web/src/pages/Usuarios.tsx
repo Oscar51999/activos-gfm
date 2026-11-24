@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff, HardHat } from 'lucide-react'
+import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff, HardHat, Mail } from 'lucide-react'
+import { MODULOS, nombreModulo } from '../lib/avisos'
 import { supabase, ROLES, mensajeError, type Rol } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
 import { Encabezado, Modal, Campo, Aviso, Cargando } from '../components/ui'
 
-type Perfil = { id: string; nombre: string; usuario?: string | null; email: string | null; rol: Rol; activo: boolean; todas_empresas: boolean; empleado_id: string | null; created_at: string }
+type Perfil = { id: string; nombre: string; usuario?: string | null; email: string | null; rol: Rol; activo: boolean; todas_empresas: boolean; empleado_id: string | null; created_at: string; avisos?: string[]; avisos_correo?: string | null; avisos_activos?: boolean }
 
 export default function Usuarios() {
   const { perfil: yo, esSuper } = useAuth()
@@ -44,6 +45,7 @@ export default function Usuarios() {
     setError('')
     const { error } = await supabase.from('perfiles').update({
       nombre: edit.nombre, usuario: edit.usuario?.trim().toUpperCase() || null, rol: edit.rol, activo: edit.activo, todas_empresas: edit.todas_empresas, empleado_id: edit.empleado_id || null,
+      avisos: edit.avisos ?? [], avisos_correo: edit.avisos_correo?.trim() || null,
     }).eq('id', edit.id)
     if (error) { setError(mensajeError(error)); return }
     const antes = accesos[edit.id] ?? []
@@ -73,7 +75,7 @@ export default function Usuarios() {
       <div className="tarjeta overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
-            <tr><th className="px-4 py-2.5 font-medium">Nombre</th><th className="px-4 py-2.5 font-medium">Correo</th><th className="px-4 py-2.5 font-medium">Rol</th><th className="px-4 py-2.5 font-medium">Empresas</th><th className="px-4 py-2.5 font-medium">Estado</th><th className="w-12" /></tr>
+            <tr><th className="px-4 py-2.5 font-medium">Nombre</th><th className="px-4 py-2.5 font-medium">Correo</th><th className="px-4 py-2.5 font-medium">Rol</th><th className="px-4 py-2.5 font-medium">Empresas</th><th className="px-4 py-2.5 font-medium">Encargado de</th><th className="px-4 py-2.5 font-medium">Estado</th><th className="w-12" /></tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
             {filas.map(f => (
@@ -82,6 +84,7 @@ export default function Usuarios() {
                 <td className="px-4 py-2.5 text-stone-600">{f.email}</td>
                 <td className="px-4 py-2.5">{ROLES[f.rol]}</td>
                 <td className="px-4 py-2.5 text-xs">{f.todas_empresas || f.rol === 'admin' ? 'Todas' : (accesos[f.id] ?? []).map(id => empresas.items.find(e => e.id === id)?.nombre).filter(Boolean).join(', ') || <span className="text-rojo">Ninguna</span>}</td>
+                <td className="px-4 py-2.5"><span className="flex max-w-[16rem] flex-wrap gap-1">{(f.avisos ?? []).length ? (f.avisos ?? []).map(m => <span key={m} className="rounded-full bg-marca/10 px-2 py-0.5 text-[10px] text-marca-oscuro ring-1 ring-inset ring-marca/30">{nombreModulo(m)}</span>) : <span className="text-xs text-stone-400">—</span>}</span></td>
                 <td className="px-4 py-2.5">{f.activo ? <span className="text-emerald-700">Activo</span> : <span className="font-medium text-amber-700">Pendiente</span>}</td>
                 <td className="whitespace-nowrap px-2">
                   <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Editar permisos" title="Editar rol y empresas" onClick={() => { setError(''); setEdit({ ...f, empresas: accesos[f.id] ?? [], obras: obrasDe[f.id] ?? [], limitar: (obrasDe[f.id] ?? []).length > 0 }) }}><Pencil size={15} /></button>
@@ -153,6 +156,23 @@ export default function Usuarios() {
                   </>}
                 </div>
               )}
+              <div className="rounded-xl border border-stone-200 p-3 sm:col-span-2">
+                <p className="flex items-center gap-2 text-sm font-medium"><Mail size={15} className="text-marca" />Encargado de (avisos por correo)</p>
+                <p className="mt-1 text-xs text-stone-500">Cada mañana le llega un correo con lo pendiente de estos temas, de las empresas que puede ver.</p>
+                <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                  {MODULOS.map(m => {
+                    const on = (edit.avisos ?? []).includes(m.id)
+                    return (
+                      <label key={m.id} title={m.d} className={`flex cursor-pointer items-start gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition ${on ? 'border-marca/60 bg-marca/10' : 'border-stone-200 hover:border-stone-300'}`}>
+                        <input type="checkbox" className="mt-0.5" checked={on} onChange={e => setEdit({ ...edit, avisos: e.target.checked ? [...(edit.avisos ?? []), m.id] : (edit.avisos ?? []).filter(x => x !== m.id) })} />
+                        <span className="min-w-0"><span className="block font-medium leading-tight">{m.t}</span><span className="block text-[11px] leading-tight text-stone-500">{m.d}</span></span>
+                      </label>
+                    )
+                  })}
+                </div>
+                <Campo label="Mandar los avisos a otro correo (opcional)" className="mt-3"><input className="campo" type="email" placeholder={edit.email ?? 'correo@grupofirmedemexico.com'} value={edit.avisos_correo ?? ''} onChange={e => setEdit({ ...edit, avisos_correo: e.target.value })} /></Campo>
+                {edit.avisos_activos === false && <p className="mt-2 text-xs text-amber-700">Este usuario pausó sus avisos desde Mi perfil.</p>}
+              </div>
             </div>
             <p className="text-xs text-stone-500"><b>Administrador:</b> todo, incluidos usuarios y permisos. <b>Supervisor:</b> todo lo demás (altas, edición de activos y catálogos, resguardos). <b>Almacén:</b> resguardos, préstamos, vales, inventarios y fallas, sin dar de alta ni editar activos. <b>Solo consulta:</b> ve la información de sus empresas.</p>
             {error && <Aviso>{error}</Aviso>}

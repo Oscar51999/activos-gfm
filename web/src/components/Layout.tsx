@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -12,6 +12,7 @@ import { ROLES, supabase } from '../lib/supabase'
 import { LogoFirme, MonogramaFirme } from './Logo'
 import Comandos, { type Destino } from './Comandos'
 import { avisosAlmacen } from '../lib/almacen'
+import { SugerenciaInstalar } from './Instalar'
 import { escuchar, pendientes, sincronizar, estaMandando } from '../lib/sinSenal'
 
 type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; alerta?: 'prestamos' | 'reportes' | 'vigencias' | 'mantenimiento' | 'solicitudes' | 'almacen' | 'servicios' }
@@ -156,7 +157,7 @@ export default function Layout() {
   const todos = useMemo(() => [...grupos, ...(puedeEditar ? [{ titulo: 'Administración', items: [
     { to: '/actividades', icono: CalendarCheck, texto: 'Actividades' },
     { to: '/indicadores', icono: BarChart3, texto: 'Indicadores' },
-    ...(esAdmin ? [{ to: '/usuarios', icono: UserCog, texto: 'Usuarios' }] : []),
+    ...(esAdmin ? [{ to: '/usuarios', icono: UserCog, texto: 'Usuarios' }, { to: '/avisos', icono: MailCheck, texto: 'Avisos por correo' }] : []),
     ...(esSuper ? [{ to: '/admin', icono: ShieldAlert, texto: 'Panel de administrador' }] : []),
   ] }] : [])], [puedeEditar, esAdmin, esSuper])
   const destinos = useMemo<Destino[]>(() => [
@@ -268,7 +269,7 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto pb-24 lg:pb-0">
-          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><Outlet /></div>
+          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><SugerenciaInstalar /><Outlet /></div>
         </main>
 
         {/* Barra inferior en móvil con botón central de escaneo */}

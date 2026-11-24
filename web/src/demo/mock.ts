@@ -1,6 +1,7 @@
 /* Vista previa: simula Supabase dentro del navegador con datos de ejemplo. No se conecta a nada. */
 type Row = Record<string, unknown>
 type DB = Record<string, Row[]>
+let ajustesAvisos: { url?: string; secreto?: string; ultimo?: string } = {}
 
 const uid = () => crypto.randomUUID()
 const hoy = new Date().toISOString().slice(0, 10)
@@ -415,9 +416,9 @@ export function crearDatos() {
     CCX('e3', '406', 'SERVICIOS ZONA LA PAZ'), CCX('e4', '601', 'VENTAS Y COMERCIALIZACION'), CCX('e5', '705', 'SANTA CRUZ STORAGE'), CCX('e6', '301', 'CASA CLUB'), CCX('e8', '201', 'VENTA Y COMERCIALIZACIÓN INMOBILIARIA'),
   ]
   const perfiles = [
-    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: 'em1', created_at: hace(60), es_super: true, puesto: 'Departamento de TICS', telefono: null, foto_path: null, preferencias: {} },
+    { id: 'u-demo', nombre: 'Oscar Cota', usuario: 'OSCAR COTA', email: 'oscar@grupofirme.mx', rol: 'admin', activo: true, todas_empresas: true, empleado_id: 'em1', created_at: hace(60), es_super: true, puesto: 'Departamento de TICS', telefono: null, foto_path: null, preferencias: {}, avisos: ['inmuebles', 'reportes', 'escaneos'], avisos_correo: null, avisos_activos: true },
     { id: 'u-2', nombre: 'María Fernanda Ruiz', email: 'mruiz@grupofirme.mx', rol: 'consulta', activo: false, todas_empresas: false, empleado_id: null, created_at: hace(1) },
-    { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20) },
+    { id: 'u-3', nombre: 'Luis Adrián Avilés', email: 'laviles@grupofirme.mx', rol: 'supervisor', activo: true, todas_empresas: false, empleado_id: 'em2', created_at: hace(20), avisos: ['vehiculos', 'mantenimiento'], avisos_correo: null, avisos_activos: true },
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
     movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [], actividades: [
@@ -430,7 +431,7 @@ export function crearDatos() {
       { id: 'ip2', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Internet', tipo: 'internet', proveedor: 'Telmex', cuenta: '6121234567', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 4 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: 'Domiciliado', created_at: hace(30) },
       { id: 'ip3', inmueble_id: 'in2', empresa_id: 'e2', concepto: 'Agua', tipo: 'agua', proveedor: 'OOMSAPAS', cuenta: '88231', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 12 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
       { id: 'ip4', inmueble_id: 'in3', empresa_id: 'e1', concepto: 'Predial', tipo: 'predial', proveedor: 'Municipio', cuenta: '101-001-045', periodicidad: 'anual', monto: null, fecha_limite: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
-    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], reservas: [], perfil_ubicaciones: [], licencias_software: [
+    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], reservas: [], escaneos: [], perfil_ubicaciones: [], licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
       { id: 'lic2', empresa_id: 'e1', nombre: 'ESET Endpoint Security', fabricante: 'ESET', tipo: 'suscripcion', asientos: 25, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10), renovacion_automatica: true, proveedor: null, referencia: null, notas: null, activo: true, created_at: hace(60) },
     ], licencia_asignaciones: [{ id: 'la1', licencia_id: 'lic1', empleado_id: 'em2', activo_id: null, cuenta: 'laviles@grupofirme.mx', asignada: hace(30).slice(0, 10), liberada: null, notas: null, created_at: hace(30) }], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
@@ -529,6 +530,15 @@ function vista(db: DB, t: string): Row[] {
       r.existencia = Number(r.existencia) + (x.tipo === 'salida' ? -Number(x.cantidad) : Number(x.cantidad))
       if (String(x.created_at) > String(r.ultimo_movimiento)) r.ultimo_movimiento = x.created_at
       m.set(k, r)
+    }
+    return [...m.values()]
+  }
+  if (t === 'v_ultimo_escaneo') {
+    const m = new Map<string, Row>()
+    for (const e of [...db.escaneos].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))) {
+      if (!m.has(String(e.activo_id))) m.set(String(e.activo_id), { ...e })
+      const g = m.get(String(e.activo_id))!
+      if (g.ubicado_at == null && e.latitud != null) Object.assign(g, { latitud: e.latitud, longitud: e.longitud, ubicado_at: e.created_at, ubicado_por: e.quien, lejos: e.lejos, distancia_km: e.distancia_km })
     }
     return [...m.values()]
   }
@@ -859,6 +869,28 @@ export function instalarDemo(base: string) {
       }
       Object.assign(t, { estatus: body.p_aprobar ? 'aprobado' : 'rechazado', respuesta: body.p_respuesta || null, resuelto_por: 'u-demo', resuelto_at: new Date().toISOString() })
       return json(null, 204)
+    }
+    if (path.startsWith('/rest/v1/rpc/registrar_escaneo')) {
+      const a = db.activos.find(x => (body?.p_qr && x.qr === body.p_qr) || x.id === body?.p_activo)
+      if (!a) return json(null)
+      const u = byId(db, 'ubicaciones', a.ubicacion_id)
+      let dist: number | null = null
+      if (body.p_lat != null && u?.latitud != null) { const R = 6371, dLa = (body.p_lat - Number(u.latitud)) * Math.PI / 180, dLo = (body.p_lng - Number(u.longitud)) * Math.PI / 180; const h = Math.sin(dLa / 2) ** 2 + Math.cos(Number(u.latitud) * Math.PI / 180) * Math.cos(body.p_lat * Math.PI / 180) * Math.sin(dLo / 2) ** 2; dist = Math.round(2 * R * Math.asin(Math.sqrt(h)) * 100) / 100 }
+      db.escaneos.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, perfil_id: 'u-demo', quien: 'Oscar Cota', origen: body.p_origen, latitud: body.p_lat, longitud: body.p_lng, precision_m: body.p_precision, distancia_km: dist, lejos: (dist ?? 0) > 5, created_at: new Date().toISOString() })
+      return json({ ok: true })
+    }
+    if (path.startsWith('/rest/v1/rpc/avisos_estado')) return json({ url: !!ajustesAvisos?.url, secreto: !!ajustesAvisos?.secreto, ultimo: ajustesAvisos?.ultimo ?? null, programado: true })
+    if (path.startsWith('/rest/v1/rpc/avisos_configurar')) { ajustesAvisos = { ...(ajustesAvisos ?? {}), ...(body.p_url ? { url: body.p_url } : {}), ...(body.p_secreto ? { secreto: body.p_secreto } : {}) }; return json(null) }
+    if (path.startsWith('/rest/v1/rpc/avisos_enviar_ahora')) { ajustesAvisos = { ...(ajustesAvisos ?? {}), ultimo: new Date().toISOString() + ' · 1 correo(s)' }; return json(1) }
+    if (path.startsWith('/rest/v1/rpc/avisos_vista_previa')) {
+      const p = db.perfiles.find(x => x.id === (body?.p_perfil ?? 'u-demo'))
+      if (!p) return json(null)
+      const secs: Row[] = []
+      const av = (p.avisos as string[] | undefined) ?? []
+      if (av.includes('inmuebles')) secs.push({ modulo: 'inmuebles', titulo: 'Inmuebles y servicios', items: [{ texto: 'Luz CFE · Oficina Centro', detalle: 'Servicio por pagar: vence en 2 días', url: '#', urgente: false }, { texto: 'Agua · Campamento La Ribera', detalle: 'Servicio por pagar: venció hace 3 días', url: '#', urgente: true }] })
+      if (av.includes('reportes')) secs.push({ modulo: 'reportes', titulo: 'Reportes de falla abiertos', items: db.reportes.filter(r => r.estatus === 'abierto').slice(0, 3).map(r => ({ texto: r.folio + ' · ' + (byId(db, 'activos', r.activo_id)?.codigo ?? ''), detalle: r.descripcion, url: '#', urgente: r.prioridad === 'alta' })) })
+      if (av.includes('vehiculos')) secs.push({ modulo: 'vehiculos', titulo: 'Vehículos y maquinaria', items: [{ texto: 'Póliza Seguro · CZ-1234-A Nissan NP300', detalle: 'Documento del vehículo: vence en 5 días', url: '#', urgente: false }] })
+      return json({ para: p.avisos_correo || p.email, nombre: p.nombre, total: secs.reduce((n, s) => n + (s.items as unknown[]).length, 0), secciones: secs })
     }
     if (path.startsWith('/rest/v1/rpc/ficha_qr')) {
       const a = db.activos.find(x => x.qr === body?.p_qr && x.estatus !== 'baja')
