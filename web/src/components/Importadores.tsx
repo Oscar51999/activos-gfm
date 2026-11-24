@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { nombreEmpleado } from '../lib/hooks'
 import { CATEGORIAS_CONS, UNIDADES } from '../lib/almacen'
-import ImportarExcel, { normal, aFecha, aNumero, aBool, type ColImport, type ResultadoImport, type Variante } from './ImportarExcel'
+import ImportarExcel, { normal, aFecha, aNumero, aBool, type ColImport, type ResultadoImport, type Variante, type ModoImport } from './ImportarExcel'
 import type { CampoDef } from './Catalogo'
 
 type R = Record<string, unknown> & { id: string }
@@ -34,6 +34,48 @@ async function insertar(tabla: string, filas: { n: number; fila: Record<string, 
   return ok
 }
 
+/**
+ * Guarda según el modo: sobrescribir (actualiza los que coinciden por sus claves y agrega los nuevos)
+ * o sustituir (además, elimina —o desactiva— los que ya estaban y no vienen en el archivo, solo dentro del mismo ámbito, p. ej. las empresas del archivo).
+ */
+async function guardar(tabla: string, filas: { n: number; fila: Record<string, unknown> }[], errores: ResultadoImport['errores'], modo: ModoImport,
+  o: { claves: string[]; ambito?: string; desactivar?: boolean; soloSi?: Record<string, unknown>; nombre: string }) {
+  const llave = (r: Record<string, unknown>) => { const v = o.claves.map(c => normal(r[c])); return v.every(x => !x) ? '' : v.join('|') }
+  const ambitos = o.ambito ? [...new Set(filas.map(f => f.fila[o.ambito!]).filter(Boolean) as string[])] : null
+  let q = supabase.from(tabla).select(['id', ...o.claves, ...(o.desactivar ? ['activo'] : [])].join(',')).limit(20000)
+  if (ambitos) q = q.in(o.ambito!, ambitos.length ? ambitos : ['00000000-0000-0000-0000-000000000000'])
+  for (const [c, v] of Object.entries(o.soloSi ?? {})) q = q.eq(c, v as string)
+  const { data, error } = await q
+  if (error) throw error
+  const existentes = (data as unknown as (Record<string, unknown> & { id: string; activo?: boolean })[]) ?? []
+  const porLlave = new Map<string, string>()
+  for (const r of existentes) { const k = llave(r); if (k && !porLlave.has(k)) porLlave.set(k, r.id) }
+  const usados = new Set<string>(), nuevos: typeof filas = []
+  let actualizados = 0
+  for (const f of filas) {
+    const id = porLlave.get(llave(f.fila))
+    if (id && !usados.has(id)) {
+      usados.add(id)
+      const r = await supabase.from(tabla).update(f.fila).eq('id', id)
+      if (r.error) errores.push({ fila: f.n, error: mensajeError(r.error) }); else actualizados++
+    } else nuevos.push(f)
+  }
+  const agregados = await insertar(tabla, nuevos, errores)
+  const avisos = [`${agregados} nuevo(s) y ${actualizados} actualizado(s).`]
+  if (modo === 'sustituir') {
+    const sobran = existentes.filter(r => !usados.has(r.id) && (!o.desactivar || r.activo !== false)).map(r => r.id)
+    let quitados = 0, fallaron = 0
+    for (let i = 0; i < sobran.length; i += 200) {
+      const lote = sobran.slice(i, i + 200)
+      const r = o.desactivar ? await supabase.from(tabla).update({ activo: false }).in('id', lote) : await supabase.from(tabla).delete().in('id', lote)
+      if (r.error) fallaron += lote.length; else quitados += lote.length
+    }
+    avisos.push(`${quitados} ${o.nombre} que no venían en el archivo se eliminaron${o.desactivar ? ' (quedan en el historial)' : ''}.`)
+    if (fallaron) avisos.push(`${fallaron} no se pudieron eliminar porque tienen información ligada.`)
+  }
+  return { ok: agregados + actualizados, avisos }
+}
+
 function useCargar<T>(abierto: boolean, fn: () => Promise<T>) {
   const [v, setV] = useState<T | null>(null)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,7 +100,8 @@ export function ImportarCatalogo({ abierto, onCerrar, onListo, tabla, titulo, ca
       ayuda: c.tipo === 'multi' ? 'Uno o varios, separados por coma' : c.tipo === 'ref' ? `Nombre tal como está en ${c.ref!.tabla.replace(/_/g, ' ')}` : undefined,
       ejemplo: c.tipo === 'bool' ? 'Sí' : c.tipo === 'enum' ? Object.values(c.opciones ?? {})[0] : undefined })),
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  const claveCat = campos.some(c => c.key === 'clave') ? 'clave' : campos.some(c => c.key === 'nombre') ? 'nombre' : campos[0]?.key
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const listas: { n: number; fila: Record<string, unknown> }[] = []
@@ -81,10 +124,11 @@ export function ImportarCatalogo({ abierto, onCerrar, onListo, tabla, titulo, ca
       }
       if (error) errores.push({ fila: f.n, error }); else listas.push({ n: f.n, fila })
     }
-    const ok = await insertar(tabla, listas, errores)
-    return { ok, errores }
+    const r = await guardar(tabla, listas, errores, modo, { claves: porEmpresa ? ['empresa_id', claveCat] : [claveCat], ambito: porEmpresa ? 'empresa_id' : undefined, desactivar: true, nombre: 'registro(s)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo={titulo.toLowerCase()} columnas={columnas} procesar={procesar} nombreArchivo={tabla.replace(/_/g, '-')} />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo={titulo.toLowerCase()} columnas={columnas} procesar={procesar} nombreArchivo={tabla.replace(/_/g, '-')}
+    llave={porEmpresa ? `empresa y ${claveCat}` : claveCat} sustituir={porEmpresa ? `los ${titulo.toLowerCase()} de esas empresas que no vengan en el archivo se eliminan` : `los ${titulo.toLowerCase()} que no vengan en el archivo se eliminan`} />
 }
 
 // ─────────────────────── Empleados ───────────────────────
@@ -97,7 +141,7 @@ export function ImportarEmpleadosExcel({ abierto, onCerrar, onListo, empresaId }
     { key: 'depto', titulo: 'Departamento', ayuda: 'Si no existe en esa empresa, se crea', ejemplo: 'Obra' },
     { key: 'email', titulo: 'Correo', ejemplo: 'jperez@grupofirmedemexico.com' }, { key: 'telefono', titulo: 'Teléfono', ejemplo: '612 000 0000' },
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const deptos = [...(datos?.deptos ?? [])]
@@ -114,9 +158,11 @@ export function ImportarEmpleadosExcel({ abierto, onCerrar, onListo, empresaId }
       listas.push({ n: f.n, fila: { empresa_id: e.id, nombres: f.datos.nombres, apellidos: f.datos.apellidos || null, codigo: f.datos.codigo || null, puesto: f.datos.puesto || null,
         departamento_id: depto, email: f.datos.email || null, telefono: f.datos.telefono || null } })
     }
-    return { ok: await insertar('empleados', listas, errores), errores }
+    const r = await guardar('empleados', listas, errores, modo, { claves: ['empresa_id', 'nombres', 'apellidos'], ambito: 'empresa_id', desactivar: true, nombre: 'empleado(s)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="empleados" columnas={columnas} procesar={procesar} nombreArchivo="empleados" />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="empleados" columnas={columnas} procesar={procesar} nombreArchivo="empleados"
+    llave="empresa, nombre y apellidos" sustituir="los empleados de esas empresas que no vengan en el archivo se dan de baja" />
 }
 
 // ─────────────────────── Activos (plantilla según la categoría) ───────────────────────
@@ -168,8 +214,9 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
       { key: 'valor', titulo: 'Valor de referencia', tipo: 'numero' }, { key: 'notas', titulo: 'Notas' },
     ]
   }
-  async function procesar(filas: Filas, variante: string): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, variante: string, _modo: ModoImport): Promise<ResultadoImport> {
     if (!datos) throw new Error('Cargando catálogos, intenta de nuevo.')
+    let actualizados = 0
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos.empresas, e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const cat = indice(datos.categorias, c => c.nombre)
@@ -199,18 +246,34 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
         if (d.responsable && !resp) throw new Error(`Empleado "${d.responsable}" no existe`)
         const extras = Object.entries(EXTRA_NOTAS).filter(([k]) => d[k]).map(([k, t]) => `${t}: ${d[k]}`)
         const notas = [extras.join(' · '), d.factura && `Factura ${d.factura}`, d.notas].filter(Boolean).join('\n') || null
-        const r = await supabase.from('activos').insert({ empresa_id: e.id, categoria_id: c.id, marca_id: marcaId, modelo_id: modeloId, descripcion: d.descripcion.trim(),
+        const campos = { empresa_id: e.id, categoria_id: c.id, marca_id: marcaId, modelo_id: modeloId, descripcion: d.descripcion.trim(),
           serie: d.serie || null, numero_economico: d.eco || null, ubicacion_id: u?.id ?? null, fecha_alta: aFecha(d.fecha) ?? undefined,
-          valor_referencia: d.valor ? aNumero(d.valor) : null, notas, garantia_hasta: aFecha(d.garantia), garantia_proveedor: d.garantia_con || null, nfc_uid: d.nfc || null }).select('id').single()
-        if (r.error) throw r.error
-        const id = (r.data as { id: string }).id
+          valor_referencia: d.valor ? aNumero(d.valor) : null, notas, garantia_hasta: aFecha(d.garantia), garantia_proveedor: d.garantia_con || null, nfc_uid: d.nfc || null }
+        // Sobrescribir: si ya existe (misma serie o mismo No. económico en esa empresa), se actualiza en vez de duplicarlo
+        let existente: string | null = null
+        if (d.serie || d.eco) {
+          const filtro = [d.serie && `serie.eq.${d.serie.replace(/[,()"]/g, '')}`, d.eco && `numero_economico.eq.${d.eco.replace(/[,()"]/g, '')}`].filter(Boolean).join(',')
+          const x = await supabase.from('activos').select('id').eq('empresa_id', e.id).neq('estatus', 'baja').or(filtro).limit(1).maybeSingle()
+          existente = (x.data as { id: string } | null)?.id ?? null
+        }
+        let id: string
+        if (existente) {
+          const { fecha_alta: _fa, nfc_uid, ...resto } = campos
+          const r = await supabase.from('activos').update({ ...resto, ...(nfc_uid ? { nfc_uid } : {}) }).eq('id', existente)
+          if (r.error) throw r.error
+          id = existente; actualizados++
+        } else {
+          const r = await supabase.from('activos').insert(campos).select('id').single()
+          if (r.error) throw r.error
+          id = (r.data as { id: string }).id
+        }
         const t = tipoDe(c.id)
         if (t.vehiculo && (d.placa || d.anio || d.color || d.motor || d.km || d.combustible || d.transmision || d.version || d.tarjeta || d.poliza)) {
           await supabase.from('activo_vehiculo').upsert({ activo_id: id, placa: d.placa?.toUpperCase() || null, anio: d.anio ? aNumero(d.anio) : null, color: d.color || null, numero_motor: d.motor || null,
             kilometraje: d.km ? aNumero(d.km) : null, combustible: d.combustible || null, transmision: d.transmision || null, version: d.version || null, tarjeta_circulacion: d.tarjeta || null, poliza: d.poliza || null }, { onConflict: 'activo_id' })
         }
         if (d.km && Number(aNumero(d.km)) > 0) await supabase.from('lecturas').insert({ activo_id: id, empresa_id: e.id, tipo: t.maquinaria ? 'horas' : 'km', valor: aNumero(d.km), nota: 'Importado de Excel' })
-        if (resp) { const k = `${e.id}|${resp.id}`; const g = asignar.get(k) ?? { empresa: e.id, empleado: resp.id, nombre: nombreEmpleado(resp as never), ids: [], filas: [] }; g.ids.push(id); g.filas.push(f.n); asignar.set(k, g) }
+        if (resp && !existente) { const k = `${e.id}|${resp.id}`; const g = asignar.get(k) ?? { empresa: e.id, empleado: resp.id, nombre: nombreEmpleado(resp as never), ids: [], filas: [] }; g.ids.push(id); g.filas.push(f.n); asignar.set(k, g) }
         ok++
       } catch (err) { errores.push({ fila: f.n, error: mensajeError(err) }) }
     }
@@ -224,10 +287,11 @@ export function ImportarActivos({ abierto, onCerrar, onListo }: Base) {
     }
     if (asignados) avisos.unshift(`${asignados} quedaron asignados con su resguardo pendiente de firma.`)
     if (nuevas) avisos.push(`Se agregaron ${nuevas} marca(s) o modelo(s) nuevos al catálogo.`)
+    if (actualizados) avisos.unshift(`${actualizados} ya existían (misma serie o No. económico) y se actualizaron.`)
     return { ok, errores, avisos }
   }
   return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="activos" columnas={columnas} variantes={variantes} etiquetaVariante="Categoría del equipo"
-    procesar={procesar} nombreArchivo="activos" />
+    procesar={procesar} nombreArchivo="activos" llave="serie o No. económico" sustituir={false} />
 }
 
 // ─────────────────────── Licencias de software ───────────────────────
@@ -241,7 +305,7 @@ export function ImportarLicencias({ abierto, onCerrar, onListo }: Base) {
     { key: 'inicio', titulo: 'Inicio', tipo: 'fecha' }, { key: 'vence', titulo: 'Vencimiento', tipo: 'fecha', ejemplo: '2027-01-31' },
     { key: 'auto', titulo: 'Se renueva sola', tipo: 'bool', ejemplo: 'No' }, { key: 'proveedor', titulo: 'Proveedor' }, { key: 'referencia', titulo: 'Contrato o referencia', ayuda: 'No pongas contraseñas ni claves de producto' }, { key: 'notas', titulo: 'Notas' },
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const listas = filas.flatMap(f => {
@@ -251,9 +315,11 @@ export function ImportarLicencias({ abierto, onCerrar, onListo }: Base) {
       return [{ n: f.n, fila: { empresa_id: e.id, nombre: d.nombre, fabricante: d.fabricante || null, tipo, asientos: d.asientos ? aNumero(d.asientos) : null, fecha_inicio: aFecha(d.inicio), fecha_vencimiento: aFecha(d.vence),
         renovacion_automatica: aBool(d.auto), proveedor: d.proveedor || null, referencia: d.referencia || null, notas: d.notas || null } }]
     })
-    return { ok: await insertar('licencias_software', listas, errores), errores }
+    const r = await guardar('licencias_software', listas, errores, modo, { claves: ['empresa_id', 'nombre'], ambito: 'empresa_id', desactivar: true, nombre: 'licencia(s)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="licencias" columnas={columnas} procesar={procesar} nombreArchivo="licencias" />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="licencias" columnas={columnas} procesar={procesar} nombreArchivo="licencias"
+    llave="empresa y nombre" sustituir="las licencias de esas empresas que no vengan en el archivo se eliminan" />
 }
 
 // ─────────────────────── Inmuebles ───────────────────────
@@ -274,7 +340,7 @@ export function ImportarInmuebles({ abierto, onCerrar, onListo }: Base) {
     { key: 'servicios', titulo: 'Servicios', valores: Object.values(SERV), ayuda: 'Separados por coma', ejemplo: 'Agua, Luz' },
     { key: 'latitud', titulo: 'Latitud', tipo: 'numero' }, { key: 'longitud', titulo: 'Longitud', tipo: 'numero' }, { key: 'observaciones', titulo: 'Observaciones' },
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const listas = filas.flatMap(f => {
@@ -286,9 +352,11 @@ export function ImportarInmuebles({ abierto, onCerrar, onListo }: Base) {
         situacion: d.situacion ? clave(SITUACION, d.situacion) ?? null : null, servicios: (d.servicios ?? '').split(/[,;]/).map(x => clave(SERV, x)).filter(Boolean),
         latitud: d.latitud ? aNumero(d.latitud) : null, longitud: d.longitud ? aNumero(d.longitud) : null, observaciones: d.observaciones || null } }]
     })
-    return { ok: await insertar('inmuebles', listas, errores), errores }
+    const r = await guardar('inmuebles', listas.map(x => ({ ...x, fila: { ...x.fila, activo: true } })), errores, modo, { claves: ['empresa_id', 'nombre'], ambito: 'empresa_id', desactivar: true, nombre: 'inmueble(s)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="inmuebles" />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="inmuebles"
+    llave="empresa y nombre" sustituir="los inmuebles de esas empresas que no vengan en el archivo se eliminan (sus documentos y pagos quedan en el historial)" />
 }
 
 // ─────────────────────── Almacén (artículos y existencia inicial) ───────────────────────
@@ -301,20 +369,29 @@ export function ImportarConsumibles({ abierto, onCerrar, onListo }: Base) {
     { key: 'ubicacion', titulo: 'Almacén / ubicación', valores: [...new Set((datos?.ubicaciones ?? []).map(u => String(u.nombre)))] },
     { key: 'cantidad', titulo: 'Existencia inicial', tipo: 'numero', ejemplo: '50' }, { key: 'lote', titulo: 'Lote' },
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
     const cons = [...(datos?.consumibles ?? [])]
-    let ok = 0, entradas = 0
+    const vistos = new Set<string>()
+    let ok = 0, entradas = 0, actualizados = 0
     for (const f of filas) {
       const d = f.datos
       try {
         let c = cons.find(x => normal(x.nombre) === normal(d.nombre) && normal(x.marca) === normal(d.marca))
+        if (c) {
+          const cambios: Record<string, unknown> = {}
+          if (d.categoria) cambios.categoria = CATEGORIAS_CONS.find(x => normal(x) === normal(d.categoria)) ?? d.categoria
+          if (d.unidad) cambios.unidad = UNIDADES.find(x => normal(x) === normal(d.unidad)) ?? 'pieza'
+          if (d.minimo) cambios.minimo = aNumero(d.minimo)
+          if (Object.keys(cambios).length) { const r = await supabase.from('consumibles').update(cambios).eq('id', c.id); if (r.error) throw r.error; actualizados++ }
+        }
         if (!c) {
           const r = await supabase.from('consumibles').insert({ nombre: d.nombre.trim(), categoria: CATEGORIAS_CONS.find(x => normal(x) === normal(d.categoria)) ?? (d.categoria || null),
             unidad: UNIDADES.find(x => normal(x) === normal(d.unidad)) ?? 'pieza', marca: d.marca || null, minimo: d.minimo ? aNumero(d.minimo) : 0 }).select('id,nombre,marca').single()
           if (r.error) throw r.error; c = r.data as R; cons.push(c)
         }
+        vistos.add(c.id)
         const cant = d.cantidad ? Number(aNumero(d.cantidad)) : 0
         if (cant > 0) {
           const e = emp(d.empresa); if (!e) throw new Error(`Para la existencia inicial falta una empresa válida ("${d.empresa}")`)
@@ -327,9 +404,15 @@ export function ImportarConsumibles({ abierto, onCerrar, onListo }: Base) {
         ok++
       } catch (err) { errores.push({ fila: f.n, error: mensajeError(err) }) }
     }
-    return { ok, errores, avisos: entradas ? [`${entradas} con existencia inicial registrada como entrada.`] : [] }
+    const avisos = [...(actualizados ? [`${actualizados} artículo(s) actualizados.`] : []), ...(entradas ? [`${entradas} con existencia inicial registrada como entrada.`] : [])]
+    if (modo === 'sustituir') {
+      const sobran = cons.filter(x => !vistos.has(x.id)).map(x => x.id)
+      if (sobran.length) { const r = await supabase.from('consumibles').update({ activo: false }).in('id', sobran); avisos.push(r.error ? `No se pudieron quitar los artículos que no venían: ${mensajeError(r.error)}` : `${sobran.length} artículo(s) que no venían en el archivo se eliminaron del catálogo (sus movimientos quedan en el historial).`) }
+    }
+    return { ok, errores, avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="artículos de almacén" columnas={columnas} procesar={procesar} nombreArchivo="almacen" />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="artículos de almacén" columnas={columnas} procesar={procesar} nombreArchivo="almacen"
+    llave="artículo y marca" sustituir="los artículos del catálogo que no vengan en el archivo se eliminan" />
 }
 
 // ─────────────────────── Servicios por pagar de los inmuebles ───────────────────────
@@ -344,7 +427,7 @@ export function ImportarServicios({ abierto, onCerrar, onListo }: Base) {
     { key: 'periodicidad', titulo: 'Cada cuándo', valores: Object.values(PERIOD), ejemplo: 'Bimestral' }, { key: 'fecha', titulo: 'Próximo vencimiento', requerido: true, tipo: 'fecha', ejemplo: '2026-12-15' },
     { key: 'monto', titulo: 'Monto aproximado', tipo: 'numero' }, { key: 'notas', titulo: 'Notas', ejemplo: 'Domiciliado' },
   ]
-  async function procesar(filas: Filas): Promise<ResultadoImport> {
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
     const errores: ResultadoImport['errores'] = []
     const inm = indice(datos?.inmuebles ?? [], i => i.codigo, i => i.nombre, i => `${i.codigo} · ${i.nombre}`)
     const listas = filas.flatMap(f => {
@@ -353,7 +436,9 @@ export function ImportarServicios({ abierto, onCerrar, onListo }: Base) {
       return [{ n: f.n, fila: { inmueble_id: i.id, empresa_id: i.empresa_id, tipo: clave(TIPOS_SERV, d.tipo) ?? 'otro', concepto: d.concepto, proveedor: d.proveedor || null, cuenta: d.cuenta || null,
         periodicidad: clave(PERIOD, d.periodicidad) ?? 'mensual', fecha_limite: aFecha(d.fecha), monto: d.monto ? aNumero(d.monto) : null, notas: d.notas || null } }]
     })
-    return { ok: await insertar('inmueble_pagos', listas, errores), errores }
+    const r = await guardar('inmueble_pagos', listas, errores, modo, { claves: ['inmueble_id', 'concepto'], ambito: 'inmueble_id', soloSi: { pagado: false }, nombre: 'servicio(s) pendiente(s)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
   }
-  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="servicios de inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="servicios-inmuebles" />
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="servicios de inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="servicios-inmuebles"
+    llave="inmueble y concepto" sustituir="los servicios sin pagar de esos inmuebles que no vengan en el archivo se eliminan (los ya pagados no se tocan)" />
 }

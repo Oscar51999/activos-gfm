@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileSpreadsheet, Upload, Download, Check, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react'
+import { FileSpreadsheet, Upload, Download, Check, AlertTriangle, Loader2, ArrowLeft, RefreshCw, Replace, Lock } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { libroExcel, descargar } from '../lib/excel'
 import { leerTabla } from '../lib/lector'
 import { Modal, Aviso } from './ui'
@@ -12,6 +13,8 @@ export type ColImport = {
 }
 export type ResultadoImport = { ok: number; errores: { fila: number; error: string }[]; avisos?: string[] }
 export type Variante = { id: string; nombre: string; grupo?: string }
+/** Cómo se cargan los datos: sobrescribir (actualiza lo que ya existe y agrega lo nuevo) o sustituir (lo que no venga en el archivo se elimina). */
+export type ModoImport = 'sobrescribir' | 'sustituir'
 
 export const normal = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[*:]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
 
@@ -30,14 +33,20 @@ export const aBool = (v: string) => /^(si|sí|s|x|1|true|verdadero|yes)$/i.test(
  * Importar desde Excel con dos opciones: cargar el archivo o descargar la plantilla.
  * Si hay variantes (por ejemplo, la categoría del equipo), la plantilla cambia según la que se elija.
  */
-export default function ImportarExcel({ abierto, onCerrar, onListo, titulo, columnas, variantes, etiquetaVariante = 'Tipo', valoresExtra, procesar, nombreArchivo }: {
+export default function ImportarExcel({ abierto, onCerrar, onListo, titulo, columnas, variantes, etiquetaVariante = 'Tipo', valoresExtra, procesar, nombreArchivo, llave, sustituir }: {
   abierto: boolean; onCerrar: () => void; onListo: () => void; titulo: string
   columnas: ColImport[] | ((variante: string) => ColImport[])
   variantes?: Variante[]; etiquetaVariante?: string
   valoresExtra?: { nombre: string; valores: string[] }[]
-  procesar: (filas: { n: number; datos: Record<string, string> }[], variante: string) => Promise<ResultadoImport>
+  procesar: (filas: { n: number; datos: Record<string, string> }[], variante: string, modo: ModoImport) => Promise<ResultadoImport>
   nombreArchivo: string
+  /** Cómo se reconoce que un renglón ya existe (ej. "empresa + nombre"). */
+  llave?: string
+  /** Qué se elimina al sustituir; false = no se permite sustituir en esta base. */
+  sustituir?: string | false
 }) {
+  const [modo, setModo] = useState<ModoImport>('sobrescribir')
+  const [clave, setClave] = useState('')
   const [variante, setVariante] = useState('')
   const [filas, setFilas] = useState<{ n: number; datos: Record<string, string> }[] | null>(null)
   const [encabezados, setEncabezados] = useState<{ reconocidos: string[]; ignorados: string[] }>({ reconocidos: [], ignorados: [] })
@@ -47,7 +56,7 @@ export default function ImportarExcel({ abierto, onCerrar, onListo, titulo, colu
   const [importando, setImportando] = useState(false)
   const [resultado, setResultado] = useState<ResultadoImport | null>(null)
   const input = useRef<HTMLInputElement>(null)
-  useEffect(() => { if (abierto) { setFilas(null); setError(''); setResultado(null); setArchivo('') } }, [abierto])
+  useEffect(() => { if (abierto) { setFilas(null); setError(''); setResultado(null); setArchivo(''); setModo('sobrescribir'); setClave('') } }, [abierto])
 
   const cols = useMemo(() => typeof columnas === 'function' ? columnas(variante) : columnas, [columnas, variante])
   const nombreVar = variantes?.find(v => v.id === variante)?.nombre
@@ -93,7 +102,18 @@ export default function ImportarExcel({ abierto, onCerrar, onListo, titulo, colu
 
   async function importar() {
     setImportando(true); setError('')
-    try { setResultado(await procesar(buenas, variante)) } catch (e) { setError((e as Error).message) } finally { setImportando(false) }
+    try {
+      if (modo === 'sustituir') {
+        // Sustituir borra datos: se confirma con la contraseña de quien inició sesión
+        const { data: u } = await supabase.auth.getUser()
+        const correo = u.user?.email
+        if (!correo) throw new Error('No pude confirmar tu sesión. Vuelve a entrar.')
+        const { error: e } = await supabase.auth.signInWithPassword({ email: correo, password: clave })
+        setClave('')
+        if (e) throw new Error('La contraseña no es correcta. No se cambió nada.')
+      }
+      setResultado(await procesar(buenas, variante, modo))
+    } catch (e) { setError((e as Error).message) } finally { setImportando(false) }
   }
 
   const visibles = cols.filter(c => (filas ?? []).some(f => f.datos[c.key])).slice(0, 8)
@@ -156,9 +176,29 @@ export default function ImportarExcel({ abierto, onCerrar, onListo, titulo, colu
             </table>
           </div>
           {revisadas.length > 300 && <p className="text-xs text-stone-500">Se muestran 300 de {revisadas.length}.</p>}
+          <div>
+            <p className="etiqueta">¿Qué hago con lo que ya está en el sistema?</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => setModo('sobrescribir')} className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${modo === 'sobrescribir' ? 'border-marca bg-marca/10' : 'border-stone-200 hover:border-stone-300'}`}>
+                <RefreshCw size={20} className="mt-0.5 shrink-0 text-marca" />
+                <span><span className="block font-semibold">Sobrescribir</span><span className="block text-xs text-stone-500">Actualiza los que ya existen{llave ? ` (mismo ${llave})` : ''} con los datos del archivo y agrega los nuevos. No elimina nada.</span></span>
+              </button>
+              <button type="button" disabled={sustituir === false} onClick={() => setModo('sustituir')} className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${modo === 'sustituir' ? 'border-red-400 bg-red-50' : 'border-stone-200 hover:border-stone-300'}`}>
+                <Replace size={20} className="mt-0.5 shrink-0 text-red-600" />
+                <span><span className="block font-semibold">Sustituir</span><span className="block text-xs text-stone-500">{sustituir === false ? 'No disponible aquí: los activos se dan de baja con acta para no perder su historial.' : `Deja solo lo del archivo: ${sustituir ?? 'lo que no venga en el archivo se elimina'}. Pide tu contraseña.`}</span></span>
+              </button>
+            </div>
+            {modo === 'sustituir' && (
+              <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="mb-2 flex items-center gap-2 text-sm font-medium text-red-800"><Lock size={15} />Para sustituir, escribe tu contraseña de inicio de sesión</p>
+                <input type="password" className="campo" autoComplete="current-password" placeholder="Tu contraseña" value={clave} onChange={e => setClave(e.target.value)} />
+                <p className="mt-2 text-xs text-red-700 first-letter:uppercase">{sustituir || 'lo que no venga en el archivo se elimina'}. Esto no se puede deshacer desde aquí.</p>
+              </div>
+            )}
+          </div>
           {error && <Aviso>{error}</Aviso>}
           <div className="flex justify-end gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button>
-            <button className="btn-primario" disabled={!buenas.length || importando} onClick={importar}>{importando ? <><Loader2 size={15} className="animate-spin" />Importando…</> : <><Check size={15} />Importar {buenas.length}</>}</button></div>
+            <button className={modo === 'sustituir' ? 'btn-peligro' : 'btn-primario'} disabled={!buenas.length || importando || (modo === 'sustituir' && !clave)} onClick={importar}>{importando ? <><Loader2 size={15} className="animate-spin" />Importando…</> : <><Check size={15} />{modo === 'sustituir' ? `Sustituir con ${buenas.length}` : `Importar ${buenas.length}`}</>}</button></div>
         </div>
       )}
     </Modal>

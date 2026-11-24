@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2, Upload, Tent, Users, BedDouble, HardHat } from 'lucide-react'
+import { Landmark, Plus, Search, MapPin, Ruler, Pencil, ArrowLeft, Camera, ExternalLink, AlertTriangle, CheckCircle2, Droplets, Zap, Waves, Wifi, Flame, Route, FileText, Building2, Upload, Tent, Users, BedDouble, HardHat, Trash2, Check, X } from 'lucide-react'
 import { ImportarInmuebles } from '../components/Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -71,6 +71,9 @@ export default function Inmuebles() {
   const setGrupo = (g: string) => { setGrupoS(g); setTipo(''); history.replaceState(null, '', `#/inmuebles?grupo=${g}`) }
   const [nuevo, setNuevo] = useState(false)
   const [importar, setImportar] = useState(false)
+  const [editando, setEditando] = useState(false)
+  const [borrar, setBorrar] = useState<Inmueble | null>(null)
+  const [editarI, setEditarI] = useState<Inmueble | null>(null)
   const { items: empresas } = useLista('empresas', 'id,nombre,nombre_corto')
   const nav = useNavigate()
 
@@ -95,16 +98,26 @@ export default function Inmuebles() {
           <h1 className="text-2xl font-semibold sm:text-3xl">Inmuebles</h1>
           <p className="mt-1 text-sm text-stone-500">Terrenos, oficinas, bodegas, talleres, campamentos y casas del personal, con su expediente de documentos.</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {puedeEditar && <button className={editando ? 'btn-primario' : 'btn-sec'} onClick={() => setEditando(v => !v)}>{editando ? <><Check size={16} />Terminar</> : <><Pencil size={16} />Editar</>}</button>}
         {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Importar Excel</button>}
         {puedeEditar && <button className="btn-primario" onClick={() => setNuevo(true)}><Plus size={16} />{grupo === 'campamentos' ? 'Nuevo campamento' : grupo === 'oficinas' ? 'Nueva oficina' : 'Nuevo inmueble'}</button>}
+        </div>
         {importar && <ImportarInmuebles abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2 border-b border-stone-200">
-        {[...GRUPOS_INM, { k: 'todos', t: 'Todos', tipos: [], icono: Landmark }].map(g => {
-          const n = g.k === 'todos' ? lista.length : lista.filter(i => grupoDe(i.tipo) === g.k).length
-          return <button key={g.k} onClick={() => setGrupo(g.k)} className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm transition ${grupo === g.k ? 'border-marca font-semibold text-marca' : 'border-transparent text-stone-500 hover:text-tinta'}`}><g.icono size={16} />{g.t}<span className="cifra rounded-full bg-stone-100 px-1.5 text-[11px] text-stone-500">{n}</span></button>
-        })}
+      <div className="mb-5">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-[.16em] text-stone-500">Ver</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist">
+          {[...GRUPOS_INM, { k: 'todos', t: 'Todos', tipos: [], icono: Landmark }].map(g => {
+            const n = g.k === 'todos' ? lista.length : lista.filter(i => grupoDe(i.tipo) === g.k).length
+            const on = grupo === g.k
+            return <button key={g.k} role="tab" aria-selected={on} onClick={() => setGrupo(g.k)} className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${on ? 'border-marca bg-marca/15 text-tinta shadow-[0_0_0_1px_var(--color-marca)]' : 'border-stone-200 text-stone-500 hover:border-stone-300 hover:text-tinta'}`}>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${on ? 'bg-marca text-[#120D04]' : 'bg-stone-100'}`}><g.icono size={18} /></span>
+              <span className="min-w-0"><span className={`block truncate text-sm ${on ? 'font-semibold' : 'font-medium'}`}>{g.k === 'otros' ? 'Otros' : g.t}</span><span className="cifra block text-xs text-stone-500">{n} {n === 1 ? 'registro' : 'registros'}</span></span>
+            </button>
+          })}
+        </div>
       </div>
 
       {grupo === 'campamentos' ? (() => {
@@ -134,12 +147,17 @@ export default function Inmuebles() {
         <select className="campo !w-auto" value={tipo} onChange={e => setTipo(e.target.value)} aria-label="Tipo"><option value="">Todos los tipos</option>{Object.entries(TIPOS_INM).filter(([k]) => grupo === 'todos' || grupoDe(k) === grupo).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
       </div>
 
+      {editando && <p className="mb-3 rounded-xl border border-marca/30 bg-marca/10 px-4 py-2.5 text-sm">Modo edición: toca <Pencil size={13} className="inline" /> para cambiar los datos o <Trash2 size={13} className="inline text-red-600" /> para eliminar.</p>}
       {vis.length === 0 ? <div className="tarjeta"><Vacio titulo="Sin inmuebles" texto="Da de alta los terrenos, oficinas y bodegas para llevar su expediente y recibir avisos de predial, uso de suelo y protección civil." /></div> : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {vis.map((i, k) => {
             const e = exps.get(i.id)!
             return (
-              <Link key={i.id} to={`/inmuebles/${i.id}`} className={`tarjeta viva group min-w-0 animate-entrar overflow-hidden ${e.vencidos ? '!border-red-200' : ''}`} style={{ animationDelay: `${k * 30}ms` }}>
+              <Link key={i.id} to={`/inmuebles/${i.id}`} onClick={ev => { if (editando) ev.preventDefault() }} className={`tarjeta viva group relative min-w-0 animate-entrar overflow-hidden ${e.vencidos ? '!border-red-200' : ''} ${editando ? 'ring-1 ring-marca/40' : ''}`} style={{ animationDelay: `${k * 30}ms` }}>
+                {editando && <div className="absolute right-2 top-12 z-10 flex gap-1.5">
+                  <button type="button" title="Editar" aria-label={`Editar ${i.nombre}`} onClick={ev => { ev.preventDefault(); ev.stopPropagation(); setEditarI(i) }} className="grid h-9 w-9 place-items-center rounded-xl border border-stone-200 bg-panel text-stone-600 shadow hover:text-marca"><Pencil size={16} /></button>
+                  <button type="button" title="Eliminar" aria-label={`Eliminar ${i.nombre}`} onClick={ev => { ev.preventDefault(); ev.stopPropagation(); setBorrar(i) }} className="grid h-9 w-9 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 shadow hover:bg-red-600 hover:text-white"><Trash2 size={16} /></button>
+                </div>}
                 <div className="relative h-32 overflow-hidden bg-gradient-to-br from-stone-100 to-transparent">
                   {i.foto ? <img src={i.foto} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center text-stone-300"><Building2 size={40} strokeWidth={1.2} /></div>}
                   <span className="absolute left-3 top-3 rounded-full bg-lienzo/80 px-2.5 py-0.5 text-[11px] font-medium text-tinta backdrop-blur">{TIPOS_INM[i.tipo]}</span>
@@ -166,6 +184,15 @@ export default function Inmuebles() {
           })}
         </div>
       )}
+      {editarI && <InmuebleModal inmueble={editarI} onCerrar={() => setEditarI(null)} onListo={() => { setEditarI(null); cargar() }} />}
+      {borrar && <Modal abierto titulo="Eliminar inmueble" onCerrar={() => setBorrar(null)} ancho="max-w-md">
+        <p className="text-sm">¿Eliminar <b>{borrar.codigo} · {borrar.nombre}</b>?</p>
+        <p className="mt-2 text-sm text-stone-500">Deja de aparecer en la lista, en el mapa y en los avisos. Sus documentos y pagos se conservan en el historial.</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button className="btn-sec" onClick={() => setBorrar(null)}><X size={15} />Cancelar</button>
+          <button className="btn-peligro" onClick={async () => { const { error } = await supabase.from('inmuebles').update({ activo: false }).eq('id', borrar.id); if (!error) { setLista(l => (l ?? []).filter(x => x.id !== borrar.id)); setBorrar(null) } }}><Trash2 size={15} />Eliminar</button>
+        </div>
+      </Modal>}
       {nuevo && <InmuebleModal tipoInicial={grupo === 'campamentos' ? 'campamento' : grupo === 'oficinas' ? 'oficina' : 'terreno'} onCerrar={() => setNuevo(false)} onListo={id => { setNuevo(false); nav(`/inmuebles/${id}`) }} />}
     </div>
   )
@@ -295,10 +322,12 @@ function InmuebleModal({ inmueble, tipoInicial = 'terreno', onCerrar, onListo }:
     if (r.error) return setError(mensajeError(r.error))
     onListo((r.data as { id: string }).id)
   }
+  const [confirmarQuitar, setConfirmarQuitar] = useState(false)
   async function quitar() {
     const { error } = await supabase.from('inmuebles').update({ activo: false }).eq('id', inmueble!.id)
     if (error) return setError(mensajeError(error))
-    location.hash = '#/inmuebles'
+    if (location.hash.startsWith('#/inmuebles/')) location.hash = '#/inmuebles'
+    onListo(inmueble!.id)
   }
 
   return (
@@ -362,7 +391,9 @@ function InmuebleModal({ inmueble, tipoInicial = 'terreno', onCerrar, onListo }:
         </div>
         {error && <Aviso>{error}</Aviso>}
         <div className="flex items-center justify-between gap-2">
-          {inmueble ? <button className="text-sm text-stone-500 hover:text-red-700" onClick={quitar}>Ya no es de la empresa</button> : <span />}
+          {inmueble ? (confirmarQuitar
+            ? <span className="flex items-center gap-2 text-sm"><span className="text-red-700">¿Eliminar este inmueble?</span><button className="btn-peligro !px-3 !py-1.5 text-xs" onClick={quitar}><Trash2 size={13} />Sí, eliminar</button><button className="btn-sec !px-3 !py-1.5 text-xs" onClick={() => setConfirmarQuitar(false)}>No</button></span>
+            : <button className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-red-700" onClick={() => setConfirmarQuitar(true)}><Trash2 size={14} />Eliminar inmueble</button>) : <span />}
           <div className="flex gap-2"><button className="btn-sec" onClick={onCerrar}>Cancelar</button><button className="btn-primario" onClick={guardar}>Guardar</button></div>
         </div>
       </div>
