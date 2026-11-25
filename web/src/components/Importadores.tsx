@@ -442,3 +442,45 @@ export function ImportarServicios({ abierto, onCerrar, onListo }: Base) {
   return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="servicios de inmuebles" columnas={columnas} procesar={procesar} nombreArchivo="servicios-inmuebles"
     llave="inmueble y concepto" sustituir="los servicios sin pagar de esos inmuebles que no vengan en el archivo se eliminan (los ya pagados no se tocan)" />
 }
+
+// ─────────────────────── Actividades del equipo (agenda / calendario) ───────────────────────
+const EST_ACT: Record<string, string> = { pendiente: 'Pendiente', en_curso: 'En curso', atorado: 'Atorado', listo: 'Listo' }
+const PRI_ACT: Record<string, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente' }
+export function ImportarActividades({ abierto, onCerrar, onListo }: Base) {
+  const datos = useCargar(abierto, async () => {
+    const { data } = await supabase.rpc('usuarios_para_asignar')
+    return { usuarios: ((data ?? []) as { id: string; nombre: string }[]).map(u => ({ ...u })) as R[], empresas: await lista('empresas', 'id,nombre,nombre_corto,razon_social') }
+  })
+  const columnas: ColImport[] = [
+    { key: 'titulo', titulo: 'Actividad', requerido: true, ejemplo: 'Inventario de equipo de cómputo oficina centro' },
+    { key: 'grupo', titulo: 'Grupo', ayuda: 'Ej. Sistemas, Obra, Administración. Vacío = General', ejemplo: 'Sistemas' },
+    { key: 'responsable', titulo: 'Responsable', valores: datos?.usuarios.map(u => String(u.nombre)), ayuda: 'Nombre del usuario tal como aparece en el sistema', ejemplo: datos?.usuarios[0] ? String(datos.usuarios[0].nombre) : '' },
+    { key: 'participantes', titulo: 'Participantes', ayuda: 'Otros usuarios, separados por coma' },
+    { key: 'inicio', titulo: 'Fecha inicio', tipo: 'fecha', ejemplo: '2026-12-01' }, { key: 'fin', titulo: 'Fecha fin', tipo: 'fecha', ejemplo: '2026-12-05' },
+    { key: 'estatus', titulo: 'Estatus', valores: Object.values(EST_ACT), ejemplo: 'Pendiente' }, { key: 'prioridad', titulo: 'Prioridad', valores: Object.values(PRI_ACT), ejemplo: 'Media' },
+    { key: 'avance', titulo: 'Avance %', tipo: 'numero', ejemplo: '0' },
+    { key: 'empresa', titulo: 'Empresa', valores: datos?.empresas.map(etqEmpresa), ayuda: 'Opcional' }, { key: 'descripcion', titulo: 'Descripción' },
+  ]
+  async function procesar(filas: Filas, _v: string, modo: ModoImport): Promise<ResultadoImport> {
+    const errores: ResultadoImport['errores'] = []
+    const usr = indice(datos?.usuarios ?? [], u => u.nombre)
+    const emp = indice(datos?.empresas ?? [], e => e.nombre, e => e.nombre_corto, e => e.razon_social)
+    const listas = filas.flatMap((f, i) => {
+      const d = f.datos
+      const resp = d.responsable ? usr(d.responsable) : undefined
+      if (d.responsable && !resp) { errores.push({ fila: f.n, error: `Responsable "${d.responsable}" no es un usuario del sistema` }); return [] }
+      const parts: string[] = []
+      for (const p of (d.participantes ?? '').split(/[,;]/).map(x => x.trim()).filter(Boolean)) { const u = usr(p); if (u) parts.push(u.id); else errores.push({ fila: f.n, error: `Participante "${p}" no existe (se omitió)` }) }
+      const e = d.empresa ? emp(d.empresa) : undefined
+      if (d.empresa && !e) { errores.push({ fila: f.n, error: `Empresa "${d.empresa}" no existe` }); return [] }
+      const estatus = clave(EST_ACT, d.estatus) ?? 'pendiente'
+      const avance = d.avance ? Math.max(0, Math.min(100, Math.round(Number(aNumero(d.avance)) || 0))) : estatus === 'listo' ? 100 : 0
+      return [{ n: f.n, fila: { titulo: d.titulo.trim(), grupo: d.grupo?.trim() || 'General', responsable_id: resp?.id ?? null, participantes: parts, fecha_inicio: aFecha(d.inicio), fecha_fin: aFecha(d.fin) ?? aFecha(d.inicio),
+        estatus, prioridad: clave(PRI_ACT, d.prioridad) ?? 'media', avance, empresa_id: e?.id ?? null, descripcion: d.descripcion || null, orden: 1000 + i } }]
+    })
+    const r = await guardar('actividades', listas, errores, modo, { claves: ['grupo', 'titulo'], ambito: 'grupo', nombre: 'actividad(es)' })
+    return { ok: r.ok, errores, avisos: r.avisos }
+  }
+  return <ImportarExcel abierto={abierto} onCerrar={onCerrar} onListo={onListo} titulo="actividades" columnas={columnas} procesar={procesar} nombreArchivo="actividades"
+    llave="grupo y nombre de la actividad" sustituir="las actividades de esos grupos que no vengan en el archivo se eliminan" />
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { CalendarDays, KanbanSquare, Table2, Plus, ChevronLeft, ChevronRight, ChevronDown, Search, Trash2, Check, X, MessageSquare, TrendingUp, CalendarRange, FileSpreadsheet, FileText } from 'lucide-react'
+import { CalendarDays, KanbanSquare, Table2, Plus, ChevronLeft, ChevronRight, ChevronDown, Search, Trash2, Check, X, MessageSquare, TrendingUp, CalendarRange, FileSpreadsheet, FileText, Upload } from 'lucide-react'
+import { ImportarActividades } from '../components/Importadores'
 import { supabase, mensajeError } from '../lib/supabase'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { useLista } from '../lib/hooks'
@@ -61,6 +62,7 @@ export default function Actividades() {
   const [semana, setSemana] = useState<string | null>(null)   // lunes de la semana filtrada
   const [comentarios, setComentarios] = useState<Map<string, number>>(new Map())
   const [error, setError] = useState('')
+  const [importar, setImportar] = useState(false)
 
   const cargar = () => {
     supabase.from('actividad_avances').select('actividad_id').not('comentario', 'is', null).then(({ data }) => {
@@ -146,6 +148,7 @@ export default function Actividades() {
           <p className="mt-1 text-sm text-stone-500">Pendientes del equipo de TI y supervisores: quién, qué y para cuándo.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+        {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Cargar Excel</button>}
         <button className="btn-sec" onClick={exportarExcel} disabled={!visibles.length}><FileSpreadsheet size={16} />Excel</button>
         <button className="btn-sec" onClick={exportarPdf} disabled={!visibles.length}><FileText size={16} />PDF</button>
         <button className="btn-primario" onClick={() => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: hoy })}><Plus size={16} />Nueva actividad</button>
@@ -178,6 +181,7 @@ export default function Actividades() {
       </div>
       {error && <div className="mb-4"><Aviso>{error}</Aviso></div>}
 
+      {importar && <ImportarActividades abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
       {vista === 'tablero' && <Tablero grupos={grupos} acts={visibles} usuarios={usuarios} comentarios={comentarios} actualizar={actualizar} abrir={setEditar} crear={crearRapido} />}
       {vista === 'calendario' && <Calendario acts={visibles} usuarios={usuarios} semana={semana} abrir={setEditar} nueva={f => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: f, fecha_fin: f })} />}
       {vista === 'kanban' && <Kanban acts={visibles} usuarios={usuarios} comentarios={comentarios} actualizar={actualizar} abrir={setEditar} />}

@@ -1,5 +1,6 @@
 /** Temas de los que se encarga cada usuario: definen qué avisos le llegan por correo. */
 export const MODULOS: { id: string; t: string; d: string }[] = [
+  { id: 'gerencia', t: 'Resumen gerencial', d: 'Cada mañana: lo que hizo el equipo en 24 h (actividades por persona, resguardos, fallas, mantenimiento, pagos y solicitudes)' },
   { id: 'inmuebles', t: 'Inmuebles y servicios', d: 'Luz, agua, renta, internet por pagar y documentos de inmuebles' },
   { id: 'vehiculos', t: 'Vehículos y maquinaria', d: 'Seguros, tarjetas, verificaciones, mantenimientos y checklists con fallas' },
   { id: 'mantenimiento', t: 'Mantenimiento de equipo', d: 'Mantenimientos vencidos o próximos (no vehículos)' },
