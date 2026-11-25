@@ -12,6 +12,7 @@ export const MODULOS: { id: string; t: string; d: string }[] = [
   { id: 'licencias', t: 'Licencias y cuentas', d: 'Licencias por vencer' },
   { id: 'garantias', t: 'Garantías', d: 'Garantías que vencen en 30 días' },
   { id: 'documentos', t: 'Documentos y vigencias', d: 'Documentos de personal y de equipo por vencer' },
+  { id: 'contratos', t: 'Contratos y pólizas', d: 'Contratos de soporte, arrendamiento y pólizas por vencer' },
   { id: 'escaneos', t: 'Equipo fuera de su lugar', d: 'Al momento: equipo escaneado a más de 5 km de su obra' },
 ]
 export const nombreModulo = (id: string) => MODULOS.find(m => m.id === id)?.t ?? id

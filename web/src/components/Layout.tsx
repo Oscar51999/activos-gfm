@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck, Headset, Fuel, FileSignature, Hourglass,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -43,7 +43,11 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/vigencias', icono: FileClock, texto: 'Vigencias', alerta: 'vigencias' },
     { to: '/prestamos', icono: CalendarClock, texto: 'Préstamos', alerta: 'prestamos' },
     { to: '/reportes', icono: Siren, texto: 'Reportes de falla', alerta: 'reportes' },
+    { to: '/tickets', icono: Headset, texto: 'Mesa de ayuda' },
+    { to: '/combustible', icono: Fuel, texto: 'Combustible' },
     { to: '/licencias', icono: KeyRound, texto: 'Licencias y cuentas' },
+    { to: '/contratos', icono: FileSignature, texto: 'Contratos y pólizas' },
+    { to: '/renovacion', icono: Hourglass, texto: 'Renovación de equipo' },
     { to: '/bajas', icono: Archive, texto: 'Bajas de activos' },
     { to: '/inventarios', icono: ClipboardCheck, texto: 'Inventario físico' },
     { to: '/conteo-ciclico', icono: RefreshCcw, texto: 'Conteo cíclico' },

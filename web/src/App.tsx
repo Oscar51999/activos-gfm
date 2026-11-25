@@ -51,6 +51,10 @@ import AltaInteligente from './pages/AltaInteligente'
 import MarcasMenu from './pages/MarcasMenu'
 import Actividades from './pages/Actividades'
 import Licencias from './pages/Licencias'
+import Tickets from './pages/Tickets'
+import Combustible from './pages/Combustible'
+import Contratos from './pages/Contratos'
+import Renovacion from './pages/Renovacion'
 import Bajas, { ActaBaja } from './pages/Bajas'
 import SalidaEmpleado from './pages/SalidaEmpleado'
 import ChecklistVehicular from './pages/ChecklistVehicular'
@@ -194,6 +198,10 @@ function Rutas() {
         <Route path="admin" element={<Admin />} />
         <Route path="actividades" element={<Actividades />} />
         <Route path="licencias" element={<Licencias />} />
+        <Route path="tickets" element={<Tickets />} />
+        <Route path="combustible" element={<Combustible />} />
+        <Route path="contratos" element={<Contratos />} />
+        <Route path="renovacion" element={<Renovacion />} />
         <Route path="bajas" element={<Bajas />} />
         <Route path="bajas/:id" element={<ActaBaja />} />
         <Route path="empleados/:id/salida" element={<SalidaEmpleado />} />

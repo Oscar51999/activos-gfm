@@ -8,6 +8,10 @@ import { PrestamoBadge } from '../components/Prestamo'
 import { DocumentosPanel } from '../components/Documentos'
 import LineaTiempo from '../components/LineaTiempo'
 import UltimoEscaneo from '../components/UltimoEscaneo'
+import { TicketsActivo } from './Tickets'
+import { CombustibleActivo } from './Combustible'
+import { ContratosActivo } from './Contratos'
+import { VidaUtilActivo } from './Renovacion'
 import UsoPanel from '../components/UsoPanel'
 import Componentes from '../components/Componentes'
 import MantenimientoActivo from '../components/MantenimientoActivo'
@@ -208,6 +212,14 @@ export default function ActivoDetalle() {
           {tipoEquipo(a.categoria, a.es_vehiculo) !== 'otro' && <UsoPanel activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} qr={(a as unknown as { qr: string }).qr} tipo={tipoEquipo(a.categoria, a.es_vehiculo)} nombreUsuario={perfilRep?.nombre} />}
 
           <MantenimientoActivo activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} modeloId={(a as unknown as { modelo_id: string | null }).modelo_id} categoria={a.categoria} esVehiculo={!!a.es_vehiculo} />
+
+          {a.es_vehiculo && <CombustibleActivo activoId={a.id} />}
+
+          <TicketsActivo activoId={a.id} />
+
+          <ContratosActivo activoId={a.id} />
+
+          <VidaUtilActivo activoId={a.id} />
 
           <Componentes activoId={a.id} empresaId={(a as unknown as { empresa_id: string }).empresa_id} />
 

@@ -53,10 +53,10 @@ export function crearDatos() {
     { id: 'c3', nombre: 'Herramienta', es_vehiculo: false }, { id: 'c4', nombre: 'Equipo de cómputo', es_vehiculo: false },
     { id: 'c5', nombre: 'Equipo de topografía', es_vehiculo: false }, { id: 'c6', nombre: 'Equipo menor', es_vehiculo: false },
     { id: 'c7', nombre: 'Telefonía', es_vehiculo: false }, { id: 'c8', nombre: 'Seguridad', es_vehiculo: false },
-  ].map(c => ({ ...c, activo: true, padre_id: null as string | null }))
+  ].map(c => ({ ...c, activo: true, padre_id: null as string | null, vida_util_anios: ({ c1: 6, c2: 10, c3: 4, c4: 4, c5: 7, c7: 3, c8: 2 } as Record<string, number>)[c.id] as number | null ?? null }))
   // subtipos (como en el sistema real)
   ;[['c4', 'Laptops'], ['c4', 'Monitores'], ['c4', 'Impresoras y multifuncionales'], ['c1', 'Pick-up'], ['c1', 'Sedán'], ['c2', 'Retroexcavadoras'], ['c3', 'Herramienta eléctrica'], ['c5', 'Estaciones totales']]
-    .forEach(([p, n], i) => categorias.push({ id: 'cs' + i, nombre: n, es_vehiculo: p === 'c1' || p === 'c2', activo: true, padre_id: p }))
+    .forEach(([p, n], i) => categorias.push({ id: 'cs' + i, nombre: n, es_vehiculo: p === 'c1' || p === 'c2', activo: true, padre_id: p, vida_util_anios: null }))
   const marcas = ['Nissan', 'Toyota', 'Caterpillar', 'John Deere', 'Bosch', 'Makita', 'Lenovo', 'Leica', 'Honda', 'Samsung', 'HP', '3M', 'DeWalt'].map((n, i) => ({ id: 'm' + i, nombre: n, activo: true }))
   const M = (n: string) => marcas.find(m => m.nombre === n)!.id
   const P = (id: string, marca: string, nombre: string, cat: string, desc: string, dib: keyof typeof DIBUJOS, color: string) =>
@@ -431,7 +431,22 @@ export function crearDatos() {
       { id: 'ip2', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Internet', tipo: 'internet', proveedor: 'Telmex', cuenta: '6121234567', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 4 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: 'Domiciliado', created_at: hace(30) },
       { id: 'ip3', inmueble_id: 'in2', empresa_id: 'e2', concepto: 'Agua', tipo: 'agua', proveedor: 'OOMSAPAS', cuenta: '88231', periodicidad: 'mensual', monto: null, fecha_limite: new Date(Date.now() + 12 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
       { id: 'ip4', inmueble_id: 'in3', empresa_id: 'e1', concepto: 'Predial', tipo: 'predial', proveedor: 'Municipio', cuenta: '101-001-045', periodicidad: 'anual', monto: null, fecha_limite: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
-    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], reservas: [], escaneos: [], perfil_ubicaciones: [], licencias_software: [
+    ], inmueble_fallas: [], bajas_activos: [], cartas_no_adeudo: [], reservas: [], escaneos: [], perfil_ubicaciones: [],
+    tickets_ayuda: [
+      { id: 'TK-1764000001', creado: hace(0.3), nombre: 'Luis Adrián Avilés', area: 'Obra GF-214', categoria: 'Computadora', urgencia: 'alta', contacto: '612 123 4567', descripcion: 'La laptop ACT-000009 no enciende después de la lluvia', estado: 'pendiente', notas: null, empresa_txt: 'Firme Construcciones', ubicacion_txt: 'Entrepiedras', imagenes: 1, empresa_id: 'e1', activo_id: 'a9', ligado_manual: false, sincronizado_at: hace(0.01) },
+      { id: 'TK-1764000002', creado: hace(2), nombre: 'Janani Aguilar', area: 'Administración', categoria: 'Impresora', urgencia: 'media', contacto: null, descripcion: 'La impresora de oficina atasca el papel', estado: 'en_proceso', notas: 'Se pidió rodillo', empresa_txt: 'Firme Construcciones', ubicacion_txt: 'Oficina La Paz', imagenes: 0, empresa_id: 'e1', activo_id: null, ligado_manual: false, sincronizado_at: hace(0.01) },
+      { id: 'TK-1764000003', creado: hace(9), nombre: 'Víctor César Aguilar', area: 'Topografía', categoria: 'Correo', urgencia: 'baja', contacto: null, descripcion: 'No me llegan correos en el celular', estado: 'resuelto', notas: 'Se reconfiguró la cuenta', empresa_txt: null, ubicacion_txt: null, imagenes: 0, empresa_id: null, activo_id: null, ligado_manual: false, sincronizado_at: hace(0.01) },
+    ],
+    cargas_combustible: [
+      ...[[20, 47100, 40], [13, 47560, 41], [6, 48010, 40], [1, 48210, 28.5]].map(([d, km, l], i) => ({ id: 'cc1' + i, activo_id: 'a1', empresa_id: 'e1', fecha: hace(d), litros: l, lectura: km, tipo_lectura: 'km', combustible: 'Gasolina', lleno: true, estacion: 'Pemex Forjadores', operador: 'Oscar Cota', empleado_id: null, foto: null, notas: null, registrado_por: 'u-demo', created_at: hace(d) })),
+      ...[[15, 22100, 60], [8, 22560, 58], [2, 22950, 52]].map(([d, km, l], i) => ({ id: 'cc2' + i, activo_id: 'a2', empresa_id: 'e1', fecha: hace(d), litros: l, lectura: km, tipo_lectura: 'km', combustible: 'Diésel', lleno: true, estacion: null, operador: 'Luis Adrián Avilés', empleado_id: null, foto: null, notas: null, registrado_por: 'u-demo', created_at: hace(d) })),
+    ],
+    contratos: [
+      { id: 'ct1', empresa_id: 'e1', proveedor_id: null, proveedor_txt: 'GNP Seguros', tipo: 'poliza', nombre: 'Póliza de flotilla 2026', numero: 'GNP-778812', inicio: dia(-340), vencimiento: dia(25), avisar_dias: 30, renovacion_automatica: false, contacto: '800 400 9000', notas: 'Cobertura amplia', activo: true, created_at: hace(340), updated_at: hace(10) },
+      { id: 'ct2', empresa_id: 'e1', proveedor_id: null, proveedor_txt: 'Copiadoras del Pacífico', tipo: 'arrendamiento', nombre: 'Arrendamiento de multifuncionales', numero: 'CP-2291', inicio: dia(-200), vencimiento: dia(530), avisar_dias: 45, renovacion_automatica: true, contacto: 'soporte@copiadoras.mx', notas: 'Incluye tóner y servicio', activo: true, created_at: hace(200), updated_at: hace(20) },
+    ],
+    contrato_activos: [{ contrato_id: 'ct1', activo_id: 'a1' }, { contrato_id: 'ct1', activo_id: 'a2' }],
+    licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
       { id: 'lic2', empresa_id: 'e1', nombre: 'ESET Endpoint Security', fabricante: 'ESET', tipo: 'suscripcion', asientos: 25, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10), renovacion_automatica: true, proveedor: null, referencia: null, notas: null, activo: true, created_at: hace(60) },
     ], licencia_asignaciones: [{ id: 'la1', licencia_id: 'lic1', empleado_id: 'em2', activo_id: null, cuenta: 'laviles@grupofirme.mx', asignada: hace(30).slice(0, 10), liberada: null, notas: null, created_at: hace(30) }], ajustes: [{ id: 'apariencia', clave: 'apariencia', valor: { acento: '#E2A64B', tema_defecto: 'oscuro', densidad: 'normal' } }] }
@@ -550,6 +565,39 @@ function vista(db: DB, t: string): Row[] {
     return db.inmueble_pagos.map(p => { const i = byId(db, 'inmuebles', p.inmueble_id), e = byId(db, 'empresas', p.empresa_id)
       return { ...p, inmueble: i?.nombre, inmueble_codigo: i?.codigo, empresa: e?.nombre_corto ?? e?.nombre, dias_restantes: Math.round((new Date(String(p.fecha_limite) + 'T00:00').getTime() - h0.getTime()) / 864e5) } })
   }
+  if (t === 'v_cargas_combustible') {
+    const ord = [...db.cargas_combustible].sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+    return ord.map(c => { const a = byId(db, 'activos', c.activo_id), v = db.activo_vehiculo?.find((x: Row) => x.activo_id === c.activo_id)
+      const prev = ord.filter(x => x.activo_id === c.activo_id && x.tipo_lectura === c.tipo_lectura && String(x.fecha) < String(c.fecha)).pop()
+      const rec = prev && c.lectura != null && prev.lectura != null ? Number(c.lectura) - Number(prev.lectura) : null
+      return { ...c, codigo: a?.codigo, descripcion: a?.descripcion, placa: v?.placa ?? null, numero_economico: a?.numero_economico, recorrido: rec, rendimiento: rec != null && rec > 0 && c.lleno ? Math.round(rec / Number(c.litros) * 100) / 100 : null } })
+  }
+  if (t === 'v_rendimiento_unidades') {
+    const cs = vista(db, 'v_cargas_combustible'), m = new Map<string, Row[]>()
+    for (const c of cs) m.set(String(c.activo_id) + c.tipo_lectura, [...(m.get(String(c.activo_id) + c.tipo_lectura) ?? []), c])
+    return [...m.values()].map(l => { const r = l.filter(x => x.rendimiento != null), u = l[l.length - 1]
+      return { activo_id: u.activo_id, codigo: u.codigo, descripcion: u.descripcion, placa: u.placa, numero_economico: u.numero_economico, tipo_lectura: u.tipo_lectura, cargas: l.length,
+        litros: l.reduce((s, x) => s + Number(x.litros), 0), ultima_carga: u.fecha, promedio: r.length ? Math.round(r.reduce((s, x) => s + Number(x.rendimiento), 0) / r.length * 100) / 100 : null,
+        ultimo: [...r].pop()?.rendimiento ?? null, con_rendimiento: r.length } })
+  }
+  if (t === 'v_contratos') {
+    const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0)
+    return db.contratos.map(c => { const e = byId(db, 'empresas', c.empresa_id), p = byId(db, 'proveedores', c.proveedor_id)
+      const dr = c.vencimiento ? Math.round((new Date(String(c.vencimiento) + 'T00:00').getTime() - hoy0.getTime()) / 864e5) : null
+      return { ...c, empresa: e?.nombre, proveedor: p?.nombre ?? c.proveedor_txt, dias_restantes: dr, equipos: db.contrato_activos.filter(x => x.contrato_id === c.id).length,
+        estado: dr == null ? 'sin_fecha' : dr < 0 ? 'vencido' : dr <= Number(c.avisar_dias) ? 'por_vencer' : 'vigente' } })
+  }
+  if (t === 'v_renovacion') {
+    return db.activos.filter(a => a.estatus !== 'baja').map((a, i) => { const c = byId(db, 'categorias', a.categoria_id), pc = byId(db, 'categorias', c?.padre_id)
+      const vu = (c?.vida_util_anios ?? pc?.vida_util_anios ?? null) as number | null
+      const base = new Date(String(a.fecha_alta) + 'T12:00:00'); base.setFullYear(base.getFullYear() - (i % 7))
+      const fb = base.toISOString().slice(0, 10), fin = vu ? new Date(base.getTime() + vu * 365.25 * 864e5).toISOString().slice(0, 10) : null
+      const hoyS = new Date().toISOString().slice(0, 10), en1 = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10)
+      return { id: a.id, codigo: a.codigo, descripcion: a.descripcion, serie: a.serie, numero_economico: a.numero_economico, estatus: a.estatus, empresa_id: a.empresa_id, empresa: byId(db, 'empresas', a.empresa_id)?.nombre,
+        categoria_id: a.categoria_id, categoria: c?.nombre, marca: byId(db, 'marcas', a.marca_id)?.nombre ?? null, modelo: byId(db, 'modelos', a.modelo_id)?.nombre ?? null, ubicacion: byId(db, 'ubicaciones', a.ubicacion_id)?.nombre ?? null,
+        responsable: nombre(byId(db, 'empleados', a.responsable_id)) || null, fecha_base: fb, vida_util: vu, fin_vida: fin, anios_uso: Math.round((Date.now() - base.getTime()) / (365.25 * 864e5) * 10) / 10,
+        estado_vida: !fin ? 'sin_dato' : fin < hoyS ? 'cumplida' : fin <= en1 ? 'proximo_anio' : 'vigente' } })
+  }
   if (t === 'v_licencias') {
     const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0)
     return db.licencias_software.map(l => { const e = byId(db, 'empresas', l.empresa_id)
@@ -667,6 +715,8 @@ function defaults(db: DB, t: string, r: Row): Row {
   if (t === 'inmuebles') { base.codigo ??= 'INM-' + String(db.inmuebles.length + 1).padStart(4, '0'); base.activo ??= true; base.servicios ??= []; base.updated_at = base.created_at }
   if (t === 'consumibles') { base.minimo ??= 0; base.unidad ??= 'pieza' }
   if (t === 'reservas') { base.estatus ??= 'activa'; base.perfil_id ??= 'u-demo' }
+  if (t === 'cargas_combustible') { base.fecha ??= new Date().toISOString(); base.lleno ??= true; base.tipo_lectura ??= 'km' }
+  if (t === 'contratos') { base.activo ??= true; base.avisar_dias ??= 30; base.renovacion_automatica ??= false }
   if (t === 'licencias_software') { base.activo ??= true; base.renovacion_automatica ??= false; base.tipo ??= 'suscripcion' }
   if (t === 'licencia_asignaciones') { base.asignada ??= new Date().toISOString().slice(0, 10); base.liberada ??= null }
   if (t === 'bajas_activos') { base.folio ??= 'BAJ-' + String(db.bajas_activos.length + 1).padStart(5, '0'); base.estatus = 'pendiente'; base.fotos ??= []; base.solicitado_por ??= 'u-demo'; base.autorizado_por ??= null; base.autorizado_at ??= null; base.responsable_anterior ??= null }
@@ -879,6 +929,7 @@ export function instalarDemo(base: string) {
       db.escaneos.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, perfil_id: 'u-demo', quien: 'Oscar Cota', origen: body.p_origen, latitud: body.p_lat, longitud: body.p_lng, precision_m: body.p_precision, distancia_km: dist, lejos: (dist ?? 0) > 5, created_at: new Date().toISOString() })
       return json({ ok: true })
     }
+    if (path.startsWith('/rest/v1/rpc/mesa_sincronizar')) { db.tickets_ayuda.forEach(t => { t.sincronizado_at = new Date().toISOString() }); return json(null) }
     if (path.startsWith('/rest/v1/rpc/avisos_estado')) return json({ url: !!ajustesAvisos?.url, secreto: !!ajustesAvisos?.secreto, ultimo: ajustesAvisos?.ultimo ?? null, programado: true })
     if (path.startsWith('/rest/v1/rpc/avisos_configurar')) { ajustesAvisos = { ...(ajustesAvisos ?? {}), ...(body.p_url ? { url: body.p_url } : {}), ...(body.p_secreto ? { secreto: body.p_secreto } : {}) }; return json(null) }
     if (path.startsWith('/rest/v1/rpc/avisos_enviar_ahora')) { ajustesAvisos = { ...(ajustesAvisos ?? {}), ultimo: new Date().toISOString() + ' · 1 correo(s)' }; return json(1) }
