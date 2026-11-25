@@ -14,6 +14,7 @@ const Etiquetas = lazy(() => import('./pages/Etiquetas'))
 const Escanear = lazy(() => import('./pages/Escanear'))
 const EtiquetasNfc = lazy(() => import('./pages/EtiquetasNfc'))
 const Avisos = lazy(() => import('./pages/Avisos'))
+const Legal = lazy(() => import('./pages/Legal'))
 import Usuarios from './pages/Usuarios'
 import Movimientos from './pages/Movimientos'
 import MovimientoNuevo from './pages/MovimientoNuevo'
@@ -120,6 +121,7 @@ function Rutas() {
       <Route path="firmar/:token" element={<FirmaRemota />} />
       <Route path="confirmar/:token" element={<ConfirmacionRemota />} />
       <Route path="vale/:token" element={<ValePublico />} />
+      <Route path="legal" element={<Suspense fallback={<Cargando />}><Legal /></Suspense>} />
       <Route path="*" element={<Login />} />
     </Routes>
   )
@@ -127,6 +129,7 @@ function Rutas() {
   if (!perfil.activo) return <Pendiente />
   return (
     <Routes>
+      <Route path="legal" element={<Suspense fallback={<Cargando />}><Legal /></Suspense>} />
       <Route path="firmar/:token" element={<FirmaRemota />} />
       <Route path="confirmar/:token" element={<ConfirmacionRemota />} />
       <Route path="vale/:token" element={<ValePublico />} />

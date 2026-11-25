@@ -13,6 +13,7 @@ import { LogoFirme, MonogramaFirme } from './Logo'
 import Comandos, { type Destino } from './Comandos'
 import { avisosAlmacen } from '../lib/almacen'
 import { SugerenciaInstalar } from './Instalar'
+import { PieLegal } from '../pages/Legal'
 import { escuchar, pendientes, sincronizar, estaMandando } from '../lib/sinSenal'
 
 type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; alerta?: 'prestamos' | 'reportes' | 'vigencias' | 'mantenimiento' | 'solicitudes' | 'almacen' | 'servicios' }
@@ -269,7 +270,7 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto pb-24 lg:pb-0">
-          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><SugerenciaInstalar /><Outlet /></div>
+          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><SugerenciaInstalar /><Outlet /><PieLegal className="mt-12 pb-24 lg:pb-2" /></div>
         </main>
 
         {/* Barra inferior en móvil con botón central de escaneo */}

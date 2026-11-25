@@ -9,6 +9,7 @@ import ReportarFalla from '../components/ReportarFalla'
 import ChecklistDiario from '../components/Checklist'
 import type { TipoEquipo } from '../lib/mantenimiento'
 import { registrarEscaneo } from '../lib/escaneo'
+import { PieLegal } from './Legal'
 
 type Info = { codigo: string; descripcion: string; marca: string | null; modelo: string | null; categoria: string; serie: string | null; numero_economico: string | null
   empresa: string; ubicacion: string | null; estatus: Estatus; foto: string | null }
@@ -88,6 +89,7 @@ export default function QRPublico({ onEntrar }: { onEntrar: () => void }) {
               </div>
             )}
             <p className="text-center text-[11px] text-stone-400">Grupo Empresarial Firme · Control de activos</p>
+            <PieLegal />
           </div>
         )}
       </div>

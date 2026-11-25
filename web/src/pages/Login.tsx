@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { PieLegal } from './Legal'
 import { Eye, EyeOff, Lock, User, Sparkles, ArrowRight } from 'lucide-react'
 import { supabase, mensajeError } from '../lib/supabase'
 import { Aviso } from '../components/ui'
@@ -169,6 +170,7 @@ export default function Login() {
           ))}
         </ul>
         <p className="mt-5 text-center font-mono text-[10px] uppercase tracking-[.2em] text-stone-500">Departamento de TICS · Grupo Empresarial Firme</p>
+        <PieLegal className="mt-2" />
       </footer>
     </div>
   )
