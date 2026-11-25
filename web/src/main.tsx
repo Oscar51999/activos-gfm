@@ -6,10 +6,11 @@ import { aplicarTema, temaGuardado } from './lib/tema'
 // El tema se pone antes de pintar para que no parpadee
 aplicarTema(temaGuardado() ?? 'oscuro', false)
 import App from './App.tsx'
+import ErrorBoundary from './components/ErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary><App /></ErrorBoundary>
   </StrictMode>,
 )
 
