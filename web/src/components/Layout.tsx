@@ -348,8 +348,8 @@ export function MenuPerfil({ mini }: { mini: boolean }) {
 export function Avatar({ foto, iniciales, grande }: { foto: string | null; iniciales: string; grande?: boolean }) {
   const t = grande ? 'h-11 w-11 text-sm' : 'h-9 w-9 text-xs'
   return (
-    <span className={`relative grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-marca to-[#9C6B24] font-bold text-[#120D04] ${t}`}>
-      {foto ? <img src={foto} alt="" className="h-full w-full rounded-full object-cover" /> : iniciales}
+    <span className={`relative grid aspect-square shrink-0 place-items-center rounded-full bg-gradient-to-br from-marca to-[#9C6B24] font-bold text-[#120D04] ${t}`}>
+      {foto ? <img src={foto} alt="" className="absolute inset-0 h-full w-full rounded-full object-cover" /> : iniciales}
       {!grande && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-barra bg-emerald-400" />}
     </span>
   )
