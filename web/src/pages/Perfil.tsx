@@ -48,7 +48,7 @@ export default function Perfil() {
     try {
       const blob = await comprimir(a, 480, 0.85)
       const path = `${perfil!.id}/foto-${Date.now()}.jpg`
-      const up = await supabase.storage.from('perfiles').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+      const up = await supabase.storage.from('perfiles').upload(path, blob, { contentType: 'image/jpeg', upsert: false })
       if (up.error) throw up.error
       const anterior = perfil!.foto_path
       const { error } = await supabase.from('perfiles').update({ foto_path: path }).eq('id', perfil!.id)
