@@ -3,7 +3,7 @@ import { ArrowLeft, Scale, ShieldCheck, Copyright } from 'lucide-react'
 import { LogoFirme } from '../components/Logo'
 
 export const AUTOR = 'Oscar Cota Latorre'
-export const ACTUALIZADO = '25 de noviembre de 2026'
+export const ACTUALIZADO = '26 de noviembre de 2026'
 const CONTACTO = 'oscarcota@grupofirmedemexico.com'
 
 function S({ n, t, children }: { n: string; t: string; children: React.ReactNode }) {
@@ -36,7 +36,7 @@ export default function Legal() {
         </nav>
 
         <S n="1" t="Aceptación">
-          <p>Al acceder, iniciar sesión, escanear una etiqueta o usar de cualquier forma este sistema, el usuario <b>reconoce, da fe y deja constancia</b> de que ha leído este aviso y acepta lo aquí establecido, en particular que la autoría y los derechos sobre el sistema corresponden a su autor en los términos del apartado 2. Si no está de acuerdo, debe abstenerse de usarlo.</p>
+          <p>Al acceder, iniciar sesión, escanear una etiqueta o usar de cualquier forma este sistema, el usuario <b>reconoce, da fe y deja constancia</b> de que ha leído este aviso y acepta lo aquí establecido, en particular que la autoría y los derechos sobre el sistema corresponden a su autor en los términos del apartado 2, y que Grupo Empresarial Firme y sus empresas únicamente cuentan con una licencia de uso conforme al apartado 4, sin que el código ni la aplicación les pertenezcan. Si no está de acuerdo, debe abstenerse de usarlo.</p>
         </S>
 
         <S n="2" t="Autoría y propiedad intelectual">
@@ -61,7 +61,14 @@ export default function Legal() {
         </S>
 
         <S n="4" t="Licencia de uso">
-          <p>Se concede a las empresas de Grupo Empresarial Firme, y a los usuarios que estas autoricen, una <b>licencia de uso no exclusiva, intransferible, no sublicenciable y revocable</b>, únicamente para operar el sistema en sus actividades internas y mientras se mantenga la relación con el autor en los términos que se acuerden. La licencia no otorga acceso, propiedad ni derecho alguno sobre el código fuente.</p>
+          <p><b>Lo que Grupo Empresarial Firme y sus empresas usan es una licencia de uso, no la propiedad del sistema.</b> El código fuente, el código objeto, la base de datos en su estructura y diseño, y la aplicación en su conjunto <b>no pertenecen a Grupo Empresarial Firme ni a ninguna de sus empresas</b>; son y seguirán siendo propiedad exclusiva de {AUTOR}.</p>
+          <p>Se concede a las empresas de Grupo Empresarial Firme, y a los usuarios que estas autoricen, una <b>licencia de uso no exclusiva, intransferible, no sublicenciable y revocable</b>, únicamente para operar el sistema en sus actividades internas y mientras se mantenga la relación con el autor en los términos que se acuerden.</p>
+          <L>
+            <li>La licencia no otorga propiedad, copropiedad, acceso ni derecho alguno sobre el código fuente, ni sobre las copias, respaldos o repositorios donde se encuentre.</li>
+            <li>El hecho de que el sistema se haya desarrollado, instalado, alojado o puesto en operación durante una relación laboral o de prestación de servicios con cualquiera de las empresas, o con equipo, cuentas o infraestructura de estas, <b>no transmite la titularidad del sistema</b> ni constituye una obra por encargo o una cesión de derechos, salvo contrato por escrito firmado por el autor que expresamente lo diga.</li>
+            <li>Ningún pago, bono, compensación o uso prolongado del sistema implica la compra del código o de los derechos patrimoniales.</li>
+            <li>Al terminar la licencia, las empresas conservan sus datos (apartado 3) y el autor conserva el sistema; el autor podrá entregar una exportación de la información en un formato de uso común.</li>
+          </L>
         </S>
 
         <S n="5" t="Usos prohibidos">
