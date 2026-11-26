@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck, Headset, Fuel, FileSignature, Hourglass,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck, Headset, Fuel, FileSignature, Hourglass, Route, Leaf,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -13,6 +13,7 @@ import { LogoFirme, MonogramaFirme } from './Logo'
 import Comandos, { type Destino } from './Comandos'
 import { avisosAlmacen } from '../lib/almacen'
 import { SugerenciaInstalar } from './Instalar'
+import { rastreador } from '../lib/viaje'
 import { PieLegal } from '../pages/Legal'
 import ErrorBoundary from './ErrorBoundary'
 import { escuchar, pendientes, sincronizar, estaMandando } from '../lib/sinSenal'
@@ -45,6 +46,8 @@ const grupos: { titulo: string; items: Entrada[] }[] = [
     { to: '/reportes', icono: Siren, texto: 'Reportes de falla', alerta: 'reportes' },
     { to: '/tickets', icono: Headset, texto: 'Mesa de ayuda' },
     { to: '/combustible', icono: Fuel, texto: 'Combustible' },
+    { to: '/viajes', icono: Route, texto: 'Bitácora de viajes' },
+    { to: '/huella-carbono', icono: Leaf, texto: 'Huella de carbono' },
     { to: '/licencias', icono: KeyRound, texto: 'Licencias y cuentas' },
     { to: '/contratos', icono: FileSignature, texto: 'Contratos y pólizas' },
     { to: '/renovacion', icono: Hourglass, texto: 'Renovación de equipo' },
@@ -275,7 +278,7 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-y-auto pb-24 lg:pb-0">
-          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><SugerenciaInstalar /><ErrorBoundary key={loc.pathname}><Outlet /></ErrorBoundary><PieLegal className="mt-12 pb-24 lg:pb-2" /></div>
+          <div key={loc.pathname} className="mx-auto max-w-7xl animate-entrar p-4 sm:p-6 lg:p-8"><SugerenciaInstalar />{loc.pathname !== '/viajes' && <ViajeActivo />}<ErrorBoundary key={loc.pathname}><Outlet /></ErrorBoundary><PieLegal className="mt-12 pb-24 lg:pb-2" /></div>
         </main>
 
         {/* Barra inferior en móvil con botón central de escaneo */}
@@ -357,5 +360,19 @@ export function Avatar({ foto, iniciales, grande }: { foto: string | null; inici
       {foto ? <img src={foto} alt="" className="absolute inset-0 h-full w-full rounded-full object-cover" /> : iniciales}
       {!grande && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-barra bg-emerald-400" />}
     </span>
+  )
+}
+
+/** Si este teléfono tiene un viaje en curso, sigue rastreándolo en cualquier pantalla y lo recuerda con una franja. */
+function ViajeActivo() {
+  const [e, setE] = useState(rastreador.estado)
+  useEffect(() => rastreador.escuchar(setE), [])
+  useEffect(() => { if (rastreador.estado.viajeId) rastreador.iniciar(rastreador.estado.viajeId, rastreador.estado.km, rastreador.estado.puntos) }, [])
+  if (!e.viajeId) return null
+  return (
+    <Link to="/viajes" className="no-print mb-4 flex items-center justify-between gap-3 rounded-xl border border-emerald-300/50 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+      <span className="flex items-center gap-2"><span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />Viaje en curso · {e.km.toLocaleString('es-MX', { maximumFractionDigits: 1 })} km por GPS</span>
+      <span className="text-xs font-medium">Ver o terminar</span>
+    </Link>
   )
 }

@@ -2,7 +2,7 @@
 export const MODULOS: { id: string; t: string; d: string }[] = [
   { id: 'gerencia', t: 'Resumen gerencial', d: 'Cada mañana: lo que hizo el equipo en 24 h (actividades por persona, resguardos, fallas, mantenimiento, pagos y solicitudes)' },
   { id: 'inmuebles', t: 'Inmuebles y servicios', d: 'Luz, agua, renta, internet por pagar y documentos de inmuebles' },
-  { id: 'vehiculos', t: 'Vehículos y maquinaria', d: 'Seguros, tarjetas, verificaciones, mantenimientos y checklists con fallas' },
+  { id: 'vehiculos', t: 'Vehículos y maquinaria', d: 'Seguros, verificaciones, mantenimientos, checklists con fallas, rendimiento bajo y cargas que no cuadran con los viajes' },
   { id: 'mantenimiento', t: 'Mantenimiento de equipo', d: 'Mantenimientos vencidos o próximos (no vehículos)' },
   { id: 'resguardos', t: 'Resguardos', d: 'Resguardos que no se han firmado' },
   { id: 'prestamos', t: 'Préstamos', d: 'Equipo prestado que ya debió regresar' },

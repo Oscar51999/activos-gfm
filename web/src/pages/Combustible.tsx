@@ -23,7 +23,7 @@ export default function Combustible() {
   const [cargas, setCargas] = useState<Carga[] | null>(null)
   const [unidades, setUnidades] = useState<Unidad[]>([])
   const [activo, setActivo] = useState<ActivoMini | null>(null)
-  const [f, setF] = useState({ litros: '', lectura: '', tipo: 'km' as 'km' | 'horas', lleno: true, operador: '', estacion: '', notas: '' })
+  const [f, setF] = useState({ litros: '', lectura: '', tipo: 'km' as 'km' | 'horas', lleno: true, operador: '', estacion: '', notas: '', combustible: '' })
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [ver, setVer] = useState<string>('')
@@ -45,7 +45,7 @@ export default function Combustible() {
     const prev = cargas?.find(c => c.activo_id === activo.id && c.tipo_lectura === f.tipo && c.lectura != null)
     if (lectura != null && prev?.lectura != null && lectura < prev.lectura) { setMsg({ ok: false, t: `La lectura no puede ser menor a la de la carga anterior (${num(prev.lectura, 0)} ${f.tipo}).` }); return }
     setGuardando(true)
-    const { error } = await supabase.from('cargas_combustible').insert({ activo_id: activo.id, empresa_id: activo.empresa_id, litros, lectura, tipo_lectura: f.tipo, lleno: f.lleno,
+    const { error } = await supabase.from('cargas_combustible').insert({ activo_id: activo.id, empresa_id: activo.empresa_id, litros, lectura, tipo_lectura: f.tipo, lleno: f.lleno, combustible: f.combustible || null,
       operador: f.operador.trim() || null, estacion: f.estacion.trim() || null, notas: f.notas.trim() || null })
     setGuardando(false)
     if (error) { setMsg({ ok: false, t: mensajeError(error) }); return }
@@ -99,6 +99,7 @@ export default function Combustible() {
             <Campo label="Operador"><input className="campo" value={f.operador} onChange={e => setF({ ...f, operador: e.target.value })} /></Campo>
             <Campo label="Estación"><input className="campo" placeholder="Opcional" value={f.estacion} onChange={e => setF({ ...f, estacion: e.target.value })} /></Campo>
           </div>
+          <Campo label="Combustible"><select className="campo" value={f.combustible} onChange={e => setF({ ...f, combustible: e.target.value })}><option value="">Según la unidad</option><option>Gasolina</option><option>Diésel</option><option>Gas LP</option></select></Campo>
           <Campo label="Notas"><input className="campo" placeholder="Opcional" value={f.notas} onChange={e => setF({ ...f, notas: e.target.value })} /></Campo>
           {msg && <Aviso tipo={msg.ok ? 'ok' : 'error'}>{msg.t}</Aviso>}
           <button className="btn-primario w-full justify-center" disabled={guardando}><Plus size={16} />{guardando ? 'Guardando…' : 'Registrar carga'}</button>

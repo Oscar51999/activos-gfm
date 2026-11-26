@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car, CalendarClock, ShieldCheck, Nfc } from 'lucide-react'
+import { ArrowLeft, Pencil, Printer, Trash2, Camera, MapPin, User, Building2, UserPlus, Undo2, ArrowLeftRight, Siren, Archive, Car, CalendarClock, ShieldCheck, Nfc, Route } from 'lucide-react'
 import { LigarNfc } from '../components/Nfc'
 import ReportarFalla, { TIPOS_REPORTE, type TipoReporte } from '../components/ReportarFalla'
 import { PrestamoBadge } from '../components/Prestamo'
@@ -148,6 +148,7 @@ export default function ActivoDetalle() {
           {puedeEditar && a.estatus !== 'asignado' && a.estatus !== 'baja' && <Link className="btn-sec" to={`/traspasos?activo=${a.id}`}><Building2 size={16} />Otra empresa</Link>}
           {a.reservable && a.estatus !== 'baja' && <Link className="btn-sec" to={`/reservas?activo=${a.id}`}><CalendarClock size={16} />Reservar</Link>}
           {a.es_vehiculo && a.estatus !== 'baja' && <Link className="btn-sec" to={`/checklist-vehicular?activo=${a.id}`}><Car size={16} />Checklist</Link>}
+          {a.es_vehiculo && a.estatus !== 'baja' && <Link className="btn-sec" to={`/viajes?activo=${a.id}`}><Route size={16} />Viaje</Link>}
           {puedeResguardar && a.estatus !== 'baja' && <Link className="btn-sec hover:!text-red-700" to={`/bajas?activo=${a.id}`}><Archive size={16} />Dar de baja</Link>}
           {puedeEditar && <Link className="btn-primario" to={`/activos/${a.id}/editar`}><Pencil size={16} />Editar</Link>}
           {esAdmin && <button className="btn-peligro" onClick={borrar}><Trash2 size={16} /></button>}

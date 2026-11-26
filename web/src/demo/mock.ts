@@ -445,6 +445,19 @@ export function crearDatos() {
       { id: 'ct1', empresa_id: 'e1', proveedor_id: null, proveedor_txt: 'GNP Seguros', tipo: 'poliza', nombre: 'Póliza de flotilla 2026', numero: 'GNP-778812', inicio: dia(-340), vencimiento: dia(25), avisar_dias: 30, renovacion_automatica: false, contacto: '800 400 9000', notas: 'Cobertura amplia', activo: true, created_at: hace(340), updated_at: hace(10) },
       { id: 'ct2', empresa_id: 'e1', proveedor_id: null, proveedor_txt: 'Copiadoras del Pacífico', tipo: 'arrendamiento', nombre: 'Arrendamiento de multifuncionales', numero: 'CP-2291', inicio: dia(-200), vencimiento: dia(530), avisar_dias: 45, renovacion_automatica: true, contacto: 'soporte@copiadoras.mx', notas: 'Incluye tóner y servicio', activo: true, created_at: hace(200), updated_at: hace(20) },
     ],
+    viajes: [
+      { id: 'vj1', activo_id: 'a1', empresa_id: 'e1', perfil_id: 'u-3', operador: 'Luis Adrián Avilés', motivo: 'Entrega de material', destino: 'Obra Entrepiedras', inicio: hace(1.2), fin: hace(1.15), km_inicio: 48010, km_fin: 48042, lat_inicio: 24.142, lng_inicio: -110.312, lat_fin: 24.0, lng_fin: -110.15, km_gps: 31.4, puntos: 24, estado: 'terminado', notas: null, created_at: hace(1.2) },
+      { id: 'vj2', activo_id: 'a2', empresa_id: 'e1', perfil_id: 'u-3', operador: 'Luis Adrián Avilés', motivo: null, destino: 'El Centenario', inicio: hace(3), fin: hace(2.95), km_inicio: 22560, km_fin: 22650, lat_inicio: 24.142, lng_inicio: -110.312, lat_fin: 24.1, lng_fin: -110.42, km_gps: 18.2, puntos: 15, estado: 'terminado', notas: null, created_at: hace(3) },
+    ],
+    viaje_puntos: [
+      ...Array.from({ length: 24 }, (_, i) => ({ id: 1000 + i, viaje_id: 'vj1', t: hace(1.2 - i * 0.002), lat: 24.142 - i * 0.0062 + Math.sin(i / 3) * 0.002, lng: -110.312 + i * 0.0069, precision_m: 8 })),
+      ...Array.from({ length: 15 }, (_, i) => ({ id: 2000 + i, viaje_id: 'vj2', t: hace(3 - i * 0.003), lat: 24.142 - i * 0.0028, lng: -110.312 - i * 0.0072, precision_m: 10 })),
+    ],
+    factores_emision: [
+      { combustible: 'diesel', nombre: 'Diésel', kg_co2_litro: 2.68, fuente: 'Factor de referencia IPCC (combustión). Ajustable.' },
+      { combustible: 'gas_lp', nombre: 'Gas LP', kg_co2_litro: 1.61, fuente: 'Factor de referencia IPCC (combustión). Ajustable.' },
+      { combustible: 'gasolina', nombre: 'Gasolina', kg_co2_litro: 2.31, fuente: 'Factor de referencia IPCC (combustión). Ajustable.' },
+    ],
     contrato_activos: [{ contrato_id: 'ct1', activo_id: 'a1' }, { contrato_id: 'ct1', activo_id: 'a2' }],
     licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
@@ -579,6 +592,30 @@ function vista(db: DB, t: string): Row[] {
       return { activo_id: u.activo_id, codigo: u.codigo, descripcion: u.descripcion, placa: u.placa, numero_economico: u.numero_economico, tipo_lectura: u.tipo_lectura, cargas: l.length,
         litros: l.reduce((s, x) => s + Number(x.litros), 0), ultima_carga: u.fecha, promedio: r.length ? Math.round(r.reduce((s, x) => s + Number(x.rendimiento), 0) / r.length * 100) / 100 : null,
         ultimo: [...r].pop()?.rendimiento ?? null, con_rendimiento: r.length } })
+  }
+  if (t === 'v_viajes') {
+    return db.viajes.map(v => { const a = byId(db, 'activos', v.activo_id), av = db.activo_vehiculo?.find((x: Row) => x.activo_id === v.activo_id)
+      return { ...v, codigo: a?.codigo, descripcion: a?.descripcion, placa: av?.placa ?? null, numero_economico: a?.numero_economico, empresa: byId(db, 'empresas', v.empresa_id)?.nombre,
+        km_odometro: v.km_fin != null && v.km_inicio != null ? Number(v.km_fin) - Number(v.km_inicio) : null, minutos: Math.round(((v.fin ? Date.parse(String(v.fin)) : Date.now()) - Date.parse(String(v.inicio))) / 60000) } })
+  }
+  if (t === 'v_cuadre_combustible') {
+    const ord = [...db.cargas_combustible].filter(c => c.tipo_lectura === 'km').sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)))
+    return ord.flatMap(c => { const prev = ord.filter(x => x.activo_id === c.activo_id && String(x.fecha) < String(c.fecha)).pop(); if (!prev) return []
+      const a = byId(db, 'activos', c.activo_id), av = db.activo_vehiculo?.find((x: Row) => x.activo_id === c.activo_id)
+      const vs = db.viajes.filter(v => v.activo_id === c.activo_id && v.estado === 'terminado' && String(v.inicio) >= String(prev.fecha) && String(v.fin) <= String(c.fecha))
+      const rec = c.lectura != null && prev.lectura != null ? Number(c.lectura) - Number(prev.lectura) : null, gps = vs.reduce((s, v) => s + Number(v.km_gps), 0)
+      return [{ id: c.id, activo_id: c.activo_id, empresa_id: c.empresa_id, fecha: c.fecha, fecha_ant: prev.fecha, codigo: a?.codigo, descripcion: a?.descripcion, placa: av?.placa ?? null, numero_economico: a?.numero_economico,
+        litros: c.litros, operador: c.operador, recorrido: rec, viajes: vs.length, km_gps: Math.round(gps * 10) / 10,
+        estado: rec == null ? 'sin_lectura' : !vs.length ? 'sin_viajes' : Math.abs(rec - gps) > Math.max(20, rec * 0.25) ? 'revisar' : 'cuadra' }] })
+  }
+  if (t === 'v_huella_carbono') {
+    const tipo = (x: unknown) => { const s = String(x ?? ''); return /di[eé]sel/i.test(s) ? 'diesel' : /\blp\b|gas lp/i.test(s) ? 'gas_lp' : /gasolina|magna|premium/i.test(s) ? 'gasolina' : null }
+    return db.cargas_combustible.map(c => { const a = byId(db, 'activos', c.activo_id), av = db.activo_vehiculo?.find((x: Row) => x.activo_id === c.activo_id)
+      const tp = tipo(c.combustible) ?? tipo(av?.combustible) ?? (c.tipo_lectura === 'horas' ? 'diesel' : 'gasolina'), f = db.factores_emision.find(x => x.combustible === tp)
+      const d = new Date(String(c.fecha))
+      return { id: c.id, activo_id: c.activo_id, empresa_id: c.empresa_id, empresa: byId(db, 'empresas', c.empresa_id)?.nombre, fecha: c.fecha, mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`,
+        codigo: a?.codigo, descripcion: a?.descripcion, placa: av?.placa ?? null, numero_economico: a?.numero_economico, categoria: byId(db, 'categorias', a?.categoria_id)?.nombre, litros: c.litros, tipo_lectura: c.tipo_lectura,
+        combustible: tp, supuesto: !tipo(c.combustible) && !tipo(av?.combustible), kg_co2_litro: f?.kg_co2_litro, kg_co2: Math.round(Number(c.litros) * Number(f?.kg_co2_litro ?? 0) * 10) / 10 } })
   }
   if (t === 'v_contratos') {
     const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0)
@@ -929,6 +966,26 @@ export function instalarDemo(base: string) {
       db.escaneos.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, perfil_id: 'u-demo', quien: 'Oscar Cota', origen: body.p_origen, latitud: body.p_lat, longitud: body.p_lng, precision_m: body.p_precision, distancia_km: dist, lejos: (dist ?? 0) > 5, created_at: new Date().toISOString() })
       return json({ ok: true })
     }
+    if (path.startsWith('/rest/v1/rpc/viaje_iniciar')) {
+      if (db.viajes.some(v => v.activo_id === body.p_activo && v.estado === 'en_curso')) return json({ message: 'Esta unidad ya tiene un viaje en curso. Termínalo antes de iniciar otro.' }, 400)
+      const a = byId(db, 'activos', body.p_activo), id = uid()
+      db.viajes.push({ id, activo_id: body.p_activo, empresa_id: a?.empresa_id, perfil_id: 'u-demo', operador: body.p_operador || 'Oscar Cota', motivo: body.p_motivo, destino: body.p_destino, inicio: new Date().toISOString(), fin: null, km_inicio: body.p_km, km_fin: null, lat_inicio: body.p_lat, lng_inicio: body.p_lng, lat_fin: null, lng_fin: null, km_gps: 0, puntos: 0, estado: 'en_curso', notas: null, created_at: new Date().toISOString() })
+      if (body.p_lat != null) db.viaje_puntos.push({ id: Date.now(), viaje_id: id, t: new Date().toISOString(), lat: body.p_lat, lng: body.p_lng, precision_m: null })
+      return json(id)
+    }
+    if (path.startsWith('/rest/v1/rpc/viaje_agregar_puntos')) {
+      const v = byId(db, 'viajes', body.p_viaje); if (!v) return json({ message: 'El viaje no está en curso.' }, 400)
+      let ult = db.viaje_puntos.filter(p => p.viaje_id === v.id).pop() as Row | undefined, km = Number(v.km_gps)
+      for (const p of body.p_puntos ?? []) { if (ult) { const r = Math.PI / 180, dl = (p.lat - Number(ult.lat)) * r, dg = (p.lng - Number(ult.lng)) * r
+          const d = 6371 * 2 * Math.asin(Math.sqrt(Math.sin(dl / 2) ** 2 + Math.cos(Number(ult.lat) * r) * Math.cos(p.lat * r) * Math.sin(dg / 2) ** 2)); if (d < 0.025) continue; km += d }
+        ult = { id: Date.now() + Math.random(), viaje_id: v.id, t: p.t, lat: p.lat, lng: p.lng, precision_m: p.p }; db.viaje_puntos.push(ult) }
+      v.km_gps = Math.round(km * 100) / 100; v.puntos = Number(v.puntos) + (body.p_puntos?.length ?? 0); return json(v.km_gps)
+    }
+    if (path.startsWith('/rest/v1/rpc/viaje_terminar')) {
+      const v = byId(db, 'viajes', body.p_viaje); if (!v) return json({ message: 'El viaje no está en curso.' }, 400)
+      Object.assign(v, { fin: new Date().toISOString(), km_fin: body.p_km, estado: 'terminado', notas: body.p_notas }); return json({ km_gps: v.km_gps })
+    }
+    if (path.startsWith('/rest/v1/rpc/viaje_cancelar')) { const v = byId(db, 'viajes', body.p_viaje); if (v) Object.assign(v, { estado: 'cancelado', fin: new Date().toISOString() }); return json(null) }
     if (path.startsWith('/rest/v1/rpc/mesa_sincronizar')) { db.tickets_ayuda.forEach(t => { t.sincronizado_at = new Date().toISOString() }); return json(null) }
     if (path.startsWith('/rest/v1/rpc/avisos_estado')) return json({ url: !!ajustesAvisos?.url, secreto: !!ajustesAvisos?.secreto, ultimo: ajustesAvisos?.ultimo ?? null, programado: true })
     if (path.startsWith('/rest/v1/rpc/avisos_configurar')) { ajustesAvisos = { ...(ajustesAvisos ?? {}), ...(body.p_url ? { url: body.p_url } : {}), ...(body.p_secreto ? { secreto: body.p_secreto } : {}) }; return json(null) }
