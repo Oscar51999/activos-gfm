@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff, HardHat, Mail } from 'lucide-react'
+import { Pencil, UserPlus, KeyRound, Trash2, Eye, EyeOff, HardHat, Mail, Copy, Check, Wand2, LockKeyhole } from 'lucide-react'
 import { MODULOS, nombreModulo } from '../lib/avisos'
 import { supabase, ROLES, mensajeError, type Rol } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useLista, nombreEmpleado } from '../lib/hooks'
 import { Encabezado, Modal, Campo, Aviso, Cargando } from '../components/ui'
 
+type EstadoClave = { perfil_id: string; estado: 'visible' | 'cambiada'; asignada_at: string | null; cambiada_at: string | null }
 type Perfil = { id: string; nombre: string; usuario?: string | null; email: string | null; rol: Rol; activo: boolean; todas_empresas: boolean; empleado_id: string | null; created_at: string; avisos?: string[]; avisos_correo?: string | null; avisos_activos?: boolean }
 
 export default function Usuarios() {
   const { perfil: yo, esSuper } = useAuth()
   const [nuevo, setNuevo] = useState(false)
   const [clave, setClave] = useState<Perfil | null>(null)
+  const [verClave, setVerClave] = useState<Perfil | null>(null)
+  const [estClave, setEstClave] = useState<Record<string, EstadoClave>>({})
   const [borrar, setBorrar] = useState<Perfil | null>(null)
   const empresas = useLista('empresas')
   const empleados = useLista('empleados', 'id,nombres,apellidos,empresa_id', 'nombres')
@@ -38,6 +41,11 @@ export default function Usuarios() {
     setObrasDe(o)
   }, [])
   useEffect(() => { cargar() }, [cargar])
+  const cargarClaves = useCallback(() => {
+    if (!esSuper) return
+    supabase.rpc('admin_estado_contrasenas').then(({ data }) => setEstClave(Object.fromEntries(((data as EstadoClave[]) ?? []).map(x => [x.perfil_id, x]))))
+  }, [esSuper])
+  useEffect(() => { cargarClaves() }, [cargarClaves])
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault()
@@ -89,6 +97,7 @@ export default function Usuarios() {
                 <td className="whitespace-nowrap px-2">
                   <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Editar permisos" title="Editar rol y empresas" onClick={() => { setError(''); setEdit({ ...f, empresas: accesos[f.id] ?? [], obras: obrasDe[f.id] ?? [], limitar: (obrasDe[f.id] ?? []).length > 0 }) }}><Pencil size={15} /></button>
                   {esSuper && f.id !== yo?.id && <>
+                    <button className={`rounded p-1.5 hover:bg-stone-200 hover:text-tinta ${estClave[f.id]?.estado === 'visible' ? 'text-marca' : 'text-stone-400'}`} aria-label="Ver contraseña" title={estClave[f.id]?.estado === 'visible' ? 'Ver contraseña' : estClave[f.id]?.estado === 'cambiada' ? 'El usuario cambió su contraseña' : 'Contraseña sin registrar'} onClick={() => setVerClave(f)}><Eye size={15} /></button>
                     <button className="rounded p-1.5 text-stone-500 hover:bg-stone-200 hover:text-tinta" aria-label="Poner contraseña" title="Poner contraseña nueva" onClick={() => setClave(f)}><KeyRound size={15} /></button>
                     <button className="rounded p-1.5 text-stone-500 hover:bg-red-50 hover:text-red-700" aria-label="Eliminar usuario" title="Eliminar usuario" onClick={() => setBorrar(f)}><Trash2 size={15} /></button>
                   </>}
@@ -100,7 +109,8 @@ export default function Usuarios() {
       </div>
 
       <NuevoUsuario abierto={nuevo} empresas={empresas.items} puedeAdmin={esSuper} onCerrar={() => setNuevo(false)} onListo={() => { setNuevo(false); cargar() }} />
-      {clave && <PonerContrasena u={clave} onCerrar={() => setClave(null)} />}
+      {clave && <PonerContrasena u={clave} onCerrar={() => { setClave(null); cargarClaves() }} />}
+      {verClave && <VerContrasena u={verClave} onCerrar={() => setVerClave(null)} onAsignar={() => { setClave(verClave); setVerClave(null) }} />}
       {borrar && <EliminarUsuario u={borrar} onCerrar={() => setBorrar(null)} onListo={() => { setBorrar(null); cargar() }} />}
 
       <Modal abierto={!!edit} titulo="Editar usuario" onCerrar={() => setEdit(null)}>
@@ -246,22 +256,71 @@ function NuevoUsuario({ abierto, empresas, puedeAdmin, onCerrar, onListo }: { ab
   )
 }
 
+/** Contraseña segura y fácil de dictar: sin letras que se confunden (O/0, l/1). */
+export function generarContrasena() {
+  const may = 'ABCDEFGHJKLMNPQRSTUVWXYZ', min = 'abcdefghijkmnpqrstuvwxyz', num = '23456789', sim = '#$%&*-+?'
+  const r = (t: string) => t[crypto.getRandomValues(new Uint32Array(1))[0] % t.length]
+  const base = [r(may), r(may), r(min), r(min), r(min), r(min), r(num), r(num), r(num), r(sim), r(may), r(min)]
+  for (let i = base.length - 1; i > 0; i--) { const k = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [base[i], base[k]] = [base[k], base[i]] }
+  return base.join('')
+}
+
+function Copiar({ texto }: { texto: string }) {
+  const [ok, setOk] = useState(false)
+  return <button type="button" className="btn-sec" onClick={() => { navigator.clipboard?.writeText(texto).then(() => { setOk(true); setTimeout(() => setOk(false), 1500) }).catch(() => {}) }}>{ok ? <Check size={15} /> : <Copy size={15} />}{ok ? 'Copiada' : 'Copiar'}</button>
+}
+
 function PonerContrasena({ u, onCerrar }: { u: Perfil; onCerrar: () => void }) {
   const [c, setC] = useState('')
+  const [lista, setLista] = useState('')
   const [msg, setMsg] = useState<{ t: 'ok' | 'error'; m: string } | null>(null)
   async function guardar(e: React.FormEvent) {
     e.preventDefault(); setMsg(null)
     const { error } = await supabase.rpc('admin_contrasena', { p_id: u.id, p_contrasena: c })
     setMsg(error ? { t: 'error', m: mensajeError(error) } : { t: 'ok', m: `Listo. ${u.nombre} ya puede entrar con la contraseña nueva.` })
-    if (!error) setC('')
+    if (!error) { setLista(c); setC('') }
   }
   return (
     <Modal abierto titulo={`Contraseña de ${u.nombre}`} onCerrar={onCerrar} ancho="max-w-md">
       <form onSubmit={guardar} className="space-y-4">
         <CampoClave valor={c} onChange={setC} label="Contraseña nueva (mín. 8)" />
+        <button type="button" className="inline-flex items-center gap-1.5 text-sm text-marca hover:underline" onClick={() => setC(generarContrasena())}><Wand2 size={14} />Generar una segura</button>
         {msg && <Aviso tipo={msg.t}>{msg.m}</Aviso>}
+        {lista && <div className="flex items-center justify-between gap-2 rounded-xl bg-stone-100 p-3"><span className="select-all font-mono text-lg tracking-wide">{lista}</span><Copiar texto={lista} /></div>}
+        <p className="text-xs text-stone-500">Podrás volver a verla con el botón del ojo mientras {u.nombre.split(' ')[0]} no la cambie desde su perfil.</p>
         <div className="flex justify-end gap-2"><button type="button" className="btn-sec" onClick={onCerrar}>Cerrar</button><button className="btn-primario"><KeyRound size={15} />Guardar contraseña</button></div>
       </form>
+    </Modal>
+  )
+}
+
+/** Muestra la contraseña que asignó el administrador principal (si el usuario no la ha cambiado). Cada consulta queda en la bitácora. */
+function VerContrasena({ u, onCerrar, onAsignar }: { u: Perfil; onCerrar: () => void; onAsignar: () => void }) {
+  const [r, setR] = useState<{ estado: 'visible' | 'cambiada' | 'sin_dato'; contrasena?: string; asignada_at?: string; cambiada_at?: string } | null>(null)
+  const [err, setErr] = useState('')
+  const [mostrar, setMostrar] = useState(false)
+  useEffect(() => { supabase.rpc('admin_ver_contrasena', { p_id: u.id }).then(({ data, error }) => { if (error) setErr(mensajeError(error)); else setR(data) }) }, [u.id])
+  const f = (s?: string) => s ? new Date(s).toLocaleString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+  return (
+    <Modal abierto titulo={`Contraseña de ${u.nombre}`} onCerrar={onCerrar} ancho="max-w-md">
+      {err ? <Aviso>{err}</Aviso> : !r ? <Cargando /> : r.estado === 'visible' ? (
+        <div className="space-y-3">
+          <p className="text-sm text-stone-500">Usuario: <b className="font-mono text-tinta">{u.usuario || u.email}</b></p>
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-stone-100 p-3">
+            <span className="select-all font-mono text-lg tracking-wide">{mostrar ? r.contrasena : '••••••••••••'}</span>
+            <span className="flex gap-2"><button type="button" className="btn-sec" onClick={() => setMostrar(v => !v)}>{mostrar ? <EyeOff size={15} /> : <Eye size={15} />}{mostrar ? 'Ocultar' : 'Mostrar'}</button><Copiar texto={r.contrasena ?? ''} /></span>
+          </div>
+          <p className="text-xs text-stone-500">Asignada el {f(r.asignada_at)}. Esta consulta quedó registrada en la bitácora.</p>
+        </div>
+      ) : (
+        <div className="space-y-3 text-sm">
+          <p className="flex items-start gap-2"><LockKeyhole size={16} className="mt-0.5 shrink-0 text-stone-400" />{r.estado === 'cambiada'
+            ? <>{u.nombre.split(' ')[0]} cambió su contraseña{r.cambiada_at ? ` el ${f(r.cambiada_at)}` : ''}. Ya no se puede ver: solo la conoce el usuario.</>
+            : <>Esta contraseña se puso antes de que existiera esta función, por eso no está guardada.</>}</p>
+          <p className="text-stone-500">Si necesitas que entre con una que tú conozcas, asígnale una nueva.</p>
+        </div>
+      )}
+      <div className="mt-5 flex justify-end gap-2"><button type="button" className="btn-sec" onClick={onCerrar}>Cerrar</button><button type="button" className="btn-primario" onClick={onAsignar}><KeyRound size={15} />Asignar nueva</button></div>
     </Modal>
   )
 }

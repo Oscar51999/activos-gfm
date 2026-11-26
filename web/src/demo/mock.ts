@@ -806,6 +806,7 @@ function registrarMovimiento(db: DB, p: Row) {
 }
 
 // ───────── interceptor de fetch ─────────
+const clavesDemo: Record<string, string> = { 'u-3': 'Kq7#mPz4vT2a' }
 export function instalarDemo(base: string) {
   const { db, urls } = crearDatos()
   ;(window as unknown as { __demoDb: unknown }).__demoDb = db
@@ -1067,7 +1068,9 @@ export function instalarDemo(base: string) {
       for (const e of (body.p_empresas ?? []) as string[]) db.perfil_empresas.push({ perfil_id: id, empresa_id: e })
       return json(id)
     }
-    if (path.startsWith('/rest/v1/rpc/admin_contrasena')) return json(null)
+    if (path.startsWith('/rest/v1/rpc/admin_contrasena')) { clavesDemo[body.p_id] = body.p_contrasena; return json(null) }
+    if (path.startsWith('/rest/v1/rpc/admin_ver_contrasena')) return json(clavesDemo[body.p_id] ? { estado: 'visible', contrasena: clavesDemo[body.p_id], asignada_at: new Date().toISOString() } : { estado: 'sin_dato' })
+    if (path.startsWith('/rest/v1/rpc/admin_estado_contrasenas')) return json(Object.keys(clavesDemo).map(k => ({ perfil_id: k, estado: 'visible', asignada_at: new Date().toISOString(), cambiada_at: null })))
     if (path.startsWith('/rest/v1/rpc/usuarios_para_asignar')) return json(db.perfiles.filter(p => p.activo).map(p => ({ id: p.id, nombre: p.nombre, foto_path: null, rol: p.rol })))
     if (path.startsWith('/rest/v1/rpc/admin_eliminar_usuario')) { db.perfiles = db.perfiles.filter(p => p.id !== body?.p_id); return json(null) }
     if (path.startsWith('/rest/v1/rpc/admin_eliminar_activo')) { db.movimiento_activos = db.movimiento_activos.filter(m => m.activo_id !== body?.p_id); db.activos = db.activos.filter(a => a.id !== body?.p_id); return json(null) }
