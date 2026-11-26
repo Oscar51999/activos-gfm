@@ -47,6 +47,7 @@ export default function Legal() {
             <li>El diseño de la interfaz, las pantallas, la organización visual, los íconos y elementos gráficos propios, los textos, los formatos, los reportes, las plantillas y la documentación.</li>
             <li>Las mejoras, actualizaciones, adaptaciones y nuevos módulos que el autor desarrolle.</li>
           </L>
+          <p><b>Origen del sistema.</b> El sistema fue concebido y desarrollado por {AUTOR} por iniciativa propia, de forma independiente, <b>fuera de su horario laboral, en su domicilio particular y con herramientas, equipo, suscripciones y servicios pagados por él mismo</b>. No se creó en el ejercicio de las funciones de un puesto ni siguiendo instrucciones de un empleador, por lo que no se trata de una obra por encargo ni de un programa de cómputo creado por un empleado en términos del artículo 103 de la Ley Federal del Derecho de Autor.</p>
           <p>Los derechos morales de autor son irrenunciables e inalienables: el nombre del autor debe respetarse y no puede retirarse ni sustituirse en el sistema ni en sus copias. El uso del sistema no implica cesión, venta ni transmisión de derechos patrimoniales a ninguna persona física o moral, salvo que exista un contrato por escrito firmado por el autor que expresamente lo establezca.</p>
           <p className="flex items-center gap-2 font-medium text-tinta"><Copyright size={15} />© 2026 {AUTOR}. Todos los derechos reservados.</p>
         </S>
@@ -65,7 +66,7 @@ export default function Legal() {
           <p>Se concede a las empresas de Grupo Empresarial Firme, y a los usuarios que estas autoricen, una <b>licencia de uso no exclusiva, intransferible, no sublicenciable y revocable</b>, únicamente para operar el sistema en sus actividades internas y mientras se mantenga la relación con el autor en los términos que se acuerden.</p>
           <L>
             <li>La licencia no otorga propiedad, copropiedad, acceso ni derecho alguno sobre el código fuente, ni sobre las copias, respaldos o repositorios donde se encuentre.</li>
-            <li>El hecho de que el sistema se haya desarrollado, instalado, alojado o puesto en operación durante una relación laboral o de prestación de servicios con cualquiera de las empresas, o con equipo, cuentas o infraestructura de estas, <b>no transmite la titularidad del sistema</b> ni constituye una obra por encargo o una cesión de derechos, salvo contrato por escrito firmado por el autor que expresamente lo diga.</li>
+            <li>El hecho de que el autor tenga o haya tenido una relación laboral o de prestación de servicios con cualquiera de las empresas, o de que el sistema se instale, aloje, configure o mantenga en operación dentro de sus equipos, cuentas, dominios o infraestructura, <b>no transmite la titularidad del sistema</b> ni constituye una obra por encargo o una cesión de derechos, salvo contrato por escrito firmado por el autor que expresamente lo diga.</li>
             <li>Ningún pago, bono, compensación o uso prolongado del sistema implica la compra del código o de los derechos patrimoniales.</li>
             <li>Al terminar la licencia, las empresas conservan sus datos (apartado 3) y el autor conserva el sistema; el autor podrá entregar una exportación de la información en un formato de uso común.</li>
           </L>
