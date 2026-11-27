@@ -422,9 +422,9 @@ export function crearDatos() {
   ]
   const db: DB = { empresas, sucursales: [], departamentos, empleados, ubicaciones, categorias, marcas, modelos, proveedores, activos, activo_vehiculo, activo_fotos,
     movimientos, movimiento_activos, reportes, inventarios, inventario_lecturas, documentos, kits, kit_items, confirmaciones, traspasos_empresa, planes_mantenimiento, lecturas, ordenes_trabajo, checklists, inmuebles, consumibles, montajes, codigos_falla, requisitos_operacion, vales_salida, movimientos_consumible, solicitudes, perfiles, posiciones, consumible_posiciones, mermas, piezas_criticas, conteos_ciclicos, centros_costo, perfil_empresas: [{ perfil_id: 'u-3', empresa_id: 'e1' }], bitacora: [], actividades: [
-      { id: 'ac1', titulo: 'Configurar laptops nuevas de Vanguardia', grupo: 'Equipos', descripcion: null, estatus: 'en_curso', prioridad: 'alta', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: new Date().toISOString().slice(0, 10), fecha_fin: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10), avance: 40, orden: 1, created_at: hace(2), participantes: ['u-3'] },
+      { id: 'ac1', equipo_id: 'eq1', titulo: 'Configurar laptops nuevas de Vanguardia', grupo: 'Equipos', descripcion: null, estatus: 'en_curso', prioridad: 'alta', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: new Date().toISOString().slice(0, 10), fecha_fin: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10), avance: 40, orden: 1, created_at: hace(2), participantes: ['u-3'] },
       { id: 'ac2', titulo: 'Instalar access point en Entrepiedras', grupo: 'Redes', descripcion: 'Torre 2', estatus: 'pendiente', prioridad: 'media', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10), avance: 0, orden: 2, created_at: hace(1) },
-      { id: 'ac3', titulo: 'Renovar antivirus', grupo: 'Equipos', descripcion: null, estatus: 'atorado', prioridad: 'urgente', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), avance: 20, orden: 3, created_at: hace(5) },
+      { id: 'ac3', equipo_id: 'eq1', titulo: 'Renovar antivirus', grupo: 'Equipos', descripcion: null, estatus: 'atorado', prioridad: 'urgente', responsable_id: 'u-demo', empresa_id: null, fecha_inicio: null, fecha_fin: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), avance: 20, orden: 3, created_at: hace(5) },
       { id: 'ac4', titulo: 'Inventario de radios', grupo: 'Equipos', descripcion: null, estatus: 'listo', prioridad: 'baja', responsable_id: 'u-3', empresa_id: null, fecha_inicio: null, fecha_fin: null, avance: 100, orden: 4, created_at: hace(9) },
     ], actividad_avances: [{ id: 'av1', actividad_id: 'ac1', autor_id: 'u-3', avance: 40, estatus: 'en_curso', comentario: 'Ya quedaron 4 de 10 laptops con Windows y antivirus.', created_at: hace(1) }], inmueble_pagos: [
       { id: 'ip1', inmueble_id: 'in1', empresa_id: 'e1', concepto: 'Luz', tipo: 'luz', proveedor: 'CFE', cuenta: '123456789012', periodicidad: 'bimestral', monto: null, fecha_limite: new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10), pagado: false, pagado_at: null, notas: null, created_at: hace(30) },
@@ -458,6 +458,8 @@ export function crearDatos() {
       { combustible: 'gas_lp', nombre: 'Gas LP', kg_co2_litro: 1.61, fuente: 'Factor de referencia IPCC (combustión). Ajustable.' },
       { combustible: 'gasolina', nombre: 'Gasolina', kg_co2_litro: 2.31, fuente: 'Factor de referencia IPCC (combustión). Ajustable.' },
     ],
+    equipos_trabajo: [{ id: 'eq1', nombre: 'Administración', descripcion: 'Gerencia, TICS, activos, patrimonio y administración', color: '#1F6FEB', activo: true, created_at: hace(1) }],
+    equipo_miembros: [{ equipo_id: 'eq1', perfil_id: 'u-demo', es_lider: true }, { equipo_id: 'eq1', perfil_id: 'u-3', es_lider: false }],
     contrato_activos: [{ contrato_id: 'ct1', activo_id: 'a1' }, { contrato_id: 'ct1', activo_id: 'a2' }],
     licencias_software: [
       { id: 'lic1', empresa_id: 'e1', nombre: 'Microsoft 365 Business Standard', fabricante: 'Microsoft', tipo: 'suscripcion', asientos: 10, fecha_inicio: null, fecha_vencimiento: new Date(Date.now() + 18 * 864e5).toISOString().slice(0, 10), renovacion_automatica: false, proveedor: null, referencia: 'Tenant gfmexico', notas: null, activo: true, created_at: hace(60) },
@@ -592,6 +594,12 @@ function vista(db: DB, t: string): Row[] {
       return { activo_id: u.activo_id, codigo: u.codigo, descripcion: u.descripcion, placa: u.placa, numero_economico: u.numero_economico, tipo_lectura: u.tipo_lectura, cargas: l.length,
         litros: l.reduce((s, x) => s + Number(x.litros), 0), ultima_carga: u.fecha, promedio: r.length ? Math.round(r.reduce((s, x) => s + Number(x.rendimiento), 0) / r.length * 100) / 100 : null,
         ultimo: [...r].pop()?.rendimiento ?? null, con_rendimiento: r.length } })
+  }
+  if (t === 'v_equipos_trabajo') {
+    const hoyS = new Date().toISOString().slice(0, 10)
+    return db.equipos_trabajo.filter(e => e.activo !== false).map(e => { const as = db.actividades.filter(a => a.equipo_id === e.id)
+      return { ...e, miembros: db.equipo_miembros.filter(m => m.equipo_id === e.id).length, abiertas: as.filter(a => a.estatus !== 'listo').length, atoradas: as.filter(a => a.estatus === 'atorado').length,
+        vencidas: as.filter(a => a.estatus !== 'listo' && a.fecha_fin && String(a.fecha_fin) < hoyS).length, listas: as.filter(a => a.estatus === 'listo').length, soy_miembro: db.equipo_miembros.some(m => m.equipo_id === e.id && m.perfil_id === 'u-demo') } })
   }
   if (t === 'v_viajes') {
     return db.viajes.map(v => { const a = byId(db, 'activos', v.activo_id), av = db.activo_vehiculo?.find((x: Row) => x.activo_id === v.activo_id)
@@ -967,6 +975,7 @@ export function instalarDemo(base: string) {
       db.escaneos.push({ id: uid(), activo_id: a.id, empresa_id: a.empresa_id, perfil_id: 'u-demo', quien: 'Oscar Cota', origen: body.p_origen, latitud: body.p_lat, longitud: body.p_lng, precision_m: body.p_precision, distancia_km: dist, lejos: (dist ?? 0) > 5, created_at: new Date().toISOString() })
       return json({ ok: true })
     }
+    if (path.startsWith('/rest/v1/rpc/miembros_equipo')) return json(db.equipo_miembros.filter(m => m.equipo_id === body.p_equipo).map(m => { const p = byId(db, 'perfiles', m.perfil_id); return { id: m.perfil_id, nombre: p?.nombre, foto_path: null, rol: p?.rol, es_lider: m.es_lider } }))
     if (path.startsWith('/rest/v1/rpc/viaje_iniciar')) {
       if (db.viajes.some(v => v.activo_id === body.p_activo && v.estado === 'en_curso')) return json({ message: 'Esta unidad ya tiene un viaje en curso. Termínalo antes de iniciar otro.' }, 400)
       const a = byId(db, 'activos', body.p_activo), id = uid()

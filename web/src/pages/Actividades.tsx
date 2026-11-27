@@ -12,7 +12,7 @@ import { pdfTabla } from '../lib/pdf'
 type Estatus = 'pendiente' | 'en_curso' | 'atorado' | 'listo'
 type Prioridad = 'baja' | 'media' | 'alta' | 'urgente'
 type Act = { id: string; titulo: string; grupo: string; descripcion: string | null; estatus: Estatus; prioridad: Prioridad; responsable_id: string | null; empresa_id: string | null
-  fecha_inicio: string | null; fecha_fin: string | null; avance: number; orden: number; created_at: string; participantes: string[] }
+  fecha_inicio: string | null; fecha_fin: string | null; avance: number; orden: number; created_at: string; participantes: string[]; equipo_id?: string | null }
 type Usuario = { id: string; nombre: string; foto_path: string | null }
 
 // Colores tipo Monday: el estatus se ve de lejos
@@ -49,8 +49,10 @@ function Personas({ ids, usuarios, max = 3, tam = 24 }: { ids: string[]; usuario
 }
 
 /** Actividades del equipo (supervisores y administradores): tablero por grupos, calendario y kanban. */
-export default function Actividades() {
+export default function Actividades({ equipo }: { equipo?: { id: string; nombre: string } } = {}) {
   const { puedeEditar, perfil } = useAuth()
+  const [equipos, setEquipos] = useState<{ id: string; nombre: string; color: string }[]>([])
+  const [verEquipo, setVerEquipo] = useState('')
   const [sp, setSp] = useSearchParams()
   const vista = (sp.get('vista') ?? 'tablero') as 'tablero' | 'calendario' | 'kanban'
   const [acts, setActs] = useState<Act[] | null>(null)
@@ -68,17 +70,24 @@ export default function Actividades() {
     supabase.from('actividad_avances').select('actividad_id').not('comentario', 'is', null).then(({ data }) => {
       const m = new Map<string, number>(); for (const x of (data ?? []) as { actividad_id: string }[]) m.set(x.actividad_id, (m.get(x.actividad_id) ?? 0) + 1); setComentarios(m)
     })
-    return supabase.from('actividades').select('*').order('orden').order('created_at').then(({ data, error }) => { if (error) setError(mensajeError(error)); setActs(((data ?? []) as Act[]).map(a => ({ ...a, participantes: a.participantes ?? [] }))) })
+    let qa = supabase.from('actividades').select('*').order('orden').order('created_at')
+    if (equipo) qa = qa.eq('equipo_id', equipo.id)
+    return qa.then(({ data, error }) => { if (error) setError(mensajeError(error)); setActs(((data ?? []) as Act[]).map(a => ({ ...a, participantes: a.participantes ?? [] }))) })
   }
-  useEffect(() => { cargar(); supabase.rpc('usuarios_para_asignar').then(({ data }) => setUsuarios((data as Usuario[]) ?? [])) }, [])
+  useEffect(() => {
+    cargar()
+    if (equipo) supabase.rpc('miembros_equipo', { p_equipo: equipo.id }).then(({ data }) => setUsuarios((data as Usuario[]) ?? []))
+    else { supabase.rpc('usuarios_para_asignar').then(({ data }) => setUsuarios((data as Usuario[]) ?? [])); supabase.from('equipos_trabajo').select('id,nombre,color').eq('activo', true).order('nombre').then(({ data }) => setEquipos((data as { id: string; nombre: string; color: string }[]) ?? [])) }
+  }, [equipo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const finSemana = semana ? masDias(semana, 6) : null
   const visibles = useMemo(() => (acts ?? []).filter(a => {
     if (mias && !personasDe(a).includes(perfil?.id ?? '')) return false
+    if (!equipo && verEquipo && (verEquipo === 'sin' ? !!a.equipo_id : a.equipo_id !== verEquipo)) return false
     if (q.trim() && !`${a.titulo} ${a.descripcion ?? ''} ${a.grupo}`.toLowerCase().includes(q.trim().toLowerCase())) return false
     if (semana && finSemana) { const s = a.fecha_inicio ?? a.fecha_fin, e = a.fecha_fin ?? a.fecha_inicio; if (!s || !e || s > finSemana || e < semana) return false }
     return true
-  }), [acts, mias, q, perfil?.id, semana, finSemana])
+  }), [acts, mias, q, perfil?.id, semana, finSemana, verEquipo, equipo])
   const grupos = useMemo(() => [...new Set((acts ?? []).map(a => a.grupo))].sort((a, b) => a === 'General' ? -1 : b === 'General' ? 1 : a.localeCompare(b)), [acts])
 
   async function actualizar(id: string, c: Partial<Act>) {
@@ -88,7 +97,7 @@ export default function Actividades() {
   }
   async function crearRapido(grupo: string, titulo: string) {
     if (!titulo.trim()) return
-    const { error } = await supabase.from('actividades').insert({ titulo: titulo.trim(), grupo, responsable_id: perfil?.id ?? null, orden: (acts?.length ?? 0) + 1 })
+    const { error } = await supabase.from('actividades').insert({ titulo: titulo.trim(), grupo, responsable_id: perfil?.id ?? null, orden: (acts?.length ?? 0) + 1, equipo_id: equipo?.id ?? null })
     if (error) return setError(mensajeError(error))
     cargar()
   }
@@ -136,22 +145,22 @@ export default function Actividades() {
       columnas: colsPdf.map(c => ({ titulo: c.titulo, valor: c.valor })), colorFila: a => vista === 'kanban' ? null : hex(ESTATUS[a.estatus].c) })
   }
 
-  if (!puedeEditar) return <Navigate to="/" replace />
+  if (!puedeEditar && !equipo) return <Navigate to="/" replace />
   if (!acts) return <Cargando />
   const resumen = (Object.keys(ESTATUS) as Estatus[]).map(k => ({ k, n: visibles.filter(a => a.estatus === k).length }))
 
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
+        {equipo ? <h2 className="text-lg font-semibold">Tareas y calendario del equipo</h2> : <div>
           <h1 className="text-2xl font-semibold sm:text-3xl">Actividades</h1>
-          <p className="mt-1 text-sm text-stone-500">Pendientes del equipo de TI y supervisores: quién, qué y para cuándo.</p>
-        </div>
+          <p className="mt-1 text-sm text-stone-500">Pendientes de todos los equipos: quién, qué y para cuándo. Cada equipo tiene además su propio espacio en Equipos de trabajo.</p>
+        </div>}
         <div className="flex flex-wrap gap-2">
-        {puedeEditar && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Cargar Excel</button>}
+        {puedeEditar && !equipo && <button className="btn-sec" onClick={() => setImportar(true)}><Upload size={16} />Cargar Excel</button>}
         <button className="btn-sec" onClick={exportarExcel} disabled={!visibles.length}><FileSpreadsheet size={16} />Excel</button>
         <button className="btn-sec" onClick={exportarPdf} disabled={!visibles.length}><FileText size={16} />PDF</button>
-        <button className="btn-primario" onClick={() => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: hoy })}><Plus size={16} />Nueva actividad</button>
+        <button className="btn-primario" onClick={() => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: hoy, equipo_id: equipo?.id ?? null })}><Plus size={16} />Nueva actividad</button>
         </div>
       </div>
 
@@ -163,6 +172,7 @@ export default function Actividades() {
         </div>
         <span className="relative min-w-[180px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" /><input className="campo !py-2 pl-9" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar actividad…" /></span>
         <label className="flex items-center gap-2 rounded-xl border border-stone-200 px-3 py-2 text-sm"><input type="checkbox" checked={mias} onChange={e => setMias(e.target.checked)} />Solo las mías</label>
+        {!equipo && equipos.length > 0 && <select className="campo !w-auto !py-2 text-sm" value={verEquipo} onChange={e => setVerEquipo(e.target.value)}><option value="">Todos los equipos</option><option value="sin">Sin equipo</option>{equipos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select>}
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-stone-500"><CalendarRange size={14} />Semana</span>
@@ -183,10 +193,10 @@ export default function Actividades() {
 
       {importar && <ImportarActividades abierto onCerrar={() => setImportar(false)} onListo={() => { setImportar(false); cargar() }} />}
       {vista === 'tablero' && <Tablero grupos={grupos} acts={visibles} usuarios={usuarios} comentarios={comentarios} actualizar={actualizar} abrir={setEditar} crear={crearRapido} />}
-      {vista === 'calendario' && <Calendario acts={visibles} usuarios={usuarios} semana={semana} abrir={setEditar} nueva={f => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: f, fecha_fin: f })} />}
+      {vista === 'calendario' && <Calendario acts={visibles} usuarios={usuarios} semana={semana} abrir={setEditar} nueva={f => setEditar({ grupo: grupos[0] ?? 'General', estatus: 'pendiente', prioridad: 'media', responsable_id: perfil?.id ?? null, fecha_inicio: f, fecha_fin: f, equipo_id: equipo?.id ?? null })} />}
       {vista === 'kanban' && <Kanban acts={visibles} usuarios={usuarios} comentarios={comentarios} actualizar={actualizar} abrir={setEditar} />}
 
-      {editar && <EditarAct act={editar} grupos={grupos} usuarios={usuarios} empresas={empresas.items as { id: string; nombre: string; nombre_corto?: string }[]} onCerrar={() => setEditar(null)} onListo={() => { setEditar(null); cargar() }} />}
+      {editar && <EditarAct act={editar} grupos={grupos} usuarios={usuarios} equipos={equipo ? undefined : equipos} empresas={empresas.items as { id: string; nombre: string; nombre_corto?: string }[]} onCerrar={() => setEditar(null)} onListo={() => { setEditar(null); cargar() }} />}
     </div>
   )
 }
@@ -364,10 +374,10 @@ function Kanban({ acts, usuarios, comentarios, actualizar, abrir }: { acts: Act[
   )
 }
 
-function EditarAct({ act, grupos, usuarios, empresas, onCerrar, onListo }: { act: Partial<Act>; grupos: string[]; usuarios: Usuario[]; empresas: { id: string; nombre: string; nombre_corto?: string }[]; onCerrar: () => void; onListo: () => void }) {
+function EditarAct({ act, grupos, usuarios, empresas, equipos, onCerrar, onListo }: { act: Partial<Act>; grupos: string[]; usuarios: Usuario[]; equipos?: { id: string; nombre: string }[]; empresas: { id: string; nombre: string; nombre_corto?: string }[]; onCerrar: () => void; onListo: () => void }) {
   const { perfil } = useAuth()
   const [f, setF] = useState({ titulo: act.titulo ?? '', grupo: act.grupo ?? 'General', descripcion: act.descripcion ?? '', estatus: act.estatus ?? 'pendiente', prioridad: act.prioridad ?? 'media',
-    responsable_id: act.responsable_id ?? '', empresa_id: act.empresa_id ?? '', fecha_inicio: act.fecha_inicio ?? '', fecha_fin: act.fecha_fin ?? '', avance: act.avance ?? 0 })
+    responsable_id: act.responsable_id ?? '', empresa_id: act.empresa_id ?? '', equipo_id: act.equipo_id ?? '', fecha_inicio: act.fecha_inicio ?? '', fecha_fin: act.fecha_fin ?? '', avance: act.avance ?? 0 })
   const [participantes, setParticipantes] = useState<string[]>(act.participantes ?? [])
   const [avances, setAvances] = useState<Avance[]>([])
   const [nuevo, setNuevo] = useState({ avance: act.avance ?? 0, estatus: '' as Estatus | '', comentario: '' })
@@ -382,7 +392,7 @@ function EditarAct({ act, grupos, usuarios, empresas, onCerrar, onListo }: { act
   async function guardar() {
     if (!f.titulo.trim()) return setError('Escribe la actividad.')
     if (f.fecha_inicio && f.fecha_fin && f.fecha_fin < f.fecha_inicio) return setError('La fecha final no puede ser antes del inicio.')
-    const datos = { ...f, titulo: f.titulo.trim(), grupo: f.grupo.trim() || 'General', descripcion: f.descripcion.trim() || null, responsable_id: f.responsable_id || null, empresa_id: f.empresa_id || null,
+    const datos = { ...f, titulo: f.titulo.trim(), grupo: f.grupo.trim() || 'General', descripcion: f.descripcion.trim() || null, responsable_id: f.responsable_id || null, empresa_id: f.empresa_id || null, equipo_id: f.equipo_id || null,
       fecha_inicio: f.fecha_inicio || null, fecha_fin: f.fecha_fin || null, avance: f.estatus === 'listo' ? 100 : Number(f.avance), participantes: participantes.filter(x => x !== f.responsable_id) }
     if (act.id) { delete (datos as Partial<typeof datos>).avance }   // el avance de una actividad existente se registra abajo, con comentario
     const { error } = act.id ? await supabase.from('actividades').update(datos).eq('id', act.id) : await supabase.from('actividades').insert(datos)
@@ -423,6 +433,7 @@ function EditarAct({ act, grupos, usuarios, empresas, onCerrar, onListo }: { act
             <Campo label="Inicio"><input className="campo" type="date" value={f.fecha_inicio} onChange={e => setF({ ...f, fecha_inicio: e.target.value })} /></Campo>
             <Campo label="Entrega"><input className="campo" type="date" value={f.fecha_fin} onChange={e => setF({ ...f, fecha_fin: e.target.value })} /></Campo>
             {!act.id && <Campo label={`Avance inicial: ${f.avance}%`}><input type="range" min="0" max="100" step="5" className="w-full accent-[var(--color-marca)]" value={f.avance} onChange={e => setF({ ...f, avance: Number(e.target.value) })} /></Campo>}
+            {equipos && equipos.length > 0 && <Campo label="Equipo de trabajo"><select className="campo" value={f.equipo_id} onChange={e => setF({ ...f, equipo_id: e.target.value })}><option value="">Sin equipo</option>{equipos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select></Campo>}
             <Campo label="Empresa (opcional)"><select className="campo" value={f.empresa_id} onChange={e => setF({ ...f, empresa_id: e.target.value })}><option value="">—</option>{empresas.map(e => <option key={e.id} value={e.id}>{e.nombre_corto || e.nombre}</option>)}</select></Campo>
             <Campo label="Detalle" className="sm:col-span-2"><textarea className="campo" rows={2} value={f.descripcion} onChange={e => setF({ ...f, descripcion: e.target.value })} /></Campo>
           </div>

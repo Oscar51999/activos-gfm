@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Boxes, ClipboardSignature, MapPin, Users, Tags, Building2, Truck, UserCog, ScanLine, LogOut,
-  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck, Headset, Fuel, FileSignature, Hourglass, Route, Leaf,
+  X, Factory, CalendarCheck, Sun, Moon, UserRound, ShieldAlert, ChevronUp, BookOpenText, Briefcase, Search, PanelLeftClose, PanelLeftOpen, Menu, KeyRound, PackageSearch, PackagePlus, CalendarClock, Siren, ClipboardCheck, FileClock, ShieldCheck, Repeat, Package, Wrench, Warehouse, Inbox, Map as MapaIcono, Landmark, Sparkles, Download, Activity, Truck as Camion, ListTree, IdCard, Hash, RefreshCcw, Grid3x3, Car, Archive, BarChart3, Receipt, Nfc, MailCheck, Headset, Fuel, FileSignature, Hourglass, Route, Leaf, UsersRound,
 } from 'lucide-react'
 import { useAuth, fotoPerfil } from '../lib/auth'
 import { aplicarTema, temaActual, type Tema } from '../lib/tema'
@@ -22,6 +22,7 @@ type Entrada = { to: string; icono: typeof Boxes; texto: string; fin?: boolean; 
 const grupos: { titulo: string; items: Entrada[] }[] = [
   { titulo: 'Operación', items: [
     { to: '/', icono: LayoutDashboard, texto: 'Tablero', fin: true },
+    { to: '/equipos', icono: UsersRound, texto: 'Equipos de trabajo' },
     { to: '/mis-equipos', icono: UserRound, texto: 'Mis equipos' },
     { to: '/reservas', icono: CalendarClock, texto: 'Reservas de equipo' },
     { to: '/preguntar', icono: Sparkles, texto: 'Pregúntale' },

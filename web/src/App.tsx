@@ -57,6 +57,7 @@ import Contratos from './pages/Contratos'
 import Renovacion from './pages/Renovacion'
 import Viajes from './pages/Viajes'
 import Huella from './pages/Huella'
+import Equipos from './pages/Equipos'
 import Bajas, { ActaBaja } from './pages/Bajas'
 import SalidaEmpleado from './pages/SalidaEmpleado'
 import ChecklistVehicular from './pages/ChecklistVehicular'
@@ -206,6 +207,8 @@ function Rutas() {
         <Route path="renovacion" element={<Renovacion />} />
         <Route path="viajes" element={<Viajes />} />
         <Route path="huella-carbono" element={<Huella />} />
+        <Route path="equipos" element={<Equipos />} />
+        <Route path="equipos/:id" element={<Equipos />} />
         <Route path="bajas" element={<Bajas />} />
         <Route path="bajas/:id" element={<ActaBaja />} />
         <Route path="empleados/:id/salida" element={<SalidaEmpleado />} />
